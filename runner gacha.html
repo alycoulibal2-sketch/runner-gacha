@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Runner Gacha (30 coins)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <style>
+    :root { --bg: #0f172a; --text: #e2e8f0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: radial-gradient(circle at top, #1f2937, #0f172a);
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      touch-action: manipulation;
+      user-select: none;
+    }
+    #game {
+      background: #020617;
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.35);
+      position: relative;
+    }
+    canvas { display: block; border-radius: 16px; }
+
+    #ui {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; z-index: 10;
+    }
+    .badge {
+      background: rgba(15,23,42,.5);
+      border: 1px solid rgba(255,255,255,.03);
+      backdrop-filter: blur(5px);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .badge-btn {
+      background: rgba(248,250,252,.12);
+      border: 1px solid rgba(255,255,255,.03);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #menu {
+      position: absolute; inset: 0;
+      background: radial-gradient(circle, rgba(2,6,23,0.9) 0%, rgba(2,6,23,1) 80%);
+      display: flex; flex-direction: column; gap: 12px;
+      align-items: center; justify-content: center;
+      text-align: center; z-index: 20; padding: 14px;
+    }
+    .difficulty-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .btn {
+      border: none; padding: 10px 16px; border-radius: 12px; font-weight: 700;
+      cursor: pointer; min-width: 110px; transition: transform .1s;
+    }
+    .btn:active { transform: scale(.96); }
+    .easy { background: #22c55e; color: #020617; }
+    .hard { background: #ef4444; color: #fff; }
+    .extreme { background: #a855f7; color: #fff; }
+    .shop { background: #f97316; color: #020617; }
+    .secondary { background: rgba(248,250,252,.08); color: #e2e8f0; }
+
+    #gachaModal {
+      position: absolute; inset: 0;
+      background: rgba(2,6,23,.96);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      z-index: 30;
+      text-align: center;
+      padding: 10px;
+    }
+    .gacha-type-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .gacha-type-btn {
+      background: rgba(15,23,42,.5); border: 1px solid rgba(248,250,252,.08);
+      color: #e2e8f0; border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer;
+    }
+    .gacha-type-btn.active { background: #f97316; color: #020617; font-weight: 700; }
+    #gachaWheel { background: #020617; border-radius: 50%; box-shadow: 0 0 18px rgba(0,0,0,.4); }
+    .close-btn {
+      background: rgba(248,250,252,.08); border: 1px solid rgba(248,250,252,.08);
+      border-radius: 999px; padding: 5px 14px; cursor: pointer;
+    }
+
+    #rewardFull {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.4);
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 50;
+    }
+    .reward-card {
+      width: 85%; max-width: 360px;
+      background: rgba(2,6,23,.85);
+      border-radius: 20px;
+      padding: 18px 16px 16px;
+      text-align: center;
+      box-shadow: 0 18px 40px rgba(0,0,0,.4);
+      border: 2px solid rgba(248,250,252,.2);
+    }
+    .reward-title { font-size: 15px; opacity: .8; margin-bottom: 6px; }
+    .reward-name { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+    .reward-rarity { font-weight: 700; margin-bottom: 12px; }
+    .reward-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .reward-btn {
+      border: none; padding: 7px 12px; border-radius: 12px; font-weight: 600; cursor: pointer;
+    }
+    .bg-common     { background: radial-gradient(circle, #1f2937 0%, #0f172a 80%); }
+    .bg-rare       { background: radial-gradient(circle, #38bdf8 0%, #0f172a 80%); }
+    .bg-epic       { background: radial-gradient(circle, #a855f7 0%, #0f172a 80%); }
+    .bg-legendaire { background: radial-gradient(circle, #f97316 0%, #0f172a 80%); }
+    .bg-mythique   { background: radial-gradient(circle, #f43f5e 0%, #0f172a 80%); }
+
+    #collectionModal {
+      position: absolute; inset: 0;
+      background: rgba(2,6,23,.97);
+      display: none;
+      flex-direction: column;
+      z-index: 60;
+      padding: 14px;
+      gap: 10px;
+    }
+    #collectionModal h2 { text-align: center; }
+    .collection-tabs {
+      display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;
+    }
+    .collection-tab {
+      border: none; background: rgba(15,23,42,.6); color: #e2e8f0;
+      padding: 5px 10px; border-radius: 999px; cursor: pointer; font-size: 12px;
+    }
+    .collection-tab.active { background: #f97316; color: #020617; }
+    .collection-section-title {
+      font-size: 12px;
+      opacity: .7;
+      margin: 4px 0 2px;
+    }
+    .collection-type-block {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(95px,1fr));
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .collection-body-scroll {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .skin-card {
+      background: rgba(15,23,42,.4);
+      border: 1px solid rgba(248,250,252,.02);
+      border-radius: 12px;
+      height: 105px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px;
+      text-align: center;
+      font-size: 11px;
+    }
+    .skin-box { width: 50px; height: 40px; border-radius: 8px; background: rgba(248,250,252,.08); }
+    .skin-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+    .skin-type { font-size: 10px; opacity: .5; }
+    .equip-btn {
+      border: none; background: #22c55e; color: #020617;
+      padding: 2px 8px; border-radius: 999px; font-size: 10px; cursor: pointer;
+    }
+    .locked { filter: grayscale(1) brightness(.25); position: relative; }
+    .locked::after {
+      content: "?"; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: rgba(248,250,252,.4); pointer-events: none;
+    }
+    .collection-close {
+      margin-top: 6px; align-self: center;
+      background: rgba(248,250,252,.1); border: 1px solid rgba(248,250,252,.08);
+      border-radius: 999px; padding: 5px 14px; cursor: pointer;
+    }
+
+    @media (max-width: 500px) {
+      #game { width: 100vw; height: 70vh; }
+      #gachaWheel { width: 200px; height: 200px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <canvas id="canvas" width="420" height="640"></canvas>
+
+    <div id="ui">
+      <div class="badge">Score : <span id="score">0</span></div>
+      <div class="badge">Record : <span id="best">0</span></div>
+      <div class="badge" id="modeLabel">Mode : -</div>
+      <div class="badge">💰 <span id="coinAmount">0</span></div>
+      <button class="badge-btn" onclick="openCollection()">📦</button>
+    </div>
+
+    <div id="menu">
+      <h1>Runner Gacha</h1>
+      <p>Choisis un niveau</p>
+      <div class="difficulty-row">
+        <button class="btn easy" onclick="selectDifficulty('easy')">Facile</button>
+        <button class="btn hard" onclick="selectDifficulty('hard')">Difficile</button>
+        <button class="btn extreme" onclick="selectDifficulty('extreme')">Extrême</button>
+      </div>
+      <button class="btn shop" onclick="openGacha()">🎰 Roue & Skins</button>
+      <button class="btn secondary" onclick="openCollection()">📦 Collection</button>
+      <small>1 tour = 30 💰 • 50 tours = légendaire garanti</small>
+    </div>
+
+    <div id="gachaModal">
+      <h2>🎰 Roue</h2>
+      <p id="gachaCoins"></p>
+      <div class="gacha-type-row">
+        <button class="gacha-type-btn active" data-type="player" onclick="selectGachaType('player', this)">Bloc</button>
+        <button class="gacha-type-btn" data-type="background" onclick="selectGachaType('background', this)">Fond</button>
+        <button class="gacha-type-btn" data-type="obstacle" onclick="selectGachaType('obstacle', this)">Obstacle</button>
+      </div>
+      <canvas id="gachaWheel" width="240" height="240"></canvas>
+      <button class="btn shop" id="spinBtn">Tourner (30 💰)</button>
+      <div id="gachaResult">Tourne pour un motif 🔥</div>
+      <small id="pityInfo"></small>
+      <button class="close-btn" onclick="closeGacha()">Fermer</button>
+    </div>
+
+    <div id="rewardFull">
+      <div id="rewardCard" class="reward-card">
+        <div class="reward-title">NOUVEAU SKIN</div>
+        <div id="rewardName" class="reward-name">Nom du skin</div>
+        <div id="rewardRarity" class="reward-rarity">Rareté</div>
+        <div id="rewardType" style="opacity:.5; margin-bottom:12px;">Type</div>
+        <div class="reward-actions">
+          <button class="reward-btn" id="btnEquip">Équiper</button>
+          <button class="reward-btn" id="btnCollection">Collection</button>
+          <button class="reward-btn" id="btnCloseReward">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="collectionModal">
+      <h2>📦 Collection</h2>
+      <div class="collection-tabs">
+        <button class="collection-tab active" onclick="showCollection('all', this)">Tous</button>
+        <button class="collection-tab" onclick="showCollection('commun', this)">Commun</button>
+        <button class="collection-tab" onclick="showCollection('rare', this)">Rare</button>
+        <button class="collection-tab" onclick="showCollection('epic', this)">Épique</button>
+        <button class="collection-tab" onclick="showCollection('legendaire', this)">Légendaire</button>
+        <button class="collection-tab" onclick="showCollection('mythique', this)">Mythique</button>
+      </div>
+      <div id="collectionBody" class="collection-body-scroll"></div>
+      <button class="collection-close" onclick="closeCollection()">Fermer</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const modeLabel = document.getElementById("modeLabel");
+    const coinAmountEl = document.getElementById("coinAmount");
+    const menu = document.getElementById("menu");
+    const gachaModal = document.getElementById("gachaModal");
+    const gachaCoins = document.getElementById("gachaCoins");
+    const gachaResult = document.getElementById("gachaResult");
+    const pityInfo = document.getElementById("pityInfo");
+    const rewardFull = document.getElementById("rewardFull");
+    const rewardCard = document.getElementById("rewardCard");
+    const rewardNameEl = document.getElementById("rewardName");
+    const rewardRarityEl = document.getElementById("rewardRarity");
+    const rewardTypeEl = document.getElementById("rewardType");
+    const btnEquip = document.getElementById("btnEquip");
+    const btnCollection = document.getElementById("btnCollection");
+    const btnCloseReward = document.getElementById("btnCloseReward");
+    const collectionModal = document.getElementById("collectionModal");
+    const collectionBody = document.getElementById("collectionBody");
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const groundY = h - 80;
+
+    const player = { x: 70, y: h - 140, w: 50, h: 50, vy: 0, onGround: true };
+
+    const DIFFICULTIES = {
+      easy:   { name: "Facile",     color: "#22c55e", startSpeed: 2.4, accel: 0.03, coinValue: 1 },
+      hard:   { name: "Difficile",  color: "#ef4444", startSpeed: 3.3, accel: 0.06, coinValue: 2 },
+      extreme:{ name: "Extrême",    color: "#a855f7", startSpeed: 4.1, accel: 0.09, coinValue: 3 },
+    };
+
+    const FIXED_SPAWN_FRAMES = 180;
+    const COIN_SPAWN_FRAMES = 110;
+
+    let currentDiff = null;
+    let obstacles = [];
+    let coinsOnField = [];
+    let gameSpeed = 3;
+    let score = 0;
+    let best = Number(localStorage.getItem("rg-best") || 0);
+    bestEl.textContent = best;
+    let coins = Number(localStorage.getItem("rg-coins") || 0);
+    coinAmountEl.textContent = coins;
+    let spawnTimer = FIXED_SPAWN_FRAMES;
+    let coinSpawnTimer = COIN_SPAWN_FRAMES;
+    let running = false;
+    let menuOpen = true;
+
+    // big list
+    const SKINS = [
+      // 20 COMMUNS
+      {name:"Bloc vert", rarity:"commun", type:"player"},
+      {name:"Bloc bleu", rarity:"commun", type:"player"},
+      {name:"Bloc rouge", rarity:"commun", type:"player"},
+      {name:"Bloc gris", rarity:"commun", type:"player"},
+      {name:"Bloc orange", rarity:"commun", type:"player"},
+      {name:"Bloc mint", rarity:"commun", type:"player"},
+      {name:"Bloc pastel", rarity:"commun", type:"player"},
+      {name:"Bloc sable", rarity:"commun", type:"player"},
+      {name:"Fond simple", rarity:"commun", type:"background"},
+      {name:"Fond gris", rarity:"commun", type:"background"},
+      {name:"Fond bleu nuit", rarity:"commun", type:"background"},
+      {name:"Fond béton", rarity:"commun", type:"background"},
+      {name:"Fond lignes fines", rarity:"commun", type:"background"},
+      {name:"Fond nuages doux", rarity:"commun", type:"background"},
+      {name:"Fond carreaux soft", rarity:"commun", type:"background"},
+      {name:"Obstacle rouge", rarity:"commun", type:"obstacle"},
+      {name:"Obstacle gris", rarity:"commun", type:"obstacle"},
+      {name:"Obstacle clair", rarity:"commun", type:"obstacle"},
+      {name:"Obstacle bois", rarity:"commun", type:"obstacle"},
+      {name:"Obstacle simple clair", rarity:"commun", type:"obstacle"},
+
+      // 20 RARES
+      {name:"Bloc ciel rayé", rarity:"rare", type:"player"},
+      {name:"Bloc diagonales", rarity:"rare", type:"player"},
+      {name:"Bloc techno light", rarity:"rare", type:"player"},
+      {name:"Bloc bord bleu", rarity:"rare", type:"player"},
+      {name:"Bloc city", rarity:"rare", type:"player"},
+      {name:"Bloc edge", rarity:"rare", type:"player"},
+      {name:"Bloc dégradé bleu", rarity:"rare", type:"player"},
+      {name:"Fond carreaux", rarity:"rare", type:"background"},
+      {name:"Fond lignes bleues", rarity:"rare", type:"background"},
+      {name:"Stripes bleues", rarity:"rare", type:"background"},
+      {name:"Fond waves", rarity:"rare", type:"background"},
+      {name:"Fond violet soft", rarity:"rare", type:"background"},
+      {name:"Fond city dusk", rarity:"rare", type:"background"},
+      {name:"Fond holo", rarity:"rare", type:"background"},
+      {name:"Obstacle carbone", rarity:"rare", type:"obstacle"},
+      {name:"Obstacle tôle", rarity:"rare", type:"obstacle"},
+      {name:"Obstacle cyan", rarity:"rare", type:"obstacle"},
+      {name:"Obstacle carreaux", rarity:"rare", type:"obstacle"},
+      {name:"Obstacle rust", rarity:"rare", type:"obstacle"},
+      {name:"Obstacle grille", rarity:"rare", type:"obstacle"},
+
+      // 15 ÉPIQUES
+      {name:"Galaxy dots", rarity:"epic", type:"background"},
+      {name:"Lignes néon", rarity:"epic", type:"background"},
+      {name:"Fond laser", rarity:"epic", type:"background"},
+      {name:"Fond nébuleuse", rarity:"epic", type:"background"},
+      {name:"Fond holo waves", rarity:"epic", type:"background"},
+      {name:"Fond techno", rarity:"epic", type:"background"},
+      {name:"Bloc néon", rarity:"epic", type:"player"},
+      {name:"Bloc techno", rarity:"epic", type:"player"},
+      {name:"Bloc prisme", rarity:"epic", type:"player"},
+      {name:"Bloc pastel neon", rarity:"epic", type:"player"},
+      {name:"Bloc shimmer", rarity:"epic", type:"player"},
+      {name:"Obstacle violet lignes", rarity:"epic", type:"obstacle"},
+      {name:"Obstacle prisme", rarity:"epic", type:"obstacle"},
+      {name:"Obstacle néon grid", rarity:"epic", type:"obstacle"},
+      {name:"Obstacle crystal blue", rarity:"epic", type:"obstacle"},
+
+      // 10 LÉGENDAIRES
+      {name:"Bloc or lignes", rarity:"legendaire", type:"player"},
+      {name:"Bloc flamme", rarity:"legendaire", type:"player"},
+      {name:"Bloc magma", rarity:"legendaire", type:"player"},
+      {name:"Bloc or brossé", rarity:"legendaire", type:"player"},
+      {name:"Cyber dusk", rarity:"legendaire", type:"background"},
+      {name:"Temple solaire", rarity:"legendaire", type:"background"},
+      {name:"Fond néon sunset", rarity:"legendaire", type:"background"},
+      {name:"Obstacle or motif", rarity:"legendaire", type:"obstacle"},
+      {name:"Obstacle pharaon", rarity:"legendaire", type:"obstacle"},
+      {name:"Obstacle royal", rarity:"legendaire", type:"obstacle"},
+
+      // 5 MYTHIQUES
+      {name:"Bloc bananes", rarity:"mythique", type:"player"},
+      {name:"Bloc mythique runes", rarity:"mythique", type:"player"},
+      {name:"Sky Bananas", rarity:"mythique", type:"background"},
+      {name:"Mythic Portal", rarity:"mythique", type:"background"},
+      {name:"Obstacle cristal", rarity:"mythique", type:"obstacle"},
+    ];
+
+    let ownedSkins = JSON.parse(localStorage.getItem("rg-skins") || '{"background":[],"player":[],"obstacle":[]}');
+    let selectedSkins = JSON.parse(localStorage.getItem("rg-selected") || '{"background":"default","player":"default","obstacle":"default"}');
+    let pity = JSON.parse(localStorage.getItem("rg-pity") || '{"background":0,"player":0,"obstacle":0}');
+
+    function saveAll() {
+      localStorage.setItem("rg-coins", coins);
+      localStorage.setItem("rg-best", best);
+      localStorage.setItem("rg-skins", JSON.stringify(ownedSkins));
+      localStorage.setItem("rg-selected", JSON.stringify(selectedSkins));
+      localStorage.setItem("rg-pity", JSON.stringify(pity));
+    }
+
+    function makePattern(name) {
+      const c = document.createElement("canvas");
+      const size = 80;
+      c.width = size; c.height = size;
+      const p = c.getContext("2d");
+      if (!name) return null;
+      const fillAll = col => {p.fillStyle=col;p.fillRect(0,0,size,size);};
+
+      if (name === "Fond simple") fillAll("#0f172a");
+      else if (name === "Fond gris") fillAll("#1f2937");
+      else if (name === "Fond bleu nuit") fillAll("#020617");
+      else if (name === "Fond béton") fillAll("#1f2937");
+      else if (name === "Fond lignes fines") { fillAll("#0f172a"); p.strokeStyle="rgba(248,250,252,.05)"; for (let y=6;y<size;y+=12){p.beginPath();p.moveTo(0,y);p.lineTo(size,y);p.stroke();}}
+      else if (name === "Fond nuages doux") { fillAll("#e2e8f0"); p.fillStyle="rgba(148,163,184,.4)"; p.beginPath();p.arc(25,25,14,0,Math.PI*2);p.fill(); }
+      else if (name === "Fond carreaux soft" || name==="Fond carreaux") { fillAll("#0f172a"); p.strokeStyle="rgba(248,250,252,.08)"; for (let x=0;x<size;x+=16){p.beginPath();p.moveTo(x,0);p.lineTo(x,size);p.stroke();} for (let y=0;y<size;y+=16){p.beginPath();p.moveTo(0,y);p.lineTo(size,y);p.stroke();} }
+      else if (name === "Stripes bleues" || name==="Fond lignes bleues") { fillAll("#020617"); p.strokeStyle="rgba(56,189,248,.4)"; p.lineWidth=6; for (let i=-40;i<size+40;i+=20){p.beginPath();p.moveTo(i,0);p.lineTo(i+40,size);p.stroke();}}
+      else if (name === "Galaxy dots" || name==="Fond nébuleuse") { fillAll("#020617"); for (let i=0;i<15;i++){p.fillStyle="rgba(148,163,184,"+(0.4+Math.random()*0.6)+")";p.beginPath();p.arc(Math.random()*size,Math.random()*size,2+Math.random()*3,0,Math.PI*2);p.fill();}}
+      else if (name === "Lignes néon" || name==="Fond laser") { fillAll("#020617"); p.strokeStyle="#38bdf8"; p.lineWidth=3; for (let i=-40;i<size+40;i+=15){p.beginPath();p.moveTo(i,0);p.lineTo(i+30,size);p.stroke();}}
+      else if (name === "Cyber dusk" || name==="Fond néon sunset") { const g=p.createLinearGradient(0,0,size,size); g.addColorStop(0,"#0f172a"); g.addColorStop(1,"#f97316"); p.fillStyle=g; p.fillRect(0,0,size,size); }
+      else if (name === "Temple solaire") { fillAll("#f97316"); p.strokeStyle="rgba(248,250,252,.5)"; p.lineWidth=2; p.beginPath();p.arc(40,50,14,Math.PI,Math.PI*2);p.stroke();}
+      else if (name === "Sky Bananas" || name==="Bloc bananes") { fillAll("#bae6fd"); for (let k=0;k<3;k++){ const x=Math.random()*size*0.6+10, y=Math.random()*size*0.6+10; p.strokeStyle="#facc15";p.lineWidth=5;p.beginPath();p.arc(x,y,14,Math.PI*.2,Math.PI*1.1);p.stroke(); p.strokeStyle="#0f172a";p.lineWidth=2;p.beginPath();p.moveTo(x+10,y-10);p.lineTo(x+14,y-16);p.stroke();} }
+      else if (name === "Mythic Portal") { const g2=p.createRadialGradient(40,40,5,40,40,50); g2.addColorStop(0,"#e11d48");g2.addColorStop(1,"#020617"); p.fillStyle=g2; p.fillRect(0,0,size,size); }
+      else if (name === "Bloc vert") fillAll("#22c55e");
+      else if (name === "Bloc bleu") fillAll("#38bdf8");
+      else if (name === "Bloc rouge") fillAll("#ef4444");
+      else if (name === "Bloc gris") fillAll("#94a3b8");
+      else if (name === "Bloc orange") fillAll("#fb923c");
+      else if (name === "Bloc mint") fillAll("#a7f3d0");
+      else if (name === "Bloc pastel") fillAll("#f3e8ff");
+      else if (name === "Bloc sable") fillAll("#fde68a");
+      else if (name === "Bloc ciel rayé") { fillAll("#e0f2fe"); p.strokeStyle="rgba(14,165,233,.4)"; p.lineWidth=4; p.beginPath();p.moveTo(0,0);p.lineTo(size,size);p.stroke(); }
+      else if (name === "Bloc diagonales" || name==="Bloc edge") { fillAll("#e2e8f0"); p.strokeStyle="rgba(15,23,42,.3)"; for (let i=-40;i<size+40;i+=14){p.beginPath();p.moveTo(i,0);p.lineTo(i+40,size);p.stroke();}}
+      else if (name === "Bloc néon" || name==="Bloc techno") { fillAll("#020617"); p.strokeStyle="#38bdf8"; p.lineWidth=3; p.strokeRect(8,8,size-16,size-16); }
+      else if (name === "Bloc prisme") { fillAll("#0f172a"); p.fillStyle="rgba(236,72,153,.8)"; p.beginPath();p.moveTo(10,70);p.lineTo(40,10);p.lineTo(70,70);p.closePath();p.fill(); }
+      else if (name === "Bloc or lignes" || name==="Bloc or brossé") { fillAll("#f97316"); p.strokeStyle="rgba(248,250,252,.6)"; p.lineWidth=2; p.strokeRect(10,10,60,60); }
+      else if (name === "Bloc flamme" || name==="Bloc magma") { fillAll("#7f1d1d"); p.fillStyle="#f97316"; p.beginPath();p.moveTo(40,10);p.lineTo(60,50);p.lineTo(20,50);p.closePath();p.fill();}
+      else if (name === "Bloc mythique runes") { fillAll("#2e1065"); p.fillStyle="rgba(236,252,203,.9)"; p.font="14px monospace"; p.fillText("ᚦ",10,20);p.fillText("ᚱ",35,45);p.fillText("ᚨ",55,25); }
+      else if (name === "Obstacle rouge") fillAll("#f43f5e");
+      else if (name === "Obstacle gris") fillAll("#475569");
+      else if (name === "Obstacle clair") fillAll("#cbd5f5");
+      else if (name === "Obstacle bois") fillAll("#92400e");
+      else if (name === "Obstacle simple clair") fillAll("#e2e8f0");
+      else if (name === "Obstacle carbone") { fillAll("#1f2937"); p.fillStyle="rgba(15,23,42,.4)"; for (let y=0;y<size;y+=12){for (let x=0;x<size;x+=12){p.fillRect(x+(y%24===0?0:6), y, 8, 8);}}}
+      else if (name === "Obstacle tôle") { fillAll("#111827"); p.strokeStyle="rgba(248,250,252,.12)"; for (let y=5;y<size;y+=14){p.beginPath();p.moveTo(0,y);p.lineTo(size,y);p.stroke();}}
+      else if (name === "Obstacle violet lignes") { fillAll("#3b0764"); p.strokeStyle="#a855f7"; p.lineWidth=3; for (let i=-40;i<size+40;i+=14){p.beginPath();p.moveTo(i,0);p.lineTo(i+40,size);p.stroke();}}
+      else if (name === "Obstacle prisme" || name==="Obstacle crystal blue") { fillAll("#020617"); p.fillStyle="rgba(59,130,246,.5)"; p.beginPath();p.moveTo(10,70);p.lineTo(40,10);p.lineTo(70,70);p.closePath();p.fill();}
+      else if (name === "Obstacle or motif" || name==="Obstacle royal") { fillAll("#f97316"); p.strokeStyle="rgba(248,250,252,.6)"; p.lineWidth=2; p.beginPath();p.moveTo(10,10);p.lineTo(70,10);p.lineTo(10,70);p.closePath();p.stroke();}
+      else if (name === "Obstacle pharaon") { fillAll("#fbbf24"); p.fillStyle="rgba(15,23,42,.5)"; p.fillRect(30,10,18,50); }
+      else if (name === "Obstacle cristal") { fillAll("#020617"); p.fillStyle="rgba(236,72,153,.8)"; p.beginPath();p.moveTo(40,5);p.lineTo(70,40);p.lineTo(40,75);p.lineTo(10,40);p.closePath();p.fill();}
+      else { fillAll("#0f172a"); }
+
+      return p.createPattern(c,"repeat");
+    }
+
+    function selectDifficulty(mode) {
+      currentDiff = DIFFICULTIES[mode];
+      modeLabel.textContent = "Mode : " + currentDiff.name;
+      startGame();
+    }
+    function startGame() {
+      obstacles = [];
+      coinsOnField = [];
+      gameSpeed = currentDiff.startSpeed;
+      score = 0;
+      player.y = groundY - player.h;
+      player.vy = 0;
+      player.onGround = true;
+      spawnTimer = FIXED_SPAWN_FRAMES;
+      coinSpawnTimer = COIN_SPAWN_FRAMES;
+      scoreEl.textContent = score;
+      running = true;
+      menu.style.display = "none";
+      gachaModal.style.display = "none";
+      menuOpen = false;
+      requestAnimationFrame(update);
+    }
+    function gameOver() {
+      running = false;
+      menu.style.display = "flex";
+      menuOpen = true;
+      if (score > best) {
+        best = score;
+        bestEl.textContent = best;
+      }
+      saveAll();
+    }
+    function spawnObstacle() {
+      const hObs = 40 + Math.random()*55;
+      obstacles.push({ x: w+50, y: groundY - hObs, w: 50, h: hObs, passed: false });
+    }
+    function spawnCoin() {
+      coinsOnField.push({ x: w + 30, y: groundY - 40 - Math.random() * 60, r: 14, taken: false });
+    }
+    function jump() {
+      if (player.onGround) {
+        player.vy = -13;
+        player.onGround = false;
+      }
+    }
+
+    function update() {
+      if (!running) return;
+      let bgPattern = null;
+      if (selectedSkins.background !== "default")
+        bgPattern = makePattern(selectedSkins.background);
+      ctx.fillStyle = bgPattern ? bgPattern : "#020617";
+      ctx.fillRect(0,0,w,h);
+
+      ctx.fillStyle = "rgba(15,23,42,.4)";
+      ctx.fillRect(0, groundY, w, h - groundY);
+
+      player.vy += 0.35;
+      if (player.vy > 9) player.vy = 9;
+      player.y += player.vy;
+      if (player.y + player.h >= groundY) {
+        player.y = groundY - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+
+      let playerPat = null;
+      if (selectedSkins.player !== "default")
+        playerPat = makePattern(selectedSkins.player);
+      ctx.fillStyle = playerPat ? playerPat : (currentDiff ? currentDiff.color : "#38bdf8");
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+
+      spawnTimer--;
+      if (spawnTimer <= 0) {
+        spawnObstacle();
+        spawnTimer = FIXED_SPAWN_FRAMES;
+      }
+      for (let i=obstacles.length-1;i>=0;i--){
+        const ob = obstacles[i];
+        ob.x -= gameSpeed;
+        let obPat = null;
+        if (selectedSkins.obstacle !== "default")
+          obPat = makePattern(selectedSkins.obstacle);
+        ctx.fillStyle = obPat ? obPat : "#f43f5e";
+        ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+
+        if (player.x < ob.x + ob.w &&
+            player.x + player.w > ob.x &&
+            player.y < ob.y + ob.h &&
+            player.y + player.h > ob.y) {
+          gameOver();
+        }
+
+        if (!ob.passed && ob.x + ob.w < player.x) {
+          ob.passed = true;
+          score++;
+          scoreEl.textContent = score;
+          gameSpeed += currentDiff.accel;
+        }
+
+        if (ob.x + ob.w < -60) obstacles.splice(i,1);
+      }
+
+      coinSpawnTimer--;
+      if (coinSpawnTimer <= 0) {
+        spawnCoin();
+        coinSpawnTimer = COIN_SPAWN_FRAMES + Math.floor(Math.random()*40);
+      }
+      for (let i=coinsOnField.length-1;i>=0;i--){
+        const c = coinsOnField[i];
+        c.x -= gameSpeed;
+        if (!c.taken) {
+          ctx.beginPath();
+          ctx.fillStyle = "#facc15";
+          ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
+          ctx.fill();
+        }
+        if (!c.taken &&
+            player.x < c.x + c.r &&
+            player.x + player.w > c.x - c.r &&
+            player.y < c.y + c.r &&
+            player.y + player.h > c.y - c.r) {
+          c.taken = true;
+          const gain = currentDiff ? currentDiff.coinValue : 1;
+          coins += gain;
+          coinAmountEl.textContent = coins;
+          saveAll();
+        }
+        if (c.x + c.r < -60 || c.taken) coinsOnField.splice(i,1);
+      }
+
+      requestAnimationFrame(update);
+    }
+
+    // =============== GACHA (30 coins) ===============
+    const gachaCanvas = document.getElementById("gachaWheel");
+    const gctx = gachaCanvas.getContext("2d");
+    const R = gachaCanvas.width / 2;
+    const wheelSegments = [
+      { label: "Commun",    color: "#94a3b8", rarity: "commun" },
+      { label: "Rare",      color: "#38bdf8", rarity: "rare" },
+      { label: "Épique",    color: "#a855f7", rarity: "epic" },
+      { label: "Légendaire",color: "#f97316", rarity: "legendaire" },
+      { label: "Mythique",  color: "#f43f5e", rarity: "mythique" },
+    ];
+    let wheelRotation = 0;
+    let wheelSpinning = false;
+    let wheelStartDeg = 0;
+    let wheelTargetDeg = 0;
+    let wheelStartTime = 0;
+    let wheelDuration = 1400;
+    let currentWheelType = "player";
+    let forcedRarity = null;
+    let currentSpinRarity = null;
+
+    function drawWheel(rotDeg=0) {
+      gctx.clearRect(0,0,gachaCanvas.width,gachaCanvas.height);
+      const total = wheelSegments.length;
+      const step = (2*Math.PI)/total;
+
+      gctx.save();
+      gctx.translate(R,R);
+      gctx.rotate(rotDeg*Math.PI/180);
+
+      for (let i=0;i<total;i++){
+        const start = i*step;
+        const end = start+step;
+        gctx.beginPath();
+        gctx.moveTo(0,0);
+        gctx.arc(0,0,R,start,end);
+        gctx.fillStyle = wheelSegments[i].color;
+        gctx.fill();
+
+        gctx.save();
+        gctx.rotate(start+step/2);
+        gctx.fillStyle = "#0f172a";
+        gctx.font = "bold 11px system-ui";
+        gctx.textAlign = "right";
+        gctx.fillText(wheelSegments[i].label, R-10, 4);
+        gctx.restore();
+      }
+
+      gctx.restore();
+
+      // POINTEUR À DROITE
+      gctx.beginPath();
+      gctx.moveTo(gachaCanvas.width, R);
+      gctx.lineTo(gachaCanvas.width - 22, R - 14);
+      gctx.lineTo(gachaCanvas.width - 22, R + 14);
+      gctx.closePath();
+      gctx.fillStyle = "#fff";
+      gctx.fill();
+    }
+    drawWheel(0);
+
+    function openGacha() {
+      gachaModal.style.display = "flex";
+      menuOpen = true;
+      gachaCoins.textContent = "Tes pièces : " + coins;
+      updatePityText();
+    }
+    function closeGacha() { gachaModal.style.display = "none"; }
+    function updatePityText() {
+      pityInfo.textContent = `Pity: fonds ${pity.background||0} | blocs ${pity.player||0} | obstacles ${pity.obstacle||0} (50 = légendaire)`;
+    }
+    function selectGachaType(type, btn) {
+      currentWheelType = type;
+      document.querySelectorAll(".gacha-type-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+    function getAngleForRarity(rarity) {
+      const idx = wheelSegments.findIndex(s=>s.rarity===rarity);
+      const slice = 360 / wheelSegments.length;
+      return idx * slice + slice/2;
+    }
+    // chances
+    function rollRarity() {
+      const r = Math.random();
+      if (r < 0.01) return "mythique";          // 1%
+      if (r < 0.0266667) return "legendaire";   // ≈1/60
+      if (r < 0.1166667) return "epic";         // 9%
+      if (r < 0.3966667) return "rare";         // 28%
+      return "commun";
+    }
+    function spinWheel() {
+      if (wheelSpinning) return;
+      if (coins < 30) {
+        gachaResult.textContent = "Pas assez de pièces 😅";
+        return;
+      }
+      coins -= 30;   // <<<<<< prix mis à 30
+      coinAmountEl.textContent = coins;
+      gachaCoins.textContent = "Tes pièces : " + coins;
+
+      pity[currentWheelType] = (pity[currentWheelType] || 0) + 1;
+      forcedRarity = null;
+      currentSpinRarity = null;
+
+      if (pity[currentWheelType] >= 50) {
+        currentSpinRarity = "legendaire";
+        forcedRarity = "legendaire";
+        pity[currentWheelType] = 0;
+      } else {
+        currentSpinRarity = rollRarity();
+      }
+
+      const targetAngle = getAngleForRarity(currentSpinRarity);
+      const spinTo = 360 - targetAngle;
+
+      wheelStartDeg = wheelRotation % 360;
+      wheelTargetDeg = 360 * 4 + spinTo;
+      wheelStartTime = performance.now();
+      wheelSpinning = true;
+
+      saveAll();
+      updatePityText();
+      requestAnimationFrame(animateWheel);
+    }
+    function animateWheel(now) {
+      if (!wheelSpinning) return;
+      const elapsed = now - wheelStartTime;
+      const t = Math.min(1, elapsed / wheelDuration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      wheelRotation = wheelStartDeg + (wheelTargetDeg - wheelStartDeg) * eased;
+      drawWheel(wheelRotation);
+      if (t >= 1) {
+        wheelSpinning = false;
+        finishSpin();
+        return;
+      }
+      requestAnimationFrame(animateWheel);
+    }
+    function finishSpin() {
+      let finalRot = wheelRotation % 360;
+      if (finalRot < 0) finalRot += 360;
+      const segSize = 360 / wheelSegments.length;
+      const pointerAngle = (360 - finalRot + 0.5) % 360;
+      const segIndex = Math.floor(pointerAngle / segSize) % wheelSegments.length;
+      const seg = wheelSegments[segIndex];
+      const finalRarity = (typeof forcedRarity === "string" && forcedRarity)
+        ? forcedRarity
+        : (currentSpinRarity || seg.rarity);
+      giveReward(finalRarity);
+    }
+    function giveReward(rarity) {
+      let pool = SKINS.filter(s => s.rarity === rarity && s.type === currentWheelType);
+      if (pool.length === 0) {
+        pool = SKINS.filter(s => s.rarity === rarity);
+      }
+      const chosen = pool[Math.floor(Math.random()*pool.length)];
+      if (!ownedSkins[chosen.type].includes(chosen.name)) {
+        ownedSkins[chosen.type].push(chosen.name);
+      }
+      saveAll();
+      showReward(chosen, chosen.type);
+    }
+    function showReward(skin, type) {
+      rewardNameEl.textContent = skin.name;
+      rewardRarityEl.textContent = skin.rarity.toUpperCase();
+      rewardTypeEl.textContent = "Type : " + (type==="player"?"Bloc":type==="background"?"Fond":"Obstacle");
+
+      rewardCard.classList.remove("bg-common","bg-rare","bg-epic","bg-legendaire","bg-mythique");
+      if (skin.rarity === "commun") rewardCard.classList.add("bg-common");
+      else if (skin.rarity === "rare") rewardCard.classList.add("bg-rare");
+      else if (skin.rarity === "epic") rewardCard.classList.add("bg-epic");
+      else if (skin.rarity === "legendaire") rewardCard.classList.add("bg-legendaire");
+      else if (skin.rarity === "mythique") rewardCard.classList.add("bg-mythique");
+
+      btnEquip.onclick = () => {
+        selectedSkins[type] = skin.name;
+        saveAll();
+        rewardFull.style.display = "none";
+      };
+      btnCollection.onclick = () => {
+        rewardFull.style.display = "none";
+        openCollection();
+        showCollection(skin.rarity);
+      };
+      btnCloseReward.onclick = () => {
+        rewardFull.style.display = "none";
+      };
+
+      rewardFull.style.display = "flex";
+    }
+
+    // =============== COLLECTION (par rareté + par type) ===============
+    function openCollection() {
+      collectionModal.style.display = "flex";
+      menuOpen = true;
+      showCollection('all');
+    }
+    function closeCollection() {
+      collectionModal.style.display = "none";
+    }
+
+    function buildSkinCard(skin, rarityFilter) {
+      const card = document.createElement("div");
+      card.className = "skin-card";
+
+      const box = document.createElement("div");
+      box.className = "skin-box";
+      const have = ownedSkins[skin.type].includes(skin.name);
+      if (have) {
+        const colorByR = {
+          "commun":"#1f2937",
+          "rare":"#38bdf8",
+          "epic":"#a855f7",
+          "legendaire":"#f97316",
+          "mythique":"#f43f5e"
+        };
+        box.style.background = colorByR[skin.rarity] || "#1f2937";
+      } else {
+        box.classList.add("locked");
+      }
+
+      const name = document.createElement("div");
+      name.className = "skin-name";
+      name.textContent = skin.name;
+
+      const type = document.createElement("div");
+      type.className = "skin-type";
+      type.textContent = skin.type === "player" ? "Bloc" : (skin.type === "background" ? "Fond" : "Obstacle");
+
+      card.appendChild(box);
+      card.appendChild(name);
+      card.appendChild(type);
+
+      if (have) {
+        const eq = document.createElement("button");
+        eq.className = "equip-btn";
+        eq.textContent = (selectedSkins[skin.type] === skin.name) ? "Équipé" : "Équiper";
+        eq.onclick = () => {
+          selectedSkins[skin.type] = skin.name;
+          saveAll();
+          showCollection(rarityFilter);
+        };
+        card.appendChild(eq);
+      } else {
+        const miss = document.createElement("div");
+        miss.style.opacity = ".3";
+        miss.style.fontSize = "10px";
+        miss.textContent = "Non obtenu";
+        card.appendChild(miss);
+      }
+
+      return card;
+    }
+
+    function showCollection(rarity='all', btn=null) {
+      if (btn) {
+        document.querySelectorAll(".collection-tab").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+      } else {
+        document.querySelectorAll(".collection-tab").forEach(b=>{
+          const text = b.textContent.toLowerCase();
+          if (rarity==='all' && text === "tous") b.classList.add("active");
+          else if (text.includes(rarity)) b.classList.add("active");
+          else b.classList.remove("active");
+        });
+      }
+
+      collectionBody.innerHTML = "";
+
+      const types = [
+        {id:"player", label:"🟦 Blocs"},
+        {id:"background", label:"🟣 Fonds"},
+        {id:"obstacle", label:"🟥 Obstacles"},
+      ];
+
+      types.forEach(t => {
+        const title = document.createElement("div");
+        title.className = "collection-section-title";
+        title.textContent = t.label;
+        collectionBody.appendChild(title);
+
+        const wrap = document.createElement("div");
+        wrap.className = "collection-type-block";
+
+        let filtered = SKINS.filter(s => s.type === t.id && (rarity === 'all' ? true : s.rarity === rarity));
+
+        if (filtered.length === 0) {
+          const empty = document.createElement("div");
+          empty.style.opacity = ".3";
+          empty.style.fontSize = "11px";
+          empty.textContent = "(aucun dans cette rareté)";
+          wrap.appendChild(empty);
+        } else {
+          filtered.forEach(skin => {
+            const card = buildSkinCard(skin, rarity);
+            wrap.appendChild(card);
+          });
+        }
+
+        collectionBody.appendChild(wrap);
+      });
+    }
+
+    document.getElementById("spinBtn").addEventListener("click", spinWheel);
+    canvas.addEventListener("click", () => { if (!menuOpen && running) jump(); });
+    canvas.addEventListener("touchstart", (e) => { e.preventDefault(); if (!menuOpen && running) jump(); });
+  </script>
+</body>
+</html>
