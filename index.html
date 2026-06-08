@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Runner Gacha</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#071029" />
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root {
+      --bg-1: #071029;
+      --bg-2: #0f172a;
+      --accent: #ff7a59;
+      --accent-2: #7c4dff;
+      --text: #e6eef8;
+      --glass: rgba(255,255,255,0.06);
+      --glass-strong: rgba(255,255,255,0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: radial-gradient(ellipse at top, #0d1b3e 0%, #050c1a 100%);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    #game {
+      width: 420px;
+      max-width: 100vw;
+      height: 640px;
+      max-height: 100vh;
+      background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+      border-radius: 20px;
+      box-shadow: 0 32px 80px rgba(2,6,23,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      border-radius: 20px;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+
+    /* ── Top HUD ── */
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      z-index: 20;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: calc(100% - 20px);
+    }
+
+    .badge {
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.07);
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      color: var(--text);
+      backdrop-filter: blur(6px);
+    }
+
+    .badge-btn {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.07);
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 12px;
+      backdrop-filter: blur(6px);
+      transition: background .15s;
+    }
+    .badge-btn:hover { background: rgba(255,255,255,0.1); }
+
+    /* ── Shared modal base ── */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 14px 12px 10px;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .modal-bg {
+      background: linear-gradient(180deg, rgba(5,12,28,0.97), rgba(5,12,28,0.995));
+      backdrop-filter: blur(12px);
+    }
+
+    /* ── Menu ── */
+    #menu {
+      justify-content: center;
+    }
+
+    .menu-logo {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      background: linear-gradient(90deg, #ff7a59, #ffb86b, #7c4dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 2px;
+    }
+
+    .menu-sub { opacity: 0.65; font-size: 12px; margin-bottom: 8px; text-align: center; }
+
+    .streak-banner {
+      background: linear-gradient(90deg, rgba(255,184,107,0.12), rgba(255,122,89,0.08));
+      border: 1px solid rgba(255,184,107,0.25);
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 12px;
+      text-align: center;
+      width: 100%;
+      max-width: 320px;
+    }
+    .streak-count { font-size: 20px; font-weight: 900; color: #ffb86b; }
+
+    .difficulty-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+    .btn {
+      border: none;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      min-width: 110px;
+      font-size: 13px;
+      color: #021021;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      transition: transform .08s, box-shadow .12s, filter .1s;
+    }
+    .btn:active { transform: translateY(2px) scale(.996); }
+    .btn:hover { filter: brightness(1.08); }
+
+    .easy    { background: linear-gradient(135deg,#34d399,#059669); }
+    .hard    { background: linear-gradient(135deg,#f87171,#dc2626); }
+    .extreme { background: linear-gradient(135deg,#8b5cf6,#6d28d9); }
+    .shop-btn { background: linear-gradient(90deg,#ffb86b,#ff7a59); box-shadow: 0 8px 30px rgba(255,122,89,0.25); }
+    .secondary { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.1); padding: 8px 14px; }
+    .ad-btn { background: linear-gradient(90deg,#34d399,#0891b2); color: #021021; }
+
+    .menu-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .menu-hint { opacity: .55; font-size: 11px; text-align: center; }
+
+    /* ── Gacha Modal ── */
+    #gachaModal { padding-top: 12px; }
+
+    .gacha-type-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+    .gacha-type-btn {
+      background: var(--glass);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.05);
+      color: var(--text);
+      font-weight: 700;
+      transition: background .15s;
+    }
+    .gacha-type-btn.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; }
+
+    #gachaWheel {
+      border-radius: 50%;
+      box-shadow: 0 0 40px rgba(124,77,255,0.25), 0 20px 50px rgba(0,0,0,0.6);
+      width: 230px; height: 230px;
+      border: 5px solid rgba(255,255,255,0.04);
+      flex-shrink: 0;
+    }
+
+    #gachaResult { color: #cfe9ff; font-weight: 700; font-size: 14px; text-align: center; }
+    #pityInfo { color: #7a9cbf; font-size: 11px; text-align: center; }
+
+    /* ── Reward card ── */
+    #rewardFull {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      z-index: 55;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .reward-card {
+      width: 88%; max-width: 340px;
+      border-radius: 20px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7);
+      border: 2px solid rgba(255,255,255,0.08);
+      animation: popIn .35s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    @keyframes popIn { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+    .reward-title  { font-size: 11px; opacity: .8; letter-spacing: 1px; text-transform: uppercase; }
+    .reward-name   { font-size: 22px; font-weight: 900; margin: 8px 0 4px; }
+    .reward-rarity { font-weight: 900; margin-bottom: 6px; font-size: 13px; letter-spacing: 1px; }
+    .reward-type   { opacity: .65; margin-bottom: 14px; font-size: 12px; }
+    .reward-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .reward-btn { border: none; padding: 8px 14px; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 12px; }
+
+    .bg-common     { background: linear-gradient(160deg,#1e2d45,#0f172a); }
+    .bg-rare       { background: linear-gradient(160deg,#0c4a6e,#0f172a); }
+    .bg-epic       { background: linear-gradient(160deg,#4c1d95,#0f172a); }
+    .bg-legendaire { background: linear-gradient(160deg,#78350f,#0f172a); }
+    .bg-mythic     { background: linear-gradient(160deg,#831843,#0f172a); }
+
+    /* ── Collection ── */
+    #collectionModal { padding: 12px; overflow: hidden; }
+    #collectionModal h2 { text-align: center; font-size: 16px; }
+
+    .collection-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+    .collection-tab {
+      background: var(--glass);
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--text);
+      font-size: 11px;
+    }
+    .collection-tab.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; }
+
+    .collection-body-scroll { flex: 1; overflow-y: auto; padding: 4px 2px; width: 100%; }
+    .collection-section-title { font-size: 11px; opacity: .6; margin: 6px 0 4px; }
+    .collection-type-block { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap: 8px; margin-bottom: 10px; }
+
+    .skin-card {
+      background: rgba(255,255,255,0.025);
+      border-radius: 12px;
+      padding: 8px 6px;
+      height: 108px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      border: 1px solid rgba(255,255,255,0.03);
+      transition: border-color .2s;
+    }
+    .skin-card:hover { border-color: rgba(255,255,255,0.1); }
+
+    .skin-box { width: 56px; height: 42px; border-radius: 8px; background: rgba(255,255,255,0.03); }
+    .skin-name { font-weight: 700; font-size: 11px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+    .skin-type { font-size: 10px; opacity: .55; }
+    .equip-btn { border: none; background: #34d399; color: #021021; padding: 4px 8px; border-radius: 999px; font-weight: 800; cursor: pointer; font-size: 11px; }
+    .equipped-badge { font-size: 10px; color: #34d399; font-weight: 700; }
+
+    .locked { filter: grayscale(1) brightness(.25); pointer-events: none; }
+
+    /* ── Shop Modal ── */
+    #shopModal { padding: 12px; }
+    #shopModal h2 { text-align: center; font-size: 16px; }
+
+    .shop-section-title {
+      font-size: 11px;
+      opacity: .55;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      align-self: flex-start;
+      margin-top: 4px;
+    }
+
+    .shop-packs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; }
+
+    .pack-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, transform .1s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+    }
+    .pack-card:hover { border-color: rgba(255,184,107,0.4); transform: translateY(-2px); }
+    .pack-card:active { transform: translateY(0); }
+
+    .pack-icon { font-size: 22px; }
+    .pack-coins { font-size: 15px; font-weight: 900; color: #facc15; }
+    .pack-bonus { font-size: 10px; color: #34d399; font-weight: 700; }
+    .pack-price { font-size: 12px; font-weight: 800; color: var(--text); margin-top: 2px; }
+    .pack-card.featured { border-color: rgba(255,184,107,0.35); background: rgba(255,184,107,0.05); }
+
+    .shop-free-row { display: flex; gap: 8px; width: 100%; }
+
+    .free-card {
+      flex: 1;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: center;
+    }
+    .free-card:hover { border-color: rgba(52,211,153,0.3); }
+    .free-card .fc-icon { font-size: 20px; }
+    .free-card .fc-title { font-size: 12px; font-weight: 800; }
+    .free-card .fc-desc { font-size: 10px; opacity: .6; }
+
+    /* ── Achievements ── */
+    #achievementsModal { padding: 12px; }
+    #achievementsModal h2 { text-align: center; font-size: 16px; }
+    .ach-list { display: flex; flex-direction: column; gap: 8px; width: 100%; overflow-y: auto; flex: 1; }
+    .ach-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ach-item.done { border-color: rgba(52,211,153,0.25); }
+    .ach-icon { font-size: 20px; flex-shrink: 0; }
+    .ach-info { flex: 1; }
+    .ach-name { font-size: 12px; font-weight: 800; }
+    .ach-desc { font-size: 11px; opacity: .55; }
+    .ach-progress { height: 4px; background: rgba(255,255,255,0.06); border-radius: 999px; margin-top: 5px; overflow: hidden; }
+    .ach-progress-fill { height: 100%; background: linear-gradient(90deg,#7c4dff,#ff7a59); border-radius: 999px; transition: width .5s; }
+    .ach-reward { font-size: 11px; font-weight: 700; color: #facc15; flex-shrink: 0; }
+    .ach-claim { border: none; background: linear-gradient(90deg,#34d399,#059669); color: #021021; padding: 5px 10px; border-radius: 999px; font-weight: 800; cursor: pointer; font-size: 11px; }
+
+    /* ── Leaderboard ── */
+    #leaderboardModal { padding: 12px; }
+    #leaderboardModal h2 { text-align: center; font-size: 16px; }
+    .lb-list { display: flex; flex-direction: column; gap: 6px; width: 100%; overflow-y: auto; flex: 1; }
+    .lb-row {
+      background: rgba(255,255,255,0.025);
+      border-radius: 10px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .lb-row.you { border: 1px solid rgba(255,184,107,0.3); background: rgba(255,184,107,0.06); }
+    .lb-rank { font-size: 14px; font-weight: 900; width: 24px; }
+    .lb-name { flex: 1; font-weight: 700; }
+    .lb-score { font-weight: 800; color: #facc15; }
+
+    /* ── Quick buttons ── */
+    #quickButtons {
+      position: absolute; right: 12px; bottom: 12px;
+      z-index: 22;
+      display: flex;
+      gap: 6px;
+      flex-direction: column;
+    }
+    .quick {
+      background: rgba(0,0,0,0.5);
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.06);
+      font-weight: 800;
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      backdrop-filter: blur(6px);
+    }
+    .quick:hover { background: rgba(255,255,255,0.08); }
+
+    /* ── Notification toast ── */
+    #toast {
+      position: absolute;
+      top: 54px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: rgba(30,50,80,0.95);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      z-index: 80;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .25s, transform .25s;
+      white-space: nowrap;
+      backdrop-filter: blur(8px);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Ad overlay ── */
+    #adOverlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 70;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .ad-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      width: 88%;
+      max-width: 320px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+      opacity: .7;
+    }
+    #adTimer { font-size: 26px; font-weight: 900; color: #facc15; }
+    #adSkipBtn {
+      border: none;
+      background: linear-gradient(90deg,#34d399,#059669);
+      color: #021021;
+      padding: 10px 22px;
+      border-radius: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      font-size: 14px;
+      display: none;
+    }
+
+    /* ── Misc ── */
+    .muted { opacity: .6; font-size: 11px; }
+    .divider { width: 100%; height: 1px; background: rgba(255,255,255,0.04); flex-shrink: 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 430px) {
+      #game { width: 100vw; height: 100svh; border-radius: 0; }
+      canvas { border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+<div id="game">
+  <canvas id="canvas" width="420" height="640"></canvas>
+
+  <!-- HUD -->
+  <div id="ui">
+    <div class="badge">⚡ <span id="score">0</span></div>
+    <div class="badge">🏆 <span id="best">0</span></div>
+    <div class="badge">💰 <span id="coinAmount">0</span></div>
+    <div class="badge" id="modeDisplay" style="display:none">🎮 <span id="modeLabel">-</span></div>
+    <button class="badge-btn" onclick="UI.openCollection()" title="Collection">📦</button>
+    <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
+    <button class="badge-btn" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
+  </div>
+
+  <!-- Main Menu -->
+  <div id="menu" class="modal-overlay modal-bg" style="display:flex;">
+    <div class="menu-logo">Runner Gacha</div>
+    <p class="menu-sub">Jump over obstacles · Collect coins · Unlock rare skins</p>
+
+    <div id="streakBanner" class="streak-banner">
+      🔥 Day Streak: <span id="streakCount" class="streak-count">0</span>
+      <span id="streakBonus" class="muted"> · Daily bonus ready!</span>
+    </div>
+
+    <div class="difficulty-row">
+      <button class="btn easy"    onclick="selectDifficulty('easy')">Easy</button>
+      <button class="btn hard"    onclick="selectDifficulty('hard')">Hard</button>
+      <button class="btn extreme" onclick="selectDifficulty('extreme')">Extreme</button>
+    </div>
+
+    <div class="menu-actions">
+      <button class="btn shop-btn" onclick="UI.openGacha()">🎰 Gacha Wheel</button>
+      <button class="btn secondary" onclick="UI.openShop()">🛒 Coin Shop</button>
+    </div>
+
+    <div class="menu-actions">
+      <button class="btn secondary" onclick="UI.openCollection()">📦 Collection</button>
+      <button class="btn secondary" onclick="UI.openAchievements()">🏅 Achievements</button>
+      <button class="btn secondary" onclick="UI.openLeaderboard()">🏆 Top Scores</button>
+    </div>
+
+    <div class="menu-actions">
+      <button class="btn secondary" id="dailyBtn" onclick="claimDaily()">🎁 Daily Reward</button>
+      <button class="btn ad-btn" onclick="UI.watchAd()">▶ Watch Ad (+50 💰)</button>
+    </div>
+
+    <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
+    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
+  </div>
+
+  <!-- Gacha Modal -->
+  <div id="gachaModal" class="modal-overlay modal-bg">
+    <h2 style="font-size:16px;">🎰 Gacha Wheel</h2>
+    <div id="gachaCoins" class="muted">Your coins: 0</div>
+
+    <div class="gacha-type-row">
+      <button class="gacha-type-btn active" onclick="Gacha.selectType('player', this)">Player</button>
+      <button class="gacha-type-btn" onclick="Gacha.selectType('background', this)">Background</button>
+      <button class="gacha-type-btn" onclick="Gacha.selectType('obstacle', this)">Obstacle</button>
+    </div>
+
+    <canvas id="gachaWheel" width="230" height="230"></canvas>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+      <button class="btn shop-btn" id="spinBtn" onclick="Gacha.spin()">Spin (30 💰)</button>
+      <button class="btn secondary" onclick="UI.closeGacha()">Close</button>
+    </div>
+
+    <div id="gachaResult" class="muted">Spin to get a new skin!</div>
+    <small id="pityInfo" class="muted"></small>
+  </div>
+
+  <!-- Reward Popup -->
+  <div id="rewardFull">
+    <div id="rewardCard" class="reward-card">
+      <div class="reward-title">✨ NEW SKIN UNLOCKED</div>
+      <div id="rewardName"   class="reward-name">—</div>
+      <div id="rewardRarity" class="reward-rarity">—</div>
+      <div id="rewardType"   class="reward-type">—</div>
+      <div class="reward-actions">
+        <button class="reward-btn" id="btnEquip"       style="background:#34d399;color:#021021;">Equip</button>
+        <button class="reward-btn" id="btnCollection"  style="background:var(--glass);color:var(--text);">Collection</button>
+        <button class="reward-btn" id="btnCloseReward" style="background:rgba(255,255,255,0.07);color:var(--text);">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collection Modal -->
+  <div id="collectionModal" class="modal-overlay modal-bg" style="overflow:hidden;">
+    <h2>📦 Collection</h2>
+    <div class="collection-tabs">
+      <button class="collection-tab active" onclick="Collection.show('all', this)">All</button>
+      <button class="collection-tab" onclick="Collection.show('commun', this)">Common</button>
+      <button class="collection-tab" onclick="Collection.show('rare', this)">Rare</button>
+      <button class="collection-tab" onclick="Collection.show('epic', this)">Epic</button>
+      <button class="collection-tab" onclick="Collection.show('legendaire', this)">Legendary</button>
+      <button class="collection-tab" onclick="Collection.show('mythique', this)">Mythic</button>
+    </div>
+    <div id="collectionBody" class="collection-body-scroll"></div>
+    <button class="btn secondary" onclick="UI.closeCollection()" style="flex-shrink:0;">Close</button>
+  </div>
+
+  <!-- Shop Modal -->
+  <div id="shopModal" class="modal-overlay modal-bg">
+    <h2>🛒 Coin Shop</h2>
+    <p class="muted">Coins are earned for free — purchases support development!</p>
+
+    <div class="shop-section-title">💰 Coin Packs</div>
+    <div class="shop-packs">
+      <div class="pack-card" onclick="Shop.buy('starter')">
+        <span class="pack-icon">💰</span>
+        <span class="pack-coins">150</span>
+        <span class="pack-bonus"> </span>
+        <span class="pack-price">$0.99</span>
+      </div>
+      <div class="pack-card featured" onclick="Shop.buy('popular')">
+        <span class="pack-icon">💎</span>
+        <span class="pack-coins">500</span>
+        <span class="pack-bonus">+50 bonus</span>
+        <span class="pack-price">$2.99</span>
+      </div>
+      <div class="pack-card" onclick="Shop.buy('mega')">
+        <span class="pack-icon">🌟</span>
+        <span class="pack-coins">1200</span>
+        <span class="pack-bonus">+200 bonus</span>
+        <span class="pack-price">$5.99</span>
+      </div>
+    </div>
+
+    <div class="shop-section-title" style="margin-top:6px;">🎁 Free Coins</div>
+    <div class="shop-free-row">
+      <div class="free-card" onclick="UI.watchAd()">
+        <span class="fc-icon">📺</span>
+        <span class="fc-title">Watch Ad</span>
+        <span class="fc-desc">+50 💰 per ad</span>
+      </div>
+      <div class="free-card" onclick="claimDaily()">
+        <span class="fc-icon">🎁</span>
+        <span class="fc-title">Daily Bonus</span>
+        <span class="fc-desc" id="shopDailyDesc">Claim today's reward</span>
+      </div>
+      <div class="free-card" onclick="Share.invite()">
+        <span class="fc-icon">📤</span>
+        <span class="fc-title">Share</span>
+        <span class="fc-desc">+30 💰 per share</span>
+      </div>
+    </div>
+
+    <div class="shop-section-title" style="margin-top:6px;">⭐ Season Pass — $3.99/mo</div>
+    <div style="background:linear-gradient(90deg,rgba(124,77,255,0.15),rgba(255,122,89,0.1));border:1px solid rgba(124,77,255,0.25);border-radius:14px;padding:12px;width:100%;font-size:12px;cursor:pointer;" onclick="Shop.buyPass()">
+      <div style="font-weight:900;font-size:14px;margin-bottom:4px;">🚀 Runner Pass</div>
+      <div style="opacity:.75;">• 3× coin income  • Exclusive monthly skin  • No ads  • 200 coins/day bonus</div>
+      <div style="margin-top:8px;"><button class="btn shop-btn" style="min-width:auto;padding:7px 16px;font-size:12px;" onclick="Shop.buyPass()">Subscribe</button></div>
+    </div>
+
+    <button class="btn secondary" onclick="UI.closeShop()" style="flex-shrink:0;">Close</button>
+  </div>
+
+  <!-- Achievements Modal -->
+  <div id="achievementsModal" class="modal-overlay modal-bg">
+    <h2>🏅 Achievements</h2>
+    <div id="achList" class="ach-list"></div>
+    <button class="btn secondary" onclick="UI.closeAchievements()" style="flex-shrink:0;">Close</button>
+  </div>
+
+  <!-- Leaderboard Modal -->
+  <div id="leaderboardModal" class="modal-overlay modal-bg">
+    <h2>🏆 Top Scores</h2>
+    <div class="lb-list" id="lbList"></div>
+    <button class="btn secondary" onclick="UI.closeLeaderboard()" style="flex-shrink:0;">Close</button>
+  </div>
+
+  <!-- Ad Overlay -->
+  <div id="adOverlay">
+    <div style="font-size:14px;font-weight:700;opacity:.8;">📺 Rewarded Ad</div>
+    <div class="ad-box">
+      <div style="font-size:28px;">🎮</div>
+      <div>Ad playing…</div>
+      <div id="adTimer">5</div>
+    </div>
+    <div style="font-size:12px;opacity:.5;">Watch to earn <strong style="color:#facc15;">+50 💰</strong></div>
+    <button id="adSkipBtn" onclick="Ads.finish()">Collect 50 💰 →</button>
+  </div>
+
+  <!-- Quick buttons in-game -->
+  <div id="quickButtons">
+    <button class="quick" onclick="UI.openGacha()">🎰 Wheel</button>
+    <button class="quick" onclick="UI.openShop()">🛒 Shop</button>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  STORAGE HELPERS
+// ─────────────────────────────────────────────
+const S = {
+  get: (k, def) => { try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch { return def; } },
+  set: (k, v)   => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+// ─────────────────────────────────────────────
+//  GAME STATE
+// ─────────────────────────────────────────────
+const canvas = document.getElementById("canvas");
+const ctx    = canvas.getContext("2d");
+const W = canvas.width;   // 420
+const H = canvas.height;  // 640
+const GROUND_Y = H - 80;
+
+let coins   = S.get("rg-coins", 0);
+let best    = S.get("rg-best",  0);
+let streak  = S.get("rg-streak", 0);
+let lastLogin = S.get("rg-lastLogin", 0);
+let lastDaily = S.get("rg-lastDaily", 0);
+let ownedSkins    = S.get("rg-skins",    { player: [], background: [], obstacle: [] });
+let selectedSkins = S.get("rg-selected", { player: "default", background: "default", obstacle: "default" });
+let pity          = S.get("rg-pity",     { player: 0, background: 0, obstacle: 0 });
+let achievements  = S.get("rg-ach",      {});
+let scores        = S.get("rg-scores",   []);
+let hasPass       = S.get("rg-pass",     false);
+let adWatchedToday = S.get("rg-adDay", 0);
+let adWatchCount   = S.get("rg-adCount", 0);
+let totalSpins     = S.get("rg-totalSpins", 0);
+let totalCoins     = S.get("rg-totalCoins", 0);
+
+let audioEnabled = S.get("rg-sound", true);
+let audioCtx;
+let score = 0, gameSpeed = 3, running = false, paused = false, menuOpen = true;
+let obstacles = [], fieldCoins = [], particles = [];
+let spawnTimer = 180, coinSpawnTimer = 110;
+let currentDiff = null;
+let shieldActive = false, shieldTimer = 0;
+let doubleJumpUsed = false;
+let frameCount = 0;
+let powerups = [];
+
+// player object
+const player = { x: 70, y: H - 140, w: 48, h: 48, vy: 0, onGround: true };
+
+const DIFFS = {
+  easy:    { name: "Easy",    color: "#34d399", startSpeed: 2.2, accel: 0.018, coinValue: 1, spawnBase: 200 },
+  hard:    { name: "Hard",    color: "#f87171", startSpeed: 3.2, accel: 0.04,  coinValue: 2, spawnBase: 155 },
+  extreme: { name: "Extreme", color: "#8b5cf6", startSpeed: 4.0, accel: 0.075, coinValue: 3, spawnBase: 120 },
+};
+
+// ─────────────────────────────────────────────
+//  SKINS DATA
+// ─────────────────────────────────────────────
+const SKINS = [
+  // Common (20)
+  { name:"Green Block",            rarity:"commun",    type:"player"     },
+  { name:"Blue Block",             rarity:"commun",    type:"player"     },
+  { name:"Red Block",              rarity:"commun",    type:"player"     },
+  { name:"Grey Block",             rarity:"commun",    type:"player"     },
+  { name:"Orange Block",           rarity:"commun",    type:"player"     },
+  { name:"Mint Block",             rarity:"commun",    type:"player"     },
+  { name:"Pastel Block",           rarity:"commun",    type:"player"     },
+  { name:"Sand Block",             rarity:"commun",    type:"player"     },
+  { name:"Simple Background",      rarity:"commun",    type:"background" },
+  { name:"Grey Background",        rarity:"commun",    type:"background" },
+  { name:"Midnight Background",    rarity:"commun",    type:"background" },
+  { name:"Concrete Background",    rarity:"commun",    type:"background" },
+  { name:"Thin Lines Background",  rarity:"commun",    type:"background" },
+  { name:"Soft Clouds Background", rarity:"commun",    type:"background" },
+  { name:"Soft Tiles Background",  rarity:"commun",    type:"background" },
+  { name:"Red Obstacle",           rarity:"commun",    type:"obstacle"   },
+  { name:"Grey Obstacle",          rarity:"commun",    type:"obstacle"   },
+  { name:"Light Obstacle",         rarity:"commun",    type:"obstacle"   },
+  { name:"Wood Obstacle",          rarity:"commun",    type:"obstacle"   },
+  { name:"Stone Obstacle",         rarity:"commun",    type:"obstacle"   },
+  // Rare (20)
+  { name:"Sky Stripes Block",      rarity:"rare",      type:"player"     },
+  { name:"Diagonal Block",         rarity:"rare",      type:"player"     },
+  { name:"Tech Light Block",       rarity:"rare",      type:"player"     },
+  { name:"Blue Edge Block",        rarity:"rare",      type:"player"     },
+  { name:"City Block",             rarity:"rare",      type:"player"     },
+  { name:"Edge Block",             rarity:"rare",      type:"player"     },
+  { name:"Blue Gradient Block",    rarity:"rare",      type:"player"     },
+  { name:"Tiles Background",       rarity:"rare",      type:"background" },
+  { name:"Blue Lines Background",  rarity:"rare",      type:"background" },
+  { name:"Blue Stripes Background",rarity:"rare",      type:"background" },
+  { name:"Waves Background",       rarity:"rare",      type:"background" },
+  { name:"Violet Background",      rarity:"rare",      type:"background" },
+  { name:"City Dusk Background",   rarity:"rare",      type:"background" },
+  { name:"Holo Background",        rarity:"rare",      type:"background" },
+  { name:"Carbon Obstacle",        rarity:"rare",      type:"obstacle"   },
+  { name:"Metal Obstacle",         rarity:"rare",      type:"obstacle"   },
+  { name:"Cyan Obstacle",          rarity:"rare",      type:"obstacle"   },
+  { name:"Tiled Obstacle",         rarity:"rare",      type:"obstacle"   },
+  { name:"Rust Obstacle",          rarity:"rare",      type:"obstacle"   },
+  { name:"Grill Obstacle",         rarity:"rare",      type:"obstacle"   },
+  // Epic (15)
+  { name:"Galaxy Dots Background", rarity:"epic",      type:"background" },
+  { name:"Neon Lines Background",  rarity:"epic",      type:"background" },
+  { name:"Laser Background",       rarity:"epic",      type:"background" },
+  { name:"Nebula Background",      rarity:"epic",      type:"background" },
+  { name:"Holo Waves Background",  rarity:"epic",      type:"background" },
+  { name:"Techno Background",      rarity:"epic",      type:"background" },
+  { name:"Neon Block",             rarity:"epic",      type:"player"     },
+  { name:"Techno Block",           rarity:"epic",      type:"player"     },
+  { name:"Prism Block",            rarity:"epic",      type:"player"     },
+  { name:"Pastel Neon Block",      rarity:"epic",      type:"player"     },
+  { name:"Shimmer Block",          rarity:"epic",      type:"player"     },
+  { name:"Violet Lines Obstacle",  rarity:"epic",      type:"obstacle"   },
+  { name:"Prism Obstacle",         rarity:"epic",      type:"obstacle"   },
+  { name:"Neon Grid Obstacle",     rarity:"epic",      type:"obstacle"   },
+  { name:"Crystal Blue Obstacle",  rarity:"epic",      type:"obstacle"   },
+  // Legendary (10)
+  { name:"Gold Lines Block",       rarity:"legendaire",type:"player"     },
+  { name:"Flame Block",            rarity:"legendaire",type:"player"     },
+  { name:"Magma Block",            rarity:"legendaire",type:"player"     },
+  { name:"Brushed Gold Block",     rarity:"legendaire",type:"player"     },
+  { name:"Cyber Dusk Background",  rarity:"legendaire",type:"background" },
+  { name:"Solar Temple Background",rarity:"legendaire",type:"background" },
+  { name:"Neon Sunset Background", rarity:"legendaire",type:"background" },
+  { name:"Gold Pattern Obstacle",  rarity:"legendaire",type:"obstacle"   },
+  { name:"Pharaoh Obstacle",       rarity:"legendaire",type:"obstacle"   },
+  { name:"Royal Obstacle",         rarity:"legendaire",type:"obstacle"   },
+  // Mythic (5)
+  { name:"Bananas Block",          rarity:"mythique",  type:"player"     },
+  { name:"Mythic Runes Block",     rarity:"mythique",  type:"player"     },
+  { name:"Sky Bananas Background", rarity:"mythique",  type:"background" },
+  { name:"Mythic Portal Background",rarity:"mythique", type:"background" },
+  { name:"Crystal Obstacle",       rarity:"mythique",  type:"obstacle"   },
+];
+
+const RARITY_COLORS = {
+  commun:     "#94a3b8",
+  rare:       "#38bdf8",
+  epic:       "#a855f7",
+  legendaire: "#ffb86b",
+  mythique:   "#ff6b94",
+};
+
+// ─────────────────────────────────────────────
+//  ACHIEVEMENTS
+// ─────────────────────────────────────────────
+const ACH_DEFS = [
+  { id:"first_run",   icon:"🏃", name:"First Steps",    desc:"Complete your first run",     goal:1,  stat:"runs",    reward:20  },
+  { id:"score_10",    icon:"⚡", name:"Getting Started", desc:"Reach score 10",              goal:10, stat:"maxScore",reward:30  },
+  { id:"score_50",    icon:"🔥", name:"On Fire",         desc:"Reach score 50",              goal:50, stat:"maxScore",reward:60  },
+  { id:"score_100",   icon:"💯", name:"Century",         desc:"Reach score 100",             goal:100,stat:"maxScore",reward:100 },
+  { id:"coins_100",   icon:"💰", name:"Coin Collector",  desc:"Collect 100 coins total",     goal:100,stat:"totalCoins",reward:50 },
+  { id:"coins_500",   icon:"💎", name:"Coin Hoarder",    desc:"Collect 500 coins total",     goal:500,stat:"totalCoins",reward:150},
+  { id:"coins_2000",  icon:"🌟", name:"Coin King",       desc:"Collect 2,000 coins total",   goal:2000,stat:"totalCoins",reward:300},
+  { id:"spins_5",     icon:"🎰", name:"Lucky Spin",      desc:"Spin the gacha 5 times",      goal:5,  stat:"totalSpins",reward:40 },
+  { id:"spins_25",    icon:"🎲", name:"Gacha Addict",    desc:"Spin 25 times",               goal:25, stat:"totalSpins",reward:100},
+  { id:"streak_3",    icon:"📅", name:"3-Day Streak",    desc:"Log in 3 days in a row",      goal:3,  stat:"streak",  reward:60  },
+  { id:"streak_7",    icon:"🗓", name:"Week Warrior",    desc:"7-day login streak",          goal:7,  stat:"streak",  reward:150 },
+  { id:"skins_5",     icon:"👗", name:"Collector",       desc:"Own 5 different skins",       goal:5,  stat:"ownedCount",reward:80 },
+  { id:"skins_20",    icon:"🎨", name:"Wardrobe",        desc:"Own 20 different skins",      goal:20, stat:"ownedCount",reward:200},
+  { id:"extreme_run", icon:"🌪", name:"Daredevil",       desc:"Survive 20 obstacles on Extreme",goal:20,stat:"extremeScore",reward:120},
+  { id:"ads_5",       icon:"📺", name:"Ad Supporter",    desc:"Watch 5 rewarded ads",        goal:5,  stat:"adCount", reward:50  },
+];
+
+function getAchStats() {
+  return {
+    runs:         S.get("rg-statRuns", 0),
+    maxScore:     best,
+    totalCoins,
+    totalSpins,
+    streak,
+    ownedCount:   Object.values(ownedSkins).flat().length,
+    extremeScore: S.get("rg-statExtreme", 0),
+    adCount:      adWatchCount,
+  };
+}
+
+function checkAchievements() {
+  const stats = getAchStats();
+  ACH_DEFS.forEach(a => {
+    if (achievements[a.id] === "claimed") return;
+    const val = stats[a.stat] || 0;
+    if (val >= a.goal && !achievements[a.id]) {
+      achievements[a.id] = "done";
+      S.set("rg-ach", achievements);
+      showToast(`🏅 Achievement unlocked: ${a.name}!`);
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  SAVE / LOAD
+// ─────────────────────────────────────────────
+function saveAll() {
+  S.set("rg-coins",    coins);
+  S.set("rg-best",     best);
+  S.set("rg-skins",    ownedSkins);
+  S.set("rg-selected", selectedSkins);
+  S.set("rg-pity",     pity);
+  S.set("rg-ach",      achievements);
+  S.set("rg-scores",   scores);
+  S.set("rg-totalSpins", totalSpins);
+  S.set("rg-totalCoins", totalCoins);
+  refreshHUD();
+}
+
+// ─────────────────────────────────────────────
+//  AUDIO
+// ─────────────────────────────────────────────
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+}
+function beep(freq = 440, dur = 0.06, type = "sine", vol = 0.05) {
+  if (!audioEnabled) return;
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + dur);
+}
+function toggleSound() {
+  audioEnabled = !audioEnabled;
+  S.set("rg-sound", audioEnabled);
+  document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
+  if (audioEnabled) beep(880, 0.06);
+}
+
+// ─────────────────────────────────────────────
+//  SKIN RENDERING
+// ─────────────────────────────────────────────
+const _patCache = {};
+function getSkinColor(name) {
+  if (!name || name === "default") return null;
+  if (_patCache[name]) return _patCache[name];
+  const c = document.createElement("canvas");
+  c.width = 80; c.height = 80;
+  const p = c.getContext("2d");
+  const fill = col => { p.fillStyle = col; p.fillRect(0, 0, 80, 80); };
+  const n = name.toLowerCase();
+
+  // Backgrounds
+  if (n.includes("background") || n.includes("nebula") || n.includes("portal")) {
+    if (n.includes("neon sunset") || n.includes("cyber")) {
+      const g = p.createLinearGradient(0,0,80,80);
+      g.addColorStop(0, "#1a0533"); g.addColorStop(1, "#300a1a");
+      p.fillStyle = g; p.fillRect(0,0,80,80);
+      p.fillStyle = "rgba(255,100,180,0.15)";
+      for (let i = 0; i < 5; i++) { p.beginPath(); p.arc(Math.random()*80,Math.random()*80,3+Math.random()*6,0,Math.PI*2); p.fill(); }
+    } else if (n.includes("galaxy") || n.includes("space") || n.includes("nebula")) {
+      fill("#06050f");
+      p.fillStyle = "rgba(180,120,255,0.15)"; p.fillRect(0,0,80,80);
+      for (let i = 0; i < 20; i++) { p.fillStyle = `rgba(255,255,255,${Math.random()*0.7})`; p.beginPath(); p.arc(Math.random()*80,Math.random()*80,Math.random()*1.5,0,Math.PI*2); p.fill(); }
+    } else if (n.includes("neon") || n.includes("laser") || n.includes("techno")) {
+      fill("#040b1a");
+      p.strokeStyle = "rgba(0,255,200,0.25)"; p.lineWidth = 1.5;
+      for (let i = 0; i < 80; i += 10) { p.beginPath(); p.moveTo(i,0); p.lineTo(i,80); p.stroke(); p.beginPath(); p.moveTo(0,i); p.lineTo(80,i); p.stroke(); }
+    } else {
+      const g = p.createLinearGradient(0,0,80,80);
+      g.addColorStop(0, "#07102a"); g.addColorStop(1, "#0f172a");
+      p.fillStyle = g; p.fillRect(0,0,80,80);
+      for (let i = 0; i < 8; i++) { p.fillStyle = "rgba(255,255,255,0.03)"; p.beginPath(); p.arc(Math.random()*80,Math.random()*80,Math.random()*5,0,Math.PI*2); p.fill(); }
+    }
+  }
+  // Player blocks
+  else if (n.includes("block") || n.includes("bananas") || n.includes("runes")) {
+    if      (n.includes("green")  || n.includes("mint"))    fill("#34d399");
+    else if (n.includes("blue"))   fill("#38bdf8");
+    else if (n.includes("red"))    fill("#ef4444");
+    else if (n.includes("gold") || n.includes("brushed"))   fill("#ffb86b");
+    else if (n.includes("flame") || n.includes("magma"))    { fill("#7f1d1d"); p.fillStyle="rgba(255,100,0,0.3)"; for(let i=0;i<80;i+=8){p.fillRect(i-4,Math.random()*80,8,20);} }
+    else if (n.includes("neon"))   { fill("#050d20"); p.strokeStyle="#00ffcc"; p.lineWidth=2; p.strokeRect(4,4,72,72); }
+    else if (n.includes("prism"))  { const g=p.createLinearGradient(0,0,80,80); g.addColorStop(0,"#ff6b94"); g.addColorStop(0.5,"#7c4dff"); g.addColorStop(1,"#38bdf8"); p.fillStyle=g; p.fillRect(0,0,80,80); }
+    else if (n.includes("techno")) { fill("#0d1b33"); p.fillStyle="rgba(0,200,255,0.2)"; for(let i=0;i<80;i+=10){p.fillRect(i,0,2,80);} }
+    else if (n.includes("bananas")){ fill("#fef08a"); p.fillStyle="#d97706"; [[8,10,6,20],[30,14,6,18],[52,8,6,22]].forEach(([x,y,w,h])=>p.fillRect(x,y,w,h)); }
+    else if (n.includes("orange") || n.includes("sand")) fill("#fb923c");
+    else if (n.includes("pastel")) fill("#c4b5fd");
+    else if (n.includes("grey"))   fill("#6b7280");
+    else                           fill("#1e40af");
+
+    if (n.includes("stripes") || n.includes("sky stripes")) {
+      p.strokeStyle = "rgba(255,255,255,0.12)"; p.lineWidth = 3;
+      for (let i = 0; i < 80; i += 8) { p.beginPath(); p.moveTo(i,0); p.lineTo(i-40,80); p.stroke(); }
+    }
+    if (n.includes("shimmer")) {
+      const g = p.createLinearGradient(0,0,80,80);
+      g.addColorStop(0,"rgba(255,255,255,0.3)"); g.addColorStop(0.5,"rgba(255,255,255,0)"); g.addColorStop(1,"rgba(255,255,255,0.3)");
+      p.fillStyle = g; p.fillRect(0,0,80,80);
+    }
+  }
+  // Obstacles
+  else {
+    if      (n.includes("red"))     fill("#7f1d1d");
+    else if (n.includes("cyan"))    fill("#164e63");
+    else if (n.includes("prism"))   { const g=p.createLinearGradient(0,0,80,80); g.addColorStop(0,"#4c1d95"); g.addColorStop(1,"#1e3a5f"); p.fillStyle=g; p.fillRect(0,0,80,80); }
+    else if (n.includes("crystal")) { fill("#0a0a20"); p.strokeStyle="rgba(120,200,255,0.4)"; p.lineWidth=1.5; for(let i=0;i<80;i+=15){p.beginPath();p.moveTo(0,i);p.lineTo(80,80-i);p.stroke();} }
+    else if (n.includes("neon") || n.includes("violet lines")) { fill("#09031a"); p.strokeStyle="rgba(168,85,247,0.5)"; p.lineWidth=2; for(let i=0;i<80;i+=10){p.beginPath();p.moveTo(0,i);p.lineTo(80,i);p.stroke();} }
+    else if (n.includes("gold") || n.includes("pharaoh") || n.includes("royal")) { const g=p.createLinearGradient(0,0,0,80); g.addColorStop(0,"#78350f"); g.addColorStop(1,"#92400e"); p.fillStyle=g; p.fillRect(0,0,80,80); p.strokeStyle="rgba(255,184,107,0.4)"; p.lineWidth=1; p.strokeRect(4,4,72,72); }
+    else if (n.includes("carbon")) { fill("#111827"); p.strokeStyle="rgba(255,255,255,0.04)"; p.lineWidth=1; for(let i=0;i<80;i+=10){p.beginPath();p.moveTo(i,0);p.lineTo(i,80);p.stroke(); p.beginPath();p.moveTo(0,i);p.lineTo(80,i);p.stroke();} }
+    else { fill("#1f2937"); p.fillStyle="rgba(255,255,255,0.04)"; for(let y=6;y<80;y+=12){p.fillRect(6,y,68,5);} }
+  }
+
+  _patCache[name] = p.createPattern(c, "repeat");
+  return _patCache[name];
+}
+
+// ─────────────────────────────────────────────
+//  PARTICLES
+// ─────────────────────────────────────────────
+function spawnParticles(x, y, color, count = 6) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.random() * Math.PI * 2);
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * (1 + Math.random() * 3),
+      vy: Math.sin(angle) * (1 + Math.random() * 3) - 1,
+      life: 1, decay: 0.04 + Math.random() * 0.04,
+      r: 2 + Math.random() * 4,
+      color,
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= p.decay;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─────────────────────────────────────────────
+//  FLOATING TEXT
+// ─────────────────────────────────────────────
+const floaters = [];
+function floatText(text, x, y, color = "#fff") {
+  floaters.push({ text, x, y: y, startY: y, color, life: 1, decay: 0.025 });
+}
+function updateFloaters() {
+  for (let i = floaters.length - 1; i >= 0; i--) {
+    const f = floaters[i];
+    f.life -= f.decay;
+    f.y -= 0.7;
+    if (f.life <= 0) { floaters.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = f.life;
+    ctx.font = "bold 14px system-ui";
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x - 8, f.y);
+    ctx.restore();
+  }
+}
+
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+// ─────────────────────────────────────────────
+//  STREAK / DAILY
+// ─────────────────────────────────────────────
+function updateStreak() {
+  const now = Date.now();
+  const dayMs = 86400000;
+  const daysSinceLast = Math.floor((now - lastLogin) / dayMs);
+  if (daysSinceLast === 1) {
+    streak++;
+  } else if (daysSinceLast > 1) {
+    streak = 1;
+  } else if (lastLogin === 0) {
+    streak = 1;
+  }
+  lastLogin = now;
+  S.set("rg-streak", streak);
+  S.set("rg-lastLogin", lastLogin);
+
+  const streakEl = document.getElementById("streakCount");
+  if (streakEl) streakEl.textContent = streak;
+  checkAchievements();
+}
+
+function claimDaily() {
+  const now = Date.now();
+  const dayMs = 86400000;
+  const remaining = dayMs - (now - lastDaily);
+  if (remaining <= 0) {
+    const base = 30 + streak * 10;
+    const reward = Math.min(base + Math.floor(Math.random() * 50), 200);
+    coins += reward;
+    totalCoins += reward;
+    lastDaily = now;
+    S.set("rg-lastDaily", lastDaily);
+    saveAll();
+    checkAchievements();
+    showToast(`🎁 Daily reward: +${reward} coins! (Streak ${streak}🔥)`);
+    beep(1200, 0.14, "sine", 0.06);
+    document.getElementById("streakBonus").textContent = " · Next reward in 24h";
+  } else {
+    const mins = Math.ceil(remaining / 60000);
+    const hrs  = Math.floor(mins / 60);
+    const msg  = hrs > 0 ? `${hrs}h ${mins % 60}m` : `${mins}m`;
+    showToast(`⏳ Daily reward in ${msg}`);
+    beep(220, 0.07);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  GAME LOGIC
+// ─────────────────────────────────────────────
+function selectDifficulty(mode) {
+  currentDiff = DIFFS[mode];
+  document.getElementById("modeLabel").textContent = currentDiff.name;
+  document.getElementById("modeDisplay").style.display = "flex";
+  startGame();
+}
+
+function startGame() {
+  obstacles = []; fieldCoins = []; particles = []; powerups = [];
+  gameSpeed = currentDiff.startSpeed;
+  score = 0;
+  frameCount = 0;
+  player.y = GROUND_Y - player.h;
+  player.vy = 0;
+  player.onGround = true;
+  shieldActive = false; shieldTimer = 0;
+  doubleJumpUsed = false;
+  spawnTimer = currentDiff.spawnBase;
+  coinSpawnTimer = 110;
+  document.getElementById("score").textContent = 0;
+  running = true; paused = false; menuOpen = false;
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("gachaModal").style.display = "none";
+  document.getElementById("collectionModal").style.display = "none";
+  document.getElementById("shopModal").style.display = "none";
+  document.getElementById("achievementsModal").style.display = "none";
+  document.getElementById("leaderboardModal").style.display = "none";
+  beep(880, 0.06);
+  requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+  running = false;
+  spawnParticles(player.x + player.w / 2, player.y + player.h / 2, "#ef4444", 16);
+
+  // save score
+  const runs = S.get("rg-statRuns", 0);
+  S.set("rg-statRuns", runs + 1);
+  if (currentDiff && currentDiff.name === "Extreme") {
+    const prev = S.get("rg-statExtreme", 0);
+    if (score > prev) S.set("rg-statExtreme", score);
+  }
+
+  if (score > best) {
+    best = score;
+    beep(1400, 0.2, "sine", 0.07);
+    showToast(`🏆 New best: ${best}!`);
+  } else {
+    beep(220, 0.1);
+  }
+
+  // leaderboard
+  scores.push({ score, mode: currentDiff ? currentDiff.name : "Easy", ts: Date.now() });
+  scores.sort((a, b) => b.score - a.score);
+  if (scores.length > 20) scores.length = 20;
+
+  saveAll();
+  checkAchievements();
+
+  setTimeout(() => {
+    document.getElementById("menu").style.display = "flex";
+    menuOpen = true;
+  }, 600);
+}
+
+function jump() {
+  if (!running || paused) return;
+  if (player.onGround) {
+    player.vy = -13;
+    player.onGround = false;
+    doubleJumpUsed = false;
+    beep(880, 0.05);
+  } else if (!doubleJumpUsed) {
+    player.vy = -11;
+    doubleJumpUsed = true;
+    spawnParticles(player.x + player.w / 2, player.y + player.h, "#38bdf8", 5);
+    beep(1100, 0.05);
+  }
+}
+
+function spawnObstacle() {
+  const h = 38 + Math.random() * 58;
+  obstacles.push({ x: W + 50 + Math.random() * 60, y: GROUND_Y - h, w: 48 + Math.random() * 22, h, passed: false });
+}
+
+function spawnCoin() {
+  fieldCoins.push({ x: W + 30 + Math.random() * 60, y: GROUND_Y - 40 - Math.random() * 70, r: 11, taken: false });
+}
+
+function spawnPowerup() {
+  const types = ["shield", "slow"];
+  powerups.push({ x: W + 60, y: GROUND_Y - 60 - Math.random() * 60, r: 14, type: types[Math.floor(Math.random() * types.length)], taken: false });
+}
+
+let bgStars = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * GROUND_Y, r: Math.random() * 1.5, speed: 0.2 + Math.random() * 0.5 }));
+
+function gameLoop() {
+  if (!running) return;
+  if (paused) { requestAnimationFrame(gameLoop); return; }
+  frameCount++;
+
+  // ── Background ──
+  const bgPat = getSkinColor(selectedSkins.background);
+  ctx.fillStyle = bgPat || "#020617";
+  ctx.fillRect(0, 0, W, H);
+
+  // Starfield
+  if (!bgPat) {
+    bgStars.forEach(s => {
+      s.x -= s.speed * (gameSpeed / 3);
+      if (s.x < 0) s.x = W;
+      ctx.fillStyle = `rgba(255,255,255,${0.3 + s.r * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // Ground line
+  ctx.fillStyle = "rgba(15,23,42,0.5)";
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.fillRect(0, GROUND_Y, W, 2);
+
+  // ── Physics ──
+  player.vy = Math.min(player.vy + 0.38, 10);
+  player.y += player.vy;
+  if (player.y + player.h >= GROUND_Y) {
+    player.y = GROUND_Y - player.h;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  // ── Player ──
+  const playerPat = getSkinColor(selectedSkins.player);
+  if (shieldActive) {
+    ctx.save();
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = "#38bdf8";
+    ctx.strokeStyle = "rgba(56,189,248,0.6)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(player.x + player.w / 2, player.y + player.h / 2, player.w / 2 + 8, player.h / 2 + 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    shieldTimer--;
+    if (shieldTimer <= 0) { shieldActive = false; showToast("🛡 Shield faded"); }
+  }
+  ctx.fillStyle = playerPat || (currentDiff ? currentDiff.color : "#38bdf8");
+  ctx.fillRect(player.x, Math.round(player.y), player.w, player.h);
+
+  // ── Spawn ──
+  spawnTimer--;
+  if (spawnTimer <= 0) {
+    spawnObstacle();
+    const variance = Math.max(55, Math.floor(190 - gameSpeed * 18));
+    spawnTimer = variance + Math.floor(Math.random() * 60);
+  }
+  coinSpawnTimer--;
+  if (coinSpawnTimer <= 0) {
+    spawnCoin();
+    coinSpawnTimer = 90 + Math.floor(Math.random() * 70);
+  }
+  if (frameCount % 380 === 0) spawnPowerup();
+
+  // ── Obstacles ──
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    ob.x -= gameSpeed;
+    const obPat = getSkinColor(selectedSkins.obstacle);
+    ctx.fillStyle = obPat || "#f43f5e";
+    ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+
+    // collision
+    if (!ob.passed &&
+        player.x + 4 < ob.x + ob.w - 4 &&
+        player.x + player.w - 4 > ob.x + 4 &&
+        player.y + 4 < ob.y + ob.h &&
+        player.y + player.h > ob.y) {
+      if (shieldActive) {
+        shieldActive = false; shieldTimer = 0;
+        ob.passed = true;
+        spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#38bdf8", 10);
+        showToast("🛡 Shield absorbed a hit!");
+        beep(880, 0.1, "square", 0.06);
+      } else {
+        spawnParticles(player.x + player.w / 2, player.y + player.h / 2, currentDiff?.color || "#f87171", 12);
+        gameOver();
+        return;
+      }
+    }
+
+    if (!ob.passed && ob.x + ob.w < player.x) {
+      ob.passed = true;
+      score++;
+      document.getElementById("score").textContent = score;
+      gameSpeed += currentDiff.accel;
+      if (score % 10 === 0) { beep(1200, 0.08, "sine", 0.05); floatText(`🔥 ${score}!`, W / 2, H / 2, "#facc15"); }
+    }
+    if (ob.x + ob.w < -80) obstacles.splice(i, 1);
+  }
+
+  // ── Field Coins ──
+  for (let i = fieldCoins.length - 1; i >= 0; i--) {
+    const c = fieldCoins[i];
+    c.x -= gameSpeed;
+    if (!c.taken) {
+      const bob = Math.sin((Date.now() + i * 60) / 200) * 2;
+      ctx.beginPath();
+      ctx.fillStyle = "#facc15";
+      ctx.shadowBlur = 8; ctx.shadowColor = "#facc15";
+      ctx.arc(c.x, c.y + bob, c.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    if (!c.taken &&
+        player.x < c.x + c.r && player.x + player.w > c.x - c.r &&
+        player.y < c.y + c.r && player.y + player.h > c.y - c.r) {
+      c.taken = true;
+      const gain = (currentDiff?.coinValue || 1) * (hasPass ? 3 : 1);
+      coins += gain;
+      totalCoins += gain;
+      floatText(`+${gain}`, c.x, c.y, "#facc15");
+      spawnParticles(c.x, c.y, "#facc15", 4);
+      refreshHUD();
+      saveAll();
+      checkAchievements();
+      beep(1100, 0.04, "sine", 0.04);
+    }
+    if (c.x + c.r < -60 || c.taken) fieldCoins.splice(i, 1);
+  }
+
+  // ── Powerups ──
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const pu = powerups[i];
+    pu.x -= gameSpeed;
+    if (!pu.taken) {
+      const emoji = pu.type === "shield" ? "🛡" : "🐢";
+      const bob = Math.sin((Date.now() + i * 80) / 180) * 3;
+      ctx.font = "20px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(emoji, pu.x, pu.y + bob);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    }
+    if (!pu.taken &&
+        player.x < pu.x + pu.r && player.x + player.w > pu.x - pu.r &&
+        player.y < pu.y + pu.r && player.y + player.h > pu.y - pu.r) {
+      pu.taken = true;
+      if (pu.type === "shield") {
+        shieldActive = true; shieldTimer = 300;
+        showToast("🛡 Shield activated! (5 sec)");
+        beep(1400, 0.12, "sine", 0.06);
+      } else {
+        gameSpeed = Math.max(currentDiff.startSpeed, gameSpeed * 0.7);
+        showToast("🐢 Slowdown activated!");
+        beep(500, 0.12, "sine", 0.06);
+      }
+    }
+    if (pu.x + pu.r < -60 || pu.taken) powerups.splice(i, 1);
+  }
+
+  // ── Particles & floaters ──
+  updateParticles();
+  updateFloaters();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ─────────────────────────────────────────────
+//  GACHA
+// ─────────────────────────────────────────────
+const Gacha = (() => {
+  const gCanvas = document.getElementById("gachaWheel");
+  const gCtx    = gCanvas.getContext("2d");
+  const R = gCanvas.width / 2;
+
+  const SEGMENTS = [
+    { label: "Common",    color: "#94a3b8", rarity: "commun"     },
+    { label: "Rare",      color: "#38bdf8", rarity: "rare"       },
+    { label: "Epic",      color: "#a855f7", rarity: "epic"       },
+    { label: "Legendary", color: "#ffb86b", rarity: "legendaire" },
+    { label: "Mythic",    color: "#ff6b94", rarity: "mythique"   },
+  ];
+
+  let rot = 0, spinning = false, startRot = 0, targetRot = 0, startTime = 0;
+  const DUR = 2000;
+  let activeType = "player";
+  let pendingRarity = null;
+
+  function draw(r = 0) {
+    gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
+    const step = (2 * Math.PI) / SEGMENTS.length;
+    gCtx.save();
+    gCtx.translate(R, R);
+    gCtx.rotate(r * Math.PI / 180);
+    SEGMENTS.forEach((seg, i) => {
+      const s = i * step, e = s + step;
+      gCtx.beginPath();
+      gCtx.moveTo(0, 0);
+      gCtx.arc(0, 0, R - 3, s, e);
+      gCtx.fillStyle = seg.color;
+      gCtx.fill();
+      gCtx.save();
+      gCtx.rotate(s + step / 2);
+      gCtx.fillStyle = "#021021";
+      gCtx.font = "700 11px system-ui";
+      gCtx.textAlign = "right";
+      gCtx.fillText(seg.label, R - 14, 4);
+      gCtx.restore();
+    });
+    gCtx.restore();
+    // pointer
+    gCtx.beginPath();
+    gCtx.moveTo(gCanvas.width, R);
+    gCtx.lineTo(gCanvas.width - 22, R - 14);
+    gCtx.lineTo(gCanvas.width - 22, R + 14);
+    gCtx.closePath();
+    gCtx.fillStyle = "#fff";
+    gCtx.fill();
+  }
+  draw(0);
+
+  function rollRarity() {
+    const r = Math.random();
+    if (r < 0.01)        return "mythique";
+    if (r < 0.028)       return "legendaire";
+    if (r < 0.118)       return "epic";
+    if (r < 0.398)       return "rare";
+    return "commun";
+  }
+
+  function spin() {
+    if (spinning) return;
+    if (coins < 30) { showToast("❌ Need 30 coins to spin!"); beep(220, 0.07); return; }
+    coins -= 30;
+    pity[activeType] = (pity[activeType] || 0) + 1;
+    totalSpins++;
+    S.set("rg-totalSpins", totalSpins);
+
+    let rarity;
+    if (pity[activeType] >= 50) {
+      rarity = "legendaire";
+      pity[activeType] = 0;
+      showToast("✨ Pity triggered — Legendary guaranteed!");
+    } else {
+      rarity = rollRarity();
+    }
+    pendingRarity = rarity;
+
+    const targetAngle = 360 - (SEGMENTS.findIndex(s => s.rarity === rarity) * (360 / SEGMENTS.length) + (360 / SEGMENTS.length) / 2);
+    startRot = rot % 360;
+    targetRot = 360 * (3 + Math.floor(Math.random() * 3)) + targetAngle + (Math.random() * 14 - 7);
+    startTime = performance.now();
+    spinning = true;
+
+    document.getElementById("gachaCoins").textContent = `Your coins: ${coins}`;
+    saveAll();
+    updatePityText();
+    beep(900, 0.12, "sine", 0.06);
+    requestAnimationFrame(animate);
+  }
+
+  function animate(now) {
+    if (!spinning) return;
+    const t = Math.min(1, (now - startTime) / DUR);
+    const eased = 1 - Math.pow(1 - t, 4);
+    rot = startRot + (targetRot - startRot) * eased;
+    draw(rot);
+    if (t > 0.82 && t < 0.88) beep(1200, 0.03, "square", 0.03);
+    if (t >= 1) { spinning = false; finish(); return; }
+    requestAnimationFrame(animate);
+  }
+
+  function finish() {
+    giveReward(pendingRarity);
+    checkAchievements();
+  }
+
+  function giveReward(rarity) {
+    let pool = SKINS.filter(s => s.rarity === rarity && s.type === activeType);
+    if (!pool.length) pool = SKINS.filter(s => s.rarity === rarity);
+    const skin = pool[Math.floor(Math.random() * pool.length)];
+    if (!ownedSkins[skin.type].includes(skin.name)) ownedSkins[skin.type].push(skin.name);
+    saveAll();
+    showReward(skin);
+    beep(rarity === "mythique" ? 1900 : rarity === "legendaire" ? 1400 : 900, 0.18, "sine", 0.08);
+  }
+
+  function showReward(skin) {
+    const colorMap = { commun: "#94a3b8", rare: "#38bdf8", epic: "#a855f7", legendaire: "#ffb86b", mythique: "#ff6b94" };
+    document.getElementById("rewardName").textContent   = skin.name;
+    document.getElementById("rewardRarity").textContent = skin.rarity.toUpperCase();
+    document.getElementById("rewardRarity").style.color = colorMap[skin.rarity] || "#fff";
+    document.getElementById("rewardType").textContent   = `Type: ${skin.type === "player" ? "Player" : skin.type === "background" ? "Background" : "Obstacle"}`;
+    const card = document.getElementById("rewardCard");
+    card.className = `reward-card bg-${skin.rarity === "commun" ? "common" : skin.rarity}`;
+    document.getElementById("btnEquip").onclick = () => {
+      selectedSkins[skin.type] = skin.name; saveAll();
+      document.getElementById("rewardFull").style.display = "none";
+      showToast(`✅ ${skin.name} equipped!`);
+    };
+    document.getElementById("btnCollection").onclick = () => {
+      document.getElementById("rewardFull").style.display = "none";
+      UI.openCollection();
+    };
+    document.getElementById("btnCloseReward").onclick = () => { document.getElementById("rewardFull").style.display = "none"; };
+    document.getElementById("rewardFull").style.display = "flex";
+  }
+
+  function selectType(type, btn) {
+    activeType = type;
+    document.querySelectorAll(".gacha-type-btn").forEach(b => b.classList.remove("active"));
+    if (btn) btn.classList.add("active");
+    updatePityText();
+  }
+
+  function updatePityText() {
+    document.getElementById("pityInfo").textContent =
+      `Pity — Player: ${pity.player || 0} | BG: ${pity.background || 0} | Obstacle: ${pity.obstacle || 0} (50 = Legendary)`;
+  }
+
+  return { spin, selectType, draw, updatePityText };
+})();
+
+// ─────────────────────────────────────────────
+//  COLLECTION
+// ─────────────────────────────────────────────
+const Collection = (() => {
+  function show(rarity = "all", btn = null) {
+    if (btn) {
+      document.querySelectorAll(".collection-tab").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+    const body = document.getElementById("collectionBody");
+    body.innerHTML = "";
+    [
+      { id: "player",     label: "🟦 Players"     },
+      { id: "background", label: "🟣 Backgrounds" },
+      { id: "obstacle",   label: "🟥 Obstacles"   },
+    ].forEach(t => {
+      const title = document.createElement("div");
+      title.className = "collection-section-title";
+      title.textContent = t.label;
+      body.appendChild(title);
+
+      const grid = document.createElement("div");
+      grid.className = "collection-type-block";
+      const list = SKINS.filter(s => s.type === t.id && (rarity === "all" || s.rarity === rarity));
+
+      if (!list.length) {
+        const em = document.createElement("div");
+        em.style.cssText = "opacity:.4;font-size:11px;padding:4px;";
+        em.textContent = "(none)";
+        grid.appendChild(em);
+      } else {
+        list.forEach(skin => grid.appendChild(buildCard(skin, rarity)));
+      }
+      body.appendChild(grid);
+    });
+  }
+
+  function buildCard(skin, rarity) {
+    const card = document.createElement("div");
+    card.className = "skin-card";
+    const owned = ownedSkins[skin.type].includes(skin.name);
+
+    const box = document.createElement("div");
+    box.className = "skin-box";
+    if (owned) {
+      const colorMap = { commun: "#374151", rare: "#0369a1", epic: "#6d28d9", legendaire: "#92400e", mythique: "#9f1239" };
+      box.style.background = colorMap[skin.rarity] || "#1f2937";
+    } else {
+      box.classList.add("locked");
+    }
+
+    const name = document.createElement("div");
+    name.className = "skin-name";
+    name.textContent = skin.name;
+
+    const type = document.createElement("div");
+    type.className = "skin-type";
+    type.textContent = skin.type;
+
+    card.appendChild(box); card.appendChild(name); card.appendChild(type);
+
+    if (owned) {
+      if (selectedSkins[skin.type] === skin.name) {
+        const b = document.createElement("div");
+        b.className = "equipped-badge";
+        b.textContent = "✓ Equipped";
+        card.appendChild(b);
+      } else {
+        const btn = document.createElement("button");
+        btn.className = "equip-btn";
+        btn.textContent = "Equip";
+        btn.onclick = () => { selectedSkins[skin.type] = skin.name; saveAll(); show(rarity); };
+        card.appendChild(btn);
+      }
+    } else {
+      const lk = document.createElement("div");
+      lk.style.cssText = "opacity:.35;font-size:10px;";
+      lk.textContent = "Locked";
+      card.appendChild(lk);
+    }
+    return card;
+  }
+  return { show };
+})();
+
+// ─────────────────────────────────────────────
+//  SHOP
+// ─────────────────────────────────────────────
+const Shop = (() => {
+  // Replace these with your actual Stripe payment links or web-based checkout
+  const LINKS = {
+    starter: null, // e.g. "https://buy.stripe.com/YOUR_LINK_HERE"
+    popular: null,
+    mega:    null,
+    pass:    null,
+  };
+  const PACKS = {
+    starter: { coins: 150, label: "Starter Pack ($0.99)"  },
+    popular: { coins: 550, label: "Popular Pack ($2.99)"  },
+    mega:    { coins: 1400,label: "Mega Pack ($5.99)"     },
+  };
+
+  function buy(pack) {
+    const link = LINKS[pack];
+    if (link) {
+      window.open(link, "_blank");
+    } else {
+      // Demo: award coins instantly (replace with real payment)
+      const info = PACKS[pack];
+      coins += info.coins;
+      totalCoins += info.coins;
+      saveAll();
+      checkAchievements();
+      showToast(`💰 Demo: +${info.coins} coins added! (Connect Stripe for real payments)`);
+      beep(1200, 0.18, "sine", 0.07);
+    }
+  }
+
+  function buyPass() {
+    const link = LINKS.pass;
+    if (link) {
+      window.open(link, "_blank");
+    } else {
+      hasPass = !hasPass;
+      S.set("rg-pass", hasPass);
+      showToast(hasPass ? "⭐ Runner Pass activated (demo)! 3× coins!" : "Runner Pass deactivated.");
+      beep(1400, 0.15, "sine", 0.07);
+    }
+  }
+  return { buy, buyPass };
+})();
+
+// ─────────────────────────────────────────────
+//  ADS
+// ─────────────────────────────────────────────
+const Ads = (() => {
+  let timer, countdown;
+
+  function show() {
+    // In production: replace with AdMob rewarded ad SDK call
+    const today = Math.floor(Date.now() / 86400000);
+    if (adWatchedToday !== today) { adWatchCount = 0; adWatchedToday = today; }
+
+    const overlay = document.getElementById("adOverlay");
+    const timerEl = document.getElementById("adTimer");
+    const skipBtn = document.getElementById("adSkipBtn");
+    overlay.style.display = "flex";
+    skipBtn.style.display = "none";
+    countdown = 5;
+    timerEl.textContent = countdown;
+    timer = setInterval(() => {
+      countdown--;
+      timerEl.textContent = countdown;
+      if (countdown <= 0) {
+        clearInterval(timer);
+        skipBtn.style.display = "block";
+      }
+    }, 1000);
+  }
+
+  function finish() {
+    clearInterval(timer);
+    document.getElementById("adOverlay").style.display = "none";
+    coins += 50; totalCoins += 50;
+    adWatchCount++;
+    S.set("rg-adCount", adWatchCount);
+    S.set("rg-adDay", adWatchedToday);
+    saveAll();
+    checkAchievements();
+    showToast("📺 Thanks for watching! +50 💰");
+    beep(1200, 0.14, "sine", 0.06);
+  }
+  return { show, finish };
+})();
+
+// ─────────────────────────────────────────────
+//  SHARE
+// ─────────────────────────────────────────────
+const Share = (() => {
+  function invite() {
+    const text = `🎮 I'm playing Runner Gacha! My best score is ${best}. Can you beat it?`;
+    if (navigator.share) {
+      navigator.share({ title: "Runner Gacha", text, url: window.location.href })
+        .then(() => { coins += 30; totalCoins += 30; saveAll(); showToast("Thanks for sharing! +30 💰"); beep(1100, 0.1, "sine", 0.05); })
+        .catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(`${text} ${window.location.href}`).then(() => {
+        coins += 30; totalCoins += 30; saveAll();
+        showToast("Link copied! +30 💰 (share it to spread the word 🙌)");
+        beep(1100, 0.1, "sine", 0.05);
+      });
+    }
+  }
+  return { invite };
+})();
+
+// ─────────────────────────────────────────────
+//  ACHIEVEMENTS UI
+// ─────────────────────────────────────────────
+function renderAchievements() {
+  const stats = getAchStats();
+  const list = document.getElementById("achList");
+  list.innerHTML = "";
+  ACH_DEFS.forEach(a => {
+    const val    = Math.min(stats[a.stat] || 0, a.goal);
+    const pct    = (val / a.goal * 100).toFixed(0);
+    const done   = val >= a.goal;
+    const claimed= achievements[a.id] === "claimed";
+
+    const el = document.createElement("div");
+    el.className = "ach-item" + (done ? " done" : "");
+    el.innerHTML = `
+      <div class="ach-icon" style="opacity:${claimed ? 1 : done ? 1 : 0.4}">${a.icon}</div>
+      <div class="ach-info">
+        <div class="ach-name">${a.name}</div>
+        <div class="ach-desc">${a.desc}</div>
+        <div class="ach-progress"><div class="ach-progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="ach-reward">+${a.reward}💰</div>
+    `;
+
+    if (done && !claimed) {
+      const btn = document.createElement("button");
+      btn.className = "ach-claim";
+      btn.textContent = "Claim";
+      btn.onclick = () => {
+        achievements[a.id] = "claimed";
+        coins += a.reward; totalCoins += a.reward;
+        S.set("rg-ach", achievements);
+        saveAll();
+        renderAchievements();
+        showToast(`🏅 Claimed: +${a.reward} coins!`);
+        beep(1200, 0.12, "sine", 0.06);
+      };
+      el.appendChild(btn);
+    } else if (claimed) {
+      const d = document.createElement("div");
+      d.style.cssText = "font-size:10px;color:#34d399;font-weight:700;flex-shrink:0;";
+      d.textContent = "✓ Done";
+      el.appendChild(d);
+    }
+    list.appendChild(el);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  LEADERBOARD UI
+// ─────────────────────────────────────────────
+function renderLeaderboard() {
+  const lb = document.getElementById("lbList");
+  lb.innerHTML = "";
+  const display = scores.slice(0, 10);
+  if (!display.length) {
+    lb.innerHTML = '<div class="lb-row" style="opacity:.5;font-size:12px;">No scores yet — play a game!</div>';
+    return;
+  }
+  const medals = ["🥇","🥈","🥉"];
+  display.forEach((entry, i) => {
+    const row = document.createElement("div");
+    row.className = "lb-row you";
+    row.innerHTML = `
+      <span class="lb-rank">${medals[i] || `#${i+1}`}</span>
+      <span class="lb-name">You · ${entry.mode}</span>
+      <span class="lb-score">${entry.score}</span>
+    `;
+    lb.appendChild(row);
+  });
+}
+
+// ─────────────────────────────────────────────
+//  UI CONTROLLER
+// ─────────────────────────────────────────────
+const UI = {
+  openGacha() {
+    document.getElementById("gachaModal").style.display = "flex";
+    document.getElementById("gachaCoins").textContent = `Your coins: ${coins}`;
+    Gacha.updatePityText();
+    menuOpen = true;
+  },
+  closeGacha() { document.getElementById("gachaModal").style.display = "none"; },
+  openShop() {
+    document.getElementById("shopModal").style.display = "flex";
+    const dayMs = 86400000;
+    document.getElementById("shopDailyDesc").textContent =
+      (Date.now() - lastDaily >= dayMs) ? "Ready to claim!" : "Already claimed";
+    menuOpen = true;
+  },
+  closeShop() { document.getElementById("shopModal").style.display = "none"; },
+  openCollection() {
+    document.getElementById("collectionModal").style.display = "flex";
+    Collection.show("all");
+    menuOpen = true;
+  },
+  closeCollection() { document.getElementById("collectionModal").style.display = "none"; },
+  openAchievements() {
+    document.getElementById("achievementsModal").style.display = "flex";
+    renderAchievements();
+    menuOpen = true;
+  },
+  closeAchievements() { document.getElementById("achievementsModal").style.display = "none"; },
+  openLeaderboard() {
+    document.getElementById("leaderboardModal").style.display = "flex";
+    renderLeaderboard();
+    menuOpen = true;
+  },
+  closeLeaderboard() { document.getElementById("leaderboardModal").style.display = "none"; },
+  watchAd() { Ads.show(); },
+};
+
+// ─────────────────────────────────────────────
+//  CONTROLS
+// ─────────────────────────────────────────────
+function togglePause() {
+  if (!running) return;
+  paused = !paused;
+  document.getElementById("pauseBtn").textContent = paused ? "▶️" : "⏸";
+  beep(600, 0.06);
+}
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") { e.preventDefault(); jump(); }
+  if (e.key.toLowerCase() === "p") togglePause();
+  if (e.key.toLowerCase() === "g") UI.openGacha();
+  if (e.key.toLowerCase() === "s") UI.openShop();
+  if (e.key.toLowerCase() === "c") UI.openCollection();
+});
+
+canvas.addEventListener("touchstart", ev => {
+  ev.preventDefault();
+  ensureAudio();
+  if (running && !menuOpen) jump();
+}, { passive: false });
+
+canvas.addEventListener("click", () => {
+  ensureAudio();
+  if (running && !menuOpen) jump();
+});
+
+window.addEventListener("click", function once() {
+  ensureAudio();
+  window.removeEventListener("click", once);
+});
+
+// ─────────────────────────────────────────────
+//  HUD REFRESH
+// ─────────────────────────────────────────────
+function refreshHUD() {
+  document.getElementById("score").textContent      = score;
+  document.getElementById("best").textContent       = best;
+  document.getElementById("coinAmount").textContent = coins;
+}
+
+// ─────────────────────────────────────────────
+//  STARTER SKINS
+// ─────────────────────────────────────────────
+function giveStarterSkins() {
+  let changed = false;
+  if (!ownedSkins.player.includes("Blue Block"))       { ownedSkins.player.push("Blue Block"); changed = true; }
+  if (!ownedSkins.background.includes("Simple Background")) { ownedSkins.background.push("Simple Background"); changed = true; }
+  if (!ownedSkins.obstacle.includes("Grey Obstacle"))  { ownedSkins.obstacle.push("Grey Obstacle"); changed = true; }
+  if (changed) saveAll();
+}
+
+// ─────────────────────────────────────────────
+//  EXPOSE GLOBALS
+// ─────────────────────────────────────────────
+window.selectDifficulty = selectDifficulty;
+window.claimDaily       = claimDaily;
+window.togglePause      = togglePause;
+window.toggleSound      = toggleSound;
+window.UI               = UI;
+window.Gacha            = Gacha;
+window.Collection       = Collection;
+window.Shop             = Shop;
+window.Ads              = Ads;
+window.Share            = Share;
+
+// ─────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────
+giveStarterSkins();
+updateStreak();
+refreshHUD();
+document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
+document.getElementById("streakCount").textContent = streak;
+document.getElementById("streakBonus").textContent =
+  (Date.now() - lastDaily >= 86400000) ? " · Daily bonus ready!" : " · Keep the streak!";
+
+if (!S.get("rg-seenTip")) {
+  setTimeout(() => {
+    showToast("Tip: tap or Space to jump. Double-tap for double jump! 🎮");
+    S.set("rg-seenTip", 1);
+  }, 800);
+}
+
+// Draw idle background on canvas while in menu
+(function idleLoop() {
+  if (!running) {
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, W, H);
+    bgStars.forEach(s => {
+      s.x -= s.speed * 0.5;
+      if (s.x < 0) s.x = W;
+      ctx.fillStyle = `rgba(255,255,255,${0.3 + s.r * 0.2})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+  requestAnimationFrame(idleLoop);
+})();
+</script>
+</body>
+</html>
