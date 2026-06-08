@@ -715,9 +715,9 @@ let powerups = [];
 const player = { x: 70, y: H - 140, w: 48, h: 48, vy: 0, onGround: true };
 
 const DIFFS = {
-  easy:    { name: "Easy",    color: "#34d399", startSpeed: 2.2, accel: 0.018, coinValue: 1, spawnBase: 200 },
-  hard:    { name: "Hard",    color: "#f87171", startSpeed: 3.2, accel: 0.04,  coinValue: 2, spawnBase: 155 },
-  extreme: { name: "Extreme", color: "#8b5cf6", startSpeed: 4.0, accel: 0.075, coinValue: 3, spawnBase: 120 },
+  easy:    { name: "Easy",    color: "#34d399", startSpeed: 3.5, accel: 0.04,  coinValue: 1, spawnBase: 200 },
+  hard:    { name: "Hard",    color: "#f87171", startSpeed: 5.0, accel: 0.08,  coinValue: 2, spawnBase: 155 },
+  extreme: { name: "Extreme", color: "#8b5cf6", startSpeed: 7.0, accel: 0.15,  coinValue: 3, spawnBase: 120 },
 };
 
 // ─────────────────────────────────────────────
@@ -1180,10 +1180,22 @@ function spawnObstacle() {
 }
 
 function spawnCoin() {
-  // Keep coins at ground level (within player hitbox while running) so the
-  // player never needs to jump to collect one, preserving the jump for obstacles.
-  const y = GROUND_Y - 32 - Math.random() * 16; // 32–48px above ground, always reachable on foot
-  fieldCoins.push({ x: W + 30 + Math.random() * 60, y, r: 11, taken: false });
+  // Place coin horizontally in the gap between the last obstacle and the next,
+  // never overlapping any existing obstacle, so it's always reachable.
+  const y = GROUND_Y - 32 - Math.random() * 16;
+  let x = W + 30 + Math.random() * 60;
+
+  // Shift forward until the position is clear of all on-screen obstacles
+  let attempts = 0;
+  while (attempts++ < 20) {
+    const blocked = obstacles.some(ob =>
+      x < ob.x + ob.w + 20 && x + 11 > ob.x - 20
+    );
+    if (!blocked) break;
+    x += 60; // step past the obstacle
+  }
+
+  fieldCoins.push({ x, y, r: 11, taken: false });
 }
 
 function spawnPowerup() {
@@ -1221,8 +1233,9 @@ function gameLoop() {
   ctx.fillStyle = "rgba(255,255,255,0.04)";
   ctx.fillRect(0, GROUND_Y, W, 2);
 
-  // ── Physics ──
-  player.vy = Math.min(player.vy + 0.38, 10);
+  // ── Physics — gravity scales with speed for snappier jumps at high velocity ──
+  const gravity = 0.38 + gameSpeed * 0.04;
+  player.vy = Math.min(player.vy + gravity, 14);
   player.y += player.vy;
   if (player.y + player.h >= GROUND_Y) {
     player.y = GROUND_Y - player.h;
