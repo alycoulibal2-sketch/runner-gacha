@@ -1180,7 +1180,10 @@ function spawnObstacle() {
 }
 
 function spawnCoin() {
-  fieldCoins.push({ x: W + 30 + Math.random() * 60, y: GROUND_Y - 40 - Math.random() * 70, r: 11, taken: false });
+  // Keep coins at ground level (within player hitbox while running) so the
+  // player never needs to jump to collect one, preserving the jump for obstacles.
+  const y = GROUND_Y - 32 - Math.random() * 16; // 32–48px above ground, always reachable on foot
+  fieldCoins.push({ x: W + 30 + Math.random() * 60, y, r: 11, taken: false });
 }
 
 function spawnPowerup() {
