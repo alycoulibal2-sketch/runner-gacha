@@ -555,12 +555,10 @@
     display: flex; flex-direction: column; align-items: center; gap: 12px;
   }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<body>
 <div id="game">
   <canvas id="canvas" width="420" height="640"></canvas>
 
@@ -608,6 +606,9 @@
       <button class="btn ad-btn" onclick="UI.watchAd()">▶ Watch Ad (+50 💰)</button>
     </div>
 
+    <div class="menu-actions">
+      <button class="btn secondary" onclick="AuthUI.open()" id="menuAccountBtn">👤 Account / Sign In</button>
+    </div>
     <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
     <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
   </div>
@@ -2089,6 +2090,7 @@ let fbAuth, fbDb, currentUser = null;
 let fbReady = false;
 
 try {
+  if (!firebase) throw new Error("Firebase SDK not loaded");
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth();
   fbDb   = firebase.firestore();
@@ -2101,13 +2103,19 @@ try {
         AuthUI.showProfile();
         updateAccountBtn(true);
         showToast(`👋 Welcome back, ${S.get('rg-username','Player')}!`);
-      });
+      }).catch(e => console.error("DB load error", e));
     } else {
       updateAccountBtn(false);
     }
   });
 } catch (e) {
-  console.warn("Firebase not configured — accounts disabled.", e);
+  console.error("Firebase init failed:", e);
+  // Show error inside the account modal so the player sees it
+  const _origOpen = AuthUI ? AuthUI.open.bind(AuthUI) : null;
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("accountBtn");
+    if (btn) btn.title = "Accounts unavailable — Firebase error";
+  });
 }
 
 // ── RECENT ACCOUNTS (localStorage cache for quick sign-in) ─────────────────
@@ -2198,11 +2206,11 @@ saveAll = function() {
 
 // ── AUTH HELPERS ────────────────────────────────────────────────────────────
 function updateAccountBtn(loggedIn) {
-  const btn = document.getElementById("accountBtn");
-  if (!btn) return;
-  btn.innerHTML = loggedIn
-    ? `👤 <span class="dot"></span>`
-    : "👤";
+  const hud  = document.getElementById("accountBtn");
+  const menu = document.getElementById("menuAccountBtn");
+  const name = S.get("rg-username", "");
+  if (hud)  hud.innerHTML  = loggedIn ? `👤 <span class="dot"></span>` : "👤";
+  if (menu) menu.textContent = loggedIn ? `👤 ${name || "Account"}` : "👤 Account / Sign In";
 }
 
 function avatarLetter(username) {
