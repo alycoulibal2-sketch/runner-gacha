@@ -469,8 +469,97 @@
       #game { width: 100vw; height: 100svh; border-radius: 0; }
       canvas { border-radius: 0; }
     }
+
+  /* ── Auth / Account UI ── */
+  #accountBtn { position: relative; }
+  #accountBtn .dot {
+    position: absolute; top: 2px; right: 2px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #34d399; border: 1px solid rgba(0,0,0,0.4);
+  }
+
+  .auth-form { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
+  .auth-input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  .auth-input:focus { border-color: rgba(124,77,255,0.6); }
+  .auth-input::placeholder { opacity: .4; }
+  .auth-error { color: #f87171; font-size: 12px; text-align: center; min-height: 16px; }
+  .auth-link { color: #7c9cbf; font-size: 12px; cursor: pointer; text-decoration: underline; text-align: center; }
+  .auth-link:hover { color: var(--text); }
+
+  .auth-section-title { font-size: 18px; font-weight: 900; text-align: center; }
+  .auth-sub { font-size: 12px; opacity: .55; text-align: center; }
+
+  .recent-accounts { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 320px; }
+  .account-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+  .account-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(124,77,255,0.35); }
+  .account-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg,#7c4dff,#ff7a59);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 15px; flex-shrink: 0;
+  }
+  .account-card-info { flex: 1; }
+  .account-card-name { font-weight: 800; font-size: 13px; }
+  .account-card-email { font-size: 11px; opacity: .5; }
+
+  .profile-avatar {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg,#7c4dff,#ff7a59);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 900;
+  }
+  .profile-username { font-size: 20px; font-weight: 900; }
+  .profile-email { font-size: 12px; opacity: .5; }
+  .profile-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; width: 100%; max-width: 320px; }
+  .profile-stat {
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 10px 6px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .profile-stat-val { font-size: 17px; font-weight: 900; color: #facc15; }
+  .profile-stat-lbl { font-size: 10px; opacity: .5; margin-top: 2px; }
+
+  .pw-overlay-backdrop {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.75); z-index: 75;
+    display: none; align-items: center; justify-content: center;
+  }
+  .pw-overlay-card {
+    background: #0d1a2e;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    padding: 20px;
+    width: 88%; max-width: 300px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
   </style>
 </head>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <body>
 <div id="game">
   <canvas id="canvas" width="420" height="640"></canvas>
@@ -484,6 +573,7 @@
     <button class="badge-btn" onclick="UI.openCollection()" title="Collection">📦</button>
     <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
     <button class="badge-btn" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
+    <button class="badge-btn" id="accountBtn" onclick="AuthUI.open()" title="Account">👤</button>
   </div>
 
   <!-- Main Menu -->
@@ -660,6 +750,79 @@
   <div id="quickButtons">
     <button class="quick" onclick="UI.openGacha()">🎰 Wheel</button>
     <button class="quick" onclick="UI.openShop()">🛒 Shop</button>
+  </div>
+
+  <!-- Account Modal -->
+  <div id="accountModal" class="modal-overlay modal-bg">
+
+    <!-- Welcome / Recent accounts -->
+    <div id="authWelcome" style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;">
+      <div class="auth-section-title">👤 Account</div>
+      <p class="auth-sub">Sign in to save your progress across devices</p>
+      <div id="recentAccountsList" class="recent-accounts"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn shop-btn" style="min-width:auto;" onclick="AuthUI.showSignup()">Create Account</button>
+        <button class="btn secondary" onclick="AuthUI.showSignin()">Sign In</button>
+      </div>
+      <button class="btn secondary" onclick="AuthUI.close()">Close</button>
+    </div>
+
+    <!-- Sign Up -->
+    <div id="authSignup" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;">
+      <div class="auth-section-title">Create Account</div>
+      <div class="auth-form">
+        <input class="auth-input" id="su-email"    type="email"    placeholder="Email address" autocomplete="email" />
+        <input class="auth-input" id="su-username" type="text"     placeholder="Username (unique)" autocomplete="username" maxlength="20" />
+        <input class="auth-input" id="su-pw1"      type="password" placeholder="Password (min 6 chars)" autocomplete="new-password" />
+        <input class="auth-input" id="su-pw2"      type="password" placeholder="Confirm password" autocomplete="new-password" />
+        <div id="su-error" class="auth-error"></div>
+        <button class="btn shop-btn" style="width:100%;" onclick="AuthUI.doSignup()">Create Account</button>
+      </div>
+      <span class="auth-link" onclick="AuthUI.showWelcome()">← Back</span>
+      <button class="btn secondary" onclick="AuthUI.close()">Close</button>
+    </div>
+
+    <!-- Sign In -->
+    <div id="authSignin" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;">
+      <div class="auth-section-title">Sign In</div>
+      <div class="auth-form">
+        <input class="auth-input" id="si-email" type="email"    placeholder="Email address" autocomplete="email" />
+        <input class="auth-input" id="si-pw"    type="password" placeholder="Password" autocomplete="current-password" />
+        <div id="si-error" class="auth-error"></div>
+        <button class="btn shop-btn" style="width:100%;" onclick="AuthUI.doSignin()">Sign In</button>
+        <span class="auth-link" onclick="AuthUI.doReset()">Forgot password? Send reset email</span>
+      </div>
+      <span class="auth-link" onclick="AuthUI.showWelcome()">← Back</span>
+      <button class="btn secondary" onclick="AuthUI.close()">Close</button>
+    </div>
+
+    <!-- Logged-in profile -->
+    <div id="authProfile" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;">
+      <div class="profile-avatar" id="profileAvatar">?</div>
+      <div class="profile-username" id="profileUsername">—</div>
+      <div class="profile-email"   id="profileEmail">—</div>
+      <div class="profile-stats">
+        <div class="profile-stat"><div class="profile-stat-val" id="psBest">0</div><div class="profile-stat-lbl">Best Score</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="psCoins">0</div><div class="profile-stat-lbl">Coins</div></div>
+        <div class="profile-stat"><div class="profile-stat-val" id="psStreak">0</div><div class="profile-stat-lbl">Streak</div></div>
+      </div>
+      <button class="btn secondary" style="width:100%;max-width:320px;" onclick="AuthUI.doSignout()">Sign Out</button>
+      <button class="btn secondary" onclick="AuthUI.close()">Close</button>
+    </div>
+  </div>
+
+  <!-- Password prompt overlay (quick sign-in from saved account card) -->
+  <div id="pwOverlay" class="pw-overlay-backdrop">
+    <div class="pw-overlay-card">
+      <div class="profile-avatar" id="pwAvatar">?</div>
+      <div style="font-weight:800;font-size:14px;" id="pwUsername">—</div>
+      <div style="font-size:11px;opacity:.5;" id="pwEmail">—</div>
+      <input class="auth-input" id="pwInput" type="password" placeholder="Enter password" autocomplete="current-password" style="text-align:center;" />
+      <div id="pw-error" class="auth-error"></div>
+      <button class="btn shop-btn" style="width:100%;" onclick="AuthUI.doQuickSignin()">Sign In</button>
+      <span class="auth-link" onclick="AuthUI.doResetQuick()">Forgot password?</span>
+      <span class="auth-link" onclick="AuthUI.closePwOverlay()">← Back</span>
+    </div>
   </div>
 
   <!-- Toast -->
@@ -1900,8 +2063,341 @@ function giveStarterSkins() {
 }
 
 // ─────────────────────────────────────────────
+//  FIREBASE / ACCOUNTS
+// ─────────────────────────────────────────────
+
+// ── SETUP ──────────────────────────────────────────────────────────────────
+// 1. Go to https://console.firebase.google.com → create a project
+// 2. Add a Web app and copy the config below
+// 3. In Authentication → Sign-in method → enable Email/Password
+// 4. In Firestore → create database (start in test mode, then add security rules)
+// ───────────────────────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID",
+};
+
+let fbAuth, fbDb, currentUser = null;
+let fbReady = false;
+
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  fbDb   = firebase.firestore();
+  fbReady = true;
+
+  fbAuth.onAuthStateChanged(user => {
+    currentUser = user;
+    if (user) {
+      DB.load(user.uid).then(() => {
+        AuthUI.showProfile();
+        updateAccountBtn(true);
+        showToast(`👋 Welcome back, ${S.get('rg-username','Player')}!`);
+      });
+    } else {
+      updateAccountBtn(false);
+    }
+  });
+} catch (e) {
+  console.warn("Firebase not configured — accounts disabled.", e);
+}
+
+// ── RECENT ACCOUNTS (localStorage cache for quick sign-in) ─────────────────
+function getRecentAccounts() { return S.get("rg-recent-accounts", []); }
+function saveRecentAccount(uid, username, email) {
+  let list = getRecentAccounts().filter(a => a.uid !== uid);
+  list.unshift({ uid, username, email });
+  if (list.length > 5) list.length = 5;
+  S.set("rg-recent-accounts", list);
+}
+function removeRecentAccount(uid) {
+  S.set("rg-recent-accounts", getRecentAccounts().filter(a => a.uid !== uid));
+}
+
+// ── DATABASE ────────────────────────────────────────────────────────────────
+const DB = {
+  gameDataToDoc() {
+    return {
+      coins, best, streak, lastLogin, lastDaily,
+      ownedSkins, selectedSkins, pity,
+      achievements, scores,
+      totalSpins, totalCoins, hasPass, adWatchCount,
+      username: S.get("rg-username", ""),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+  },
+
+  applyDoc(data) {
+    // Merge: take the better value for numbers, union for arrays/objects
+    coins        = Math.max(coins,        data.coins        || 0);
+    best         = Math.max(best,         data.best         || 0);
+    streak       = Math.max(streak,       data.streak       || 0);
+    totalCoins   = Math.max(totalCoins,   data.totalCoins   || 0);
+    totalSpins   = Math.max(totalSpins,   data.totalSpins   || 0);
+    lastLogin    = Math.max(lastLogin,    data.lastLogin    || 0);
+    lastDaily    = Math.max(lastDaily,    data.lastDaily    || 0);
+    hasPass      = hasPass || (data.hasPass || false);
+    adWatchCount = Math.max(adWatchCount, data.adWatchCount || 0);
+
+    if (data.ownedSkins) {
+      ["player","background","obstacle"].forEach(t => {
+        const merged = [...new Set([...(ownedSkins[t]||[]), ...(data.ownedSkins[t]||[])])];
+        ownedSkins[t] = merged;
+      });
+    }
+    if (data.selectedSkins) {
+      Object.assign(selectedSkins, data.selectedSkins);
+    }
+    if (data.pity) Object.assign(pity, data.pity);
+    if (data.achievements) {
+      Object.keys(data.achievements).forEach(k => {
+        if (!achievements[k] || data.achievements[k] === "claimed") {
+          achievements[k] = data.achievements[k];
+        }
+      });
+    }
+    if (data.scores && data.scores.length > scores.length) scores = data.scores;
+    if (data.username) S.set("rg-username", data.username);
+
+    saveAll();
+    refreshHUD();
+  },
+
+  async save() {
+    if (!fbReady || !currentUser) return;
+    try {
+      await fbDb.collection("users").doc(currentUser.uid).set(this.gameDataToDoc(), { merge: true });
+    } catch(e) { console.warn("DB save failed", e); }
+  },
+
+  async load(uid) {
+    if (!fbReady) return;
+    try {
+      const snap = await fbDb.collection("users").doc(uid).get();
+      if (snap.exists) this.applyDoc(snap.data());
+    } catch(e) { console.warn("DB load failed", e); }
+  },
+};
+
+// Auto-save to Firestore on a debounce whenever saveAll() is called
+const _origSaveAll = saveAll;
+let _saveTimer;
+saveAll = function() {
+  _origSaveAll();
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => DB.save(), 3000);
+};
+
+// ── AUTH HELPERS ────────────────────────────────────────────────────────────
+function updateAccountBtn(loggedIn) {
+  const btn = document.getElementById("accountBtn");
+  if (!btn) return;
+  btn.innerHTML = loggedIn
+    ? `👤 <span class="dot"></span>`
+    : "👤";
+}
+
+function avatarLetter(username) {
+  return (username || "?")[0].toUpperCase();
+}
+
+// ── AUTH UI ─────────────────────────────────────────────────────────────────
+const AuthUI = {
+  open() {
+    document.getElementById("accountModal").style.display = "flex";
+    menuOpen = true;
+    if (currentUser) {
+      this.showProfile();
+    } else {
+      this.showWelcome();
+    }
+  },
+  close() {
+    document.getElementById("accountModal").style.display = "none";
+    menuOpen = false;
+  },
+
+  _setView(id) {
+    ["authWelcome","authSignup","authSignin","authProfile"].forEach(v => {
+      document.getElementById(v).style.display = v === id ? "flex" : "none";
+    });
+  },
+
+  showWelcome() {
+    this._setView("authWelcome");
+    const list = document.getElementById("recentAccountsList");
+    list.innerHTML = "";
+    const recent = getRecentAccounts();
+    if (recent.length === 0) {
+      list.innerHTML = '<p style="opacity:.4;font-size:12px;text-align:center;">No saved accounts on this device</p>';
+    } else {
+      recent.forEach(acc => {
+        const card = document.createElement("div");
+        card.className = "account-card";
+        card.innerHTML = `
+          <div class="account-avatar">${avatarLetter(acc.username)}</div>
+          <div class="account-card-info">
+            <div class="account-card-name">${acc.username}</div>
+            <div class="account-card-email">${acc.email}</div>
+          </div>
+          <div style="opacity:.4;font-size:18px;">›</div>`;
+        card.onclick = () => this.openPwOverlay(acc);
+        list.appendChild(card);
+      });
+    }
+  },
+
+  showSignup() { this._setView("authSignup"); document.getElementById("su-error").textContent = ""; },
+  showSignin()  { this._setView("authSignin"); document.getElementById("si-error").textContent = ""; },
+
+  showProfile() {
+    this._setView("authProfile");
+    const username = S.get("rg-username", currentUser?.displayName || "Player");
+    document.getElementById("profileAvatar").textContent   = avatarLetter(username);
+    document.getElementById("profileUsername").textContent = username;
+    document.getElementById("profileEmail").textContent    = currentUser?.email || "";
+    document.getElementById("psBest").textContent   = best;
+    document.getElementById("psCoins").textContent  = coins;
+    document.getElementById("psStreak").textContent = streak;
+  },
+
+  // ── Sign Up ──
+  async doSignup() {
+    if (!fbReady) { showToast("⚠ Firebase not configured yet — see console."); return; }
+    const email    = document.getElementById("su-email").value.trim();
+    const username = document.getElementById("su-username").value.trim().toLowerCase();
+    const pw1      = document.getElementById("su-pw1").value;
+    const pw2      = document.getElementById("su-pw2").value;
+    const errEl    = document.getElementById("su-error");
+    errEl.textContent = "";
+
+    if (!email || !username || !pw1 || !pw2) { errEl.textContent = "All fields are required."; return; }
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) { errEl.textContent = "Username: 3-20 chars, letters/numbers/_ only."; return; }
+    if (pw1.length < 6)  { errEl.textContent = "Password must be at least 6 characters."; return; }
+    if (pw1 !== pw2)     { errEl.textContent = "Passwords don't match."; return; }
+
+    try {
+      // Check username uniqueness
+      const usernameDoc = await fbDb.collection("usernames").doc(username).get();
+      if (usernameDoc.exists) { errEl.textContent = "Username already taken."; return; }
+
+      const cred = await fbAuth.createUserWithEmailAndPassword(email, pw1);
+      const uid  = cred.user.uid;
+
+      // Reserve username
+      await fbDb.collection("usernames").doc(username).set({ uid });
+      S.set("rg-username", username);
+
+      // Save initial game data
+      await DB.save();
+      saveRecentAccount(uid, username, email);
+      showToast("✅ Account created! Welcome, " + username + "!");
+      beep(1200, 0.14, "sine", 0.07);
+    } catch(e) {
+      errEl.textContent = friendlyAuthError(e.code);
+    }
+  },
+
+  // ── Sign In ──
+  async doSignin() {
+    if (!fbReady) { showToast("⚠ Firebase not configured yet."); return; }
+    const email = document.getElementById("si-email").value.trim();
+    const pw    = document.getElementById("si-pw").value;
+    const errEl = document.getElementById("si-error");
+    errEl.textContent = "";
+    if (!email || !pw) { errEl.textContent = "Enter your email and password."; return; }
+    try {
+      await fbAuth.signInWithEmailAndPassword(email, pw);
+    } catch(e) {
+      errEl.textContent = friendlyAuthError(e.code);
+    }
+  },
+
+  // ── Quick sign-in from saved card ──
+  _quickEmail: "", _quickUid: "",
+  openPwOverlay(acc) {
+    this._quickEmail = acc.email;
+    this._quickUid   = acc.uid;
+    document.getElementById("pwAvatar").textContent   = avatarLetter(acc.username);
+    document.getElementById("pwUsername").textContent = acc.username;
+    document.getElementById("pwEmail").textContent    = acc.email;
+    document.getElementById("pwInput").value          = "";
+    document.getElementById("pw-error").textContent   = "";
+    document.getElementById("pwOverlay").style.display = "flex";
+  },
+  closePwOverlay() { document.getElementById("pwOverlay").style.display = "none"; },
+
+  async doQuickSignin() {
+    if (!fbReady) return;
+    const pw    = document.getElementById("pwInput").value;
+    const errEl = document.getElementById("pw-error");
+    errEl.textContent = "";
+    if (!pw) { errEl.textContent = "Enter your password."; return; }
+    try {
+      await fbAuth.signInWithEmailAndPassword(this._quickEmail, pw);
+      this.closePwOverlay();
+    } catch(e) {
+      errEl.textContent = friendlyAuthError(e.code);
+    }
+  },
+
+  // ── Sign Out ──
+  async doSignout() {
+    await DB.save();
+    const uid = currentUser?.uid;
+    await fbAuth.signOut();
+    currentUser = null;
+    if (uid) removeRecentAccount(uid);
+    updateAccountBtn(false);
+    this.showWelcome();
+    showToast("👋 Signed out.");
+  },
+
+  // ── Password reset ──
+  async doReset() {
+    if (!fbReady) return;
+    const email = document.getElementById("si-email").value.trim();
+    if (!email) { document.getElementById("si-error").textContent = "Enter your email first."; return; }
+    try {
+      await fbAuth.sendPasswordResetEmail(email);
+      showToast("📧 Reset email sent to " + email);
+      document.getElementById("si-error").textContent = "";
+    } catch(e) {
+      document.getElementById("si-error").textContent = friendlyAuthError(e.code);
+    }
+  },
+
+  async doResetQuick() {
+    if (!fbReady || !this._quickEmail) return;
+    try {
+      await fbAuth.sendPasswordResetEmail(this._quickEmail);
+      showToast("📧 Reset email sent to " + this._quickEmail);
+    } catch(e) { showToast("❌ " + friendlyAuthError(e.code)); }
+  },
+};
+
+function friendlyAuthError(code) {
+  const map = {
+    "auth/email-already-in-use":    "Email already has an account.",
+    "auth/invalid-email":           "Invalid email address.",
+    "auth/weak-password":           "Password is too weak.",
+    "auth/user-not-found":          "No account with that email.",
+    "auth/wrong-password":          "Incorrect password.",
+    "auth/invalid-credential":      "Incorrect email or password.",
+    "auth/too-many-requests":       "Too many attempts — try again later.",
+    "auth/network-request-failed":  "Network error — check your connection.",
+  };
+  return map[code] || "Something went wrong. Try again.";
+}
+
+// ─────────────────────────────────────────────
 //  EXPOSE GLOBALS
 // ─────────────────────────────────────────────
+window.AuthUI           = AuthUI;
 window.selectDifficulty = selectDifficulty;
 window.claimDaily       = claimDaily;
 window.togglePause      = togglePause;
