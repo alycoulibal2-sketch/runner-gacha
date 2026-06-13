@@ -805,12 +805,24 @@
     <div id="authProfile" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;">
       <div class="profile-avatar" id="profileAvatar">?</div>
       <div class="profile-username" id="profileUsername">—</div>
-      <div class="profile-email"   id="profileEmail">—</div>
+      <div style="font-size:11px;opacity:.4;" id="profileHandle">@—</div>
+      <div class="profile-email" id="profileEmail">—</div>
       <div class="profile-stats">
         <div class="profile-stat"><div class="profile-stat-val" id="psBest">0</div><div class="profile-stat-lbl">Best Score</div></div>
         <div class="profile-stat"><div class="profile-stat-val" id="psCoins">0</div><div class="profile-stat-lbl">Coins</div></div>
         <div class="profile-stat"><div class="profile-stat-val" id="psStreak">0</div><div class="profile-stat-lbl">Streak</div></div>
       </div>
+
+      <!-- Settings: Display Name -->
+      <div style="width:100%;max-width:320px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;font-weight:800;opacity:.7;letter-spacing:.5px;text-transform:uppercase;">⚙ Settings</div>
+        <div style="font-size:12px;opacity:.55;">Display Name <span style="opacity:.6;font-size:11px;">(shown in game · changeable weekly)</span></div>
+        <input class="auth-input" id="dnInput" type="text" placeholder="New display name" maxlength="24" />
+        <button class="btn shop-btn" style="width:100%;padding:8px;" onclick="AuthUI.changeDisplayName()">Change Display Name</button>
+        <div id="dnCooldown" style="font-size:11px;opacity:.5;text-align:center;"></div>
+        <div id="dnError" class="auth-error"></div>
+      </div>
+
       <button class="btn secondary" style="width:100%;max-width:320px;" onclick="AuthUI.doSignout()">Sign Out</button>
       <button class="btn secondary" onclick="AuthUI.close()">Close</button>
     </div>
@@ -2089,6 +2101,11 @@ const FIREBASE_CONFIG = {
 let fbAuth, fbDb, currentUser = null;
 let fbReady = false;
 
+// Display name is separate from the permanent username
+function getDisplayName() { return S.get("rg-displayName", "") || S.get("rg-username", "Player"); }
+function setDisplayName(n) { S.set("rg-displayName", n); }
+let lastDisplayNameChange = S.get("rg-lastDNChange", 0);
+
 try {
   if (!firebase) throw new Error("Firebase SDK not loaded");
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -2102,7 +2119,7 @@ try {
       DB.load(user.uid).then(() => {
         AuthUI.showProfile();
         updateAccountBtn(true);
-        showToast(`👋 Welcome back, ${S.get('rg-username','Player')}!`);
+        showToast(`👋 Welcome back, ${getDisplayName()}!`);
       }).catch(e => console.error("DB load error", e));
     } else {
       updateAccountBtn(false);
@@ -2138,8 +2155,10 @@ const DB = {
       ownedSkins, selectedSkins, pity,
       achievements, scores,
       totalSpins, totalCoins, hasPass, adWatchCount,
-      username: S.get("rg-username", ""),
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      username:              S.get("rg-username", ""),
+      displayName:           getDisplayName(),
+      lastDisplayNameChange: lastDisplayNameChange,
+      updatedAt:             firebase.firestore.FieldValue.serverTimestamp(),
     };
   },
 
@@ -2174,6 +2193,11 @@ const DB = {
     }
     if (data.scores && data.scores.length > scores.length) scores = data.scores;
     if (data.username) S.set("rg-username", data.username);
+    if (data.displayName) setDisplayName(data.displayName);
+    if (data.lastDisplayNameChange) {
+      lastDisplayNameChange = Math.max(lastDisplayNameChange, data.lastDisplayNameChange);
+      S.set("rg-lastDNChange", lastDisplayNameChange);
+    }
 
     saveAll();
     refreshHUD();
@@ -2209,8 +2233,9 @@ function updateAccountBtn(loggedIn) {
   const hud  = document.getElementById("accountBtn");
   const menu = document.getElementById("menuAccountBtn");
   const name = S.get("rg-username", "");
-  if (hud)  hud.innerHTML  = loggedIn ? `👤 <span class="dot"></span>` : "👤";
-  if (menu) menu.textContent = loggedIn ? `👤 ${name || "Account"}` : "👤 Account / Sign In";
+  const dn = getDisplayName();
+  if (hud)  hud.innerHTML   = loggedIn ? `👤 <span class="dot"></span>` : "👤";
+  if (menu) menu.textContent = loggedIn ? `👤 ${dn || "Account"}` : "👤 Account / Sign In";
 }
 
 function avatarLetter(username) {
@@ -2268,13 +2293,32 @@ const AuthUI = {
 
   showProfile() {
     this._setView("authProfile");
-    const username = S.get("rg-username", currentUser?.displayName || "Player");
-    document.getElementById("profileAvatar").textContent   = avatarLetter(username);
-    document.getElementById("profileUsername").textContent = username;
+    const dn       = getDisplayName();
+    const username = S.get("rg-username", "");
+    document.getElementById("profileAvatar").textContent   = avatarLetter(dn);
+    document.getElementById("profileUsername").textContent = dn;
+    document.getElementById("profileHandle").textContent   = username ? `@${username}` : "";
     document.getElementById("profileEmail").textContent    = currentUser?.email || "";
-    document.getElementById("psBest").textContent   = best;
-    document.getElementById("psCoins").textContent  = coins;
-    document.getElementById("psStreak").textContent = streak;
+    document.getElementById("psBest").textContent          = best;
+    document.getElementById("psCoins").textContent         = coins;
+    document.getElementById("psStreak").textContent        = streak;
+    document.getElementById("dnInput").value               = "";
+    document.getElementById("dnError").textContent         = "";
+
+    // Cooldown display
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const remaining = weekMs - (Date.now() - lastDisplayNameChange);
+    const cdEl = document.getElementById("dnCooldown");
+    if (lastDisplayNameChange > 0 && remaining > 0) {
+      const days = Math.ceil(remaining / 86400000);
+      cdEl.textContent = `Next change available in ${days} day${days !== 1 ? "s" : ""}`;
+      document.getElementById("dnInput").disabled = true;
+      document.querySelector("#authProfile .btn.shop-btn").disabled = true;
+    } else {
+      cdEl.textContent = lastDisplayNameChange > 0 ? "Change available now!" : "";
+      document.getElementById("dnInput").disabled = false;
+      document.querySelector("#authProfile .btn.shop-btn").disabled = false;
+    }
   },
 
   // ── Sign Up ──
@@ -2381,6 +2425,33 @@ const AuthUI = {
     } catch(e) {
       document.getElementById("si-error").textContent = friendlyAuthError(e.code);
     }
+  },
+
+  // ── Change Display Name ──
+  async changeDisplayName() {
+    const newName = document.getElementById("dnInput").value.trim();
+    const errEl   = document.getElementById("dnError");
+    errEl.textContent = "";
+
+    if (!newName) { errEl.textContent = "Enter a display name."; return; }
+    if (newName.length < 2)  { errEl.textContent = "At least 2 characters required."; return; }
+    if (newName.length > 24) { errEl.textContent = "Max 24 characters."; return; }
+
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    if (lastDisplayNameChange > 0 && Date.now() - lastDisplayNameChange < weekMs) {
+      const days = Math.ceil((weekMs - (Date.now() - lastDisplayNameChange)) / 86400000);
+      errEl.textContent = `You can change your display name in ${days} day${days !== 1 ? "s" : ""}.`;
+      return;
+    }
+
+    setDisplayName(newName);
+    lastDisplayNameChange = Date.now();
+    S.set("rg-lastDNChange", lastDisplayNameChange);
+    saveAll();
+    updateAccountBtn(true);
+    showToast(`✅ Display name changed to "${newName}"!`);
+    beep(1100, 0.1, "sine", 0.05);
+    this.showProfile(); // refresh to show new name + reset cooldown display
   },
 
   // ── Google Sign-In ──
