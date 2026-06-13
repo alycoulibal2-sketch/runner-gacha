@@ -795,9 +795,22 @@
         <input class="auth-input" id="si-pw"    type="password" placeholder="Password" autocomplete="current-password" />
         <div id="si-error" class="auth-error"></div>
         <button class="btn shop-btn" style="width:100%;" onclick="AuthUI.doSignin()">Sign In</button>
-        <span class="auth-link" onclick="AuthUI.doReset()">Forgot password? Send reset email</span>
+        <span class="auth-link" onclick="AuthUI.showReset()">Forgot password?</span>
       </div>
       <span class="auth-link" onclick="AuthUI.showWelcome()">← Back</span>
+      <button class="btn secondary" onclick="AuthUI.close()">Close</button>
+    </div>
+
+    <!-- Password Reset -->
+    <div id="authReset" style="display:none;flex-direction:column;align-items:center;gap:12px;width:100%;">
+      <div class="auth-section-title">🔑 Reset Password</div>
+      <p class="auth-sub">Enter your email and we'll send a reset link. Check your spam folder if it doesn't arrive within a minute.</p>
+      <div class="auth-form">
+        <input class="auth-input" id="reset-email" type="email" placeholder="Email address" autocomplete="email" />
+        <div id="reset-msg" style="font-size:12px;text-align:center;min-height:16px;"></div>
+        <button class="btn shop-btn" style="width:100%;" onclick="AuthUI.doReset()">Send Reset Email</button>
+      </div>
+      <span class="auth-link" onclick="AuthUI.showSignin()">← Back to Sign In</span>
       <button class="btn secondary" onclick="AuthUI.close()">Close</button>
     </div>
 
@@ -2259,9 +2272,17 @@ const AuthUI = {
   },
 
   _setView(id) {
-    ["authWelcome","authSignup","authSignin","authProfile"].forEach(v => {
+    ["authWelcome","authSignup","authSignin","authReset","authProfile"].forEach(v => {
       document.getElementById(v).style.display = v === id ? "flex" : "none";
     });
+  },
+
+  showReset() {
+    this._setView("authReset");
+    const prefill = document.getElementById("si-email")?.value.trim() || "";
+    document.getElementById("reset-email").value = prefill;
+    document.getElementById("reset-msg").textContent = "";
+    document.getElementById("reset-msg").style.color = "";
   },
 
   showWelcome() {
@@ -2415,15 +2436,25 @@ const AuthUI = {
 
   // ── Password reset ──
   async doReset() {
-    if (!fbReady) return;
-    const email = document.getElementById("si-email").value.trim();
-    if (!email) { document.getElementById("si-error").textContent = "Enter your email first."; return; }
+    const msgEl = document.getElementById("reset-msg");
+    msgEl.style.color = "#f87171";
+
+    if (!fbReady) { msgEl.textContent = "Account system not available right now."; return; }
+
+    const email = document.getElementById("reset-email").value.trim();
+    if (!email) { msgEl.textContent = "Enter your email address."; return; }
+
+    msgEl.style.color = "#94a3b8";
+    msgEl.textContent = "Sending…";
+
     try {
       await fbAuth.sendPasswordResetEmail(email);
-      showToast("📧 Reset email sent to " + email);
-      document.getElementById("si-error").textContent = "";
+      msgEl.style.color = "#34d399";
+      msgEl.textContent = "✅ Reset link sent! Check your inbox and spam folder.";
+      document.getElementById("reset-email").value = "";
     } catch(e) {
-      document.getElementById("si-error").textContent = friendlyAuthError(e.code);
+      msgEl.style.color = "#f87171";
+      msgEl.textContent = friendlyAuthError(e.code);
     }
   },
 
@@ -2476,11 +2507,17 @@ const AuthUI = {
   },
 
   async doResetQuick() {
-    if (!fbReady || !this._quickEmail) return;
+    if (!fbReady || !this._quickEmail) {
+      document.getElementById("pw-error").textContent = "Account system not available.";
+      return;
+    }
     try {
       await fbAuth.sendPasswordResetEmail(this._quickEmail);
-      showToast("📧 Reset email sent to " + this._quickEmail);
-    } catch(e) { showToast("❌ " + friendlyAuthError(e.code)); }
+      this.closePwOverlay();
+      showToast("📧 Reset link sent to " + this._quickEmail + " — check spam too!");
+    } catch(e) {
+      document.getElementById("pw-error").textContent = friendlyAuthError(e.code);
+    }
   },
 };
 
