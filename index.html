@@ -855,6 +855,19 @@
     </div>
   </div>
 
+  <!-- Password reset landing page (shown when user clicks reset link from email) -->
+  <div id="resetPasswordPage" style="position:absolute;inset:0;background:#020617;z-index:100;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;">
+    <div style="font-size:22px;font-weight:900;background:linear-gradient(90deg,#ff7a59,#7c4dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Runner Gacha</div>
+    <div style="font-size:17px;font-weight:900;">🔑 Set New Password</div>
+    <p style="font-size:12px;opacity:.6;text-align:center;max-width:280px;">Choose a strong new password for your account.</p>
+    <div class="auth-form" style="width:100%;max-width:320px;">
+      <input class="auth-input" id="rp-pw1" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password" />
+      <input class="auth-input" id="rp-pw2" type="password" placeholder="Confirm new password" autocomplete="new-password" />
+      <div id="rp-msg" style="font-size:12px;text-align:center;min-height:16px;"></div>
+      <button class="btn shop-btn" style="width:100%;" onclick="ResetPage.confirm()">Set New Password</button>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast"></div>
 </div>
@@ -2551,8 +2564,63 @@ window.Ads              = Ads;
 window.Share            = Share;
 
 // ─────────────────────────────────────────────
-//  INIT
+//  PASSWORD RESET PAGE (handles ?mode=resetPassword links from email)
 // ─────────────────────────────────────────────
+const ResetPage = {
+  oobCode: null,
+
+  init() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("mode") !== "resetPassword") return;
+    this.oobCode = p.get("oobCode");
+    if (!this.oobCode) return;
+
+    // Show reset UI, hide game menu
+    document.getElementById("resetPasswordPage").style.display = "flex";
+    document.getElementById("menu").style.display = "none";
+    menuOpen = false;
+  },
+
+  async confirm() {
+    const pw1   = document.getElementById("rp-pw1").value;
+    const pw2   = document.getElementById("rp-pw2").value;
+    const msgEl = document.getElementById("rp-msg");
+    const setMsg = (text, color) => { msgEl.textContent = text; msgEl.style.color = color; };
+
+    if (!pw1)          { setMsg("Enter a new password.", "#f87171"); return; }
+    if (pw1.length < 6){ setMsg("Password must be at least 6 characters.", "#f87171"); return; }
+    if (pw1 !== pw2)   { setMsg("Passwords don't match.", "#f87171"); return; }
+    if (!fbReady)      { setMsg("Account system not available right now.", "#f87171"); return; }
+
+    setMsg("Updating password…", "#94a3b8");
+
+    try {
+      await fbAuth.confirmPasswordReset(this.oobCode, pw1);
+      setMsg("✅ Password updated! Signing you in…", "#34d399");
+      document.getElementById("rp-pw1").value = "";
+      document.getElementById("rp-pw2").value = "";
+
+      // After 2s, hide reset page, open sign-in
+      setTimeout(() => {
+        window.history.replaceState({}, "", window.location.pathname);
+        document.getElementById("resetPasswordPage").style.display = "none";
+        document.getElementById("menu").style.display = "flex";
+        menuOpen = true;
+        AuthUI.open();
+        AuthUI.showSignin();
+      }, 2000);
+    } catch(e) {
+      const msgs = {
+        "auth/expired-action-code": "This reset link has expired — request a new one.",
+        "auth/invalid-action-code": "This reset link is invalid or already used.",
+      };
+      setMsg(msgs[e.code] || friendlyAuthError(e.code), "#f87171");
+    }
+  },
+};
+window.ResetPage = ResetPage;
+// ─────────────────────────────────────────────
+ResetPage.init();
 giveStarterSkins();
 updateStreak();
 refreshHUD();
