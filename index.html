@@ -1221,8 +1221,39 @@ const Music = (() => {
 
   const MENU_TRACKS = ["menu0","menu1","menu2"];
   let menuIndex = S.get("rg-menuTrack", 0) % MENU_TRACKS.length;
+  const MENU_SWITCH_MS = 5 * 60 * 1000; // 5 minutes
 
   let current = null, timer = null, step = 0, nextNoteTime = 0, master = null;
+  let menuAutoTimer = null;
+
+  function clearMenuAuto() { if (menuAutoTimer) { clearTimeout(menuAutoTimer); menuAutoTimer = null; } }
+
+  function scheduleMenuAuto() {
+    clearMenuAuto();
+    menuAutoTimer = setTimeout(() => {
+      menuIndex = (menuIndex + 1) % MENU_TRACKS.length;
+      S.set("rg-menuTrack", menuIndex);
+      const name = TRACKS[MENU_TRACKS[menuIndex]].name;
+      // Crossfade to next track
+      current = null; // force play() to restart
+      if (audioEnabled) {
+        step = 0;
+        nextNoteTime = audioCtx ? audioCtx.currentTime + 0.05 : 0;
+        const tr = TRACKS[MENU_TRACKS[menuIndex]];
+        if (master && audioCtx) {
+          master.gain.cancelScheduledValues(audioCtx.currentTime);
+          master.gain.setValueAtTime(master.gain.value, audioCtx.currentTime);
+          master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+          setTimeout(() => { current = MENU_TRACKS[menuIndex]; master.gain.linearRampToValueAtTime(tr.vol, audioCtx.currentTime + 0.6); }, 650);
+        }
+      }
+      current = MENU_TRACKS[menuIndex];
+      const btn = document.getElementById("menuMusicBtn");
+      if (btn) btn.textContent = "🎵 Music: " + name;
+      showToast("🎵 Now playing: " + name);
+      scheduleMenuAuto(); // schedule next switch
+    }, MENU_SWITCH_MS);
+  }
 
   function buildMaster() {
     master = audioCtx.createGain();
@@ -1303,18 +1334,29 @@ const Music = (() => {
   }
 
   return {
-    playMenu() { play(MENU_TRACKS[menuIndex]); },
-    playDifficulty(mode) { if (TRACKS[mode]) play(mode); },
+    playMenu() {
+      play(MENU_TRACKS[menuIndex]);
+      scheduleMenuAuto(); // start 5-min auto-switch countdown
+    },
+    playDifficulty(mode) {
+      if (!TRACKS[mode]) return;
+      clearMenuAuto(); // game music never auto-switches
+      play(mode);
+    },
     nextMenuTrack() {
       menuIndex = (menuIndex + 1) % MENU_TRACKS.length;
       S.set("rg-menuTrack", menuIndex);
       const t = TRACKS[MENU_TRACKS[menuIndex]];
-      if (audioEnabled) this.playMenu();
+      current = null; // force restart
+      if (audioEnabled) this.playMenu(); else scheduleMenuAuto();
+      const btn = document.getElementById("menuMusicBtn");
+      if (btn) btn.textContent = "🎵 Music: " + t.name;
       showToast("🎵 " + t.name);
       return t.name;
     },
     menuTrackName() { return TRACKS[MENU_TRACKS[menuIndex]].name; },
     stop() {
+      clearMenuAuto();
       if (timer) { clearInterval(timer); timer = null; }
       if (master && audioCtx) {
         master.gain.cancelScheduledValues(audioCtx.currentTime);
