@@ -1174,56 +1174,201 @@ function toggleSound() {
 }
 
 // ─────────────────────────────────────────────
-//  PROCEDURAL MUSIC ENGINE
-//  Generative chiptune loops — intensity scales with difficulty.
+//  MUSIC ENGINE  –  multi-section arrangement
+//  Each track has 5 distinct 32-step segments
+//  assembled into a ~3-4 min arrangement before it repeats.
 // ─────────────────────────────────────────────
 const Music = (() => {
-  // Note frequencies (Hz)
-  const N = {
-    A1:55.00, C2:65.41, D2:73.42, E2:82.41, F2:87.31, G2:98.00,
-    A2:110.00, B2:123.47, C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00,
-    A3:220.00, B3:246.94, C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00,
-    A4:440.00, B4:493.88, C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
-  };
-  const _ = 0; // rest
+  // ── Note frequencies (A natural minor + relative major keys) ──
+  const st = (f, n) => f * 2 ** (n / 12);
+  const A1=55,  B1=st(55,2),  C2=st(55,3),  D2=st(55,5),  E2=st(55,7),  F2=st(55,8),  G2=st(55,10),
+        A2=110, B2=st(110,2), C3=st(110,3), D3=st(110,5), E3=st(110,7), F3=st(110,8), G3=st(110,10),
+        A3=220, B3=st(220,2), C4=st(220,3), D4=st(220,5), E4=st(220,7), F4=st(220,8), G4=st(220,10),
+        A4=440, B4=st(440,2), C5=st(440,3), D5=st(440,5), E5=st(440,7), F5=st(440,8), G5=st(440,10),
+        A5=880, B5=st(880,2), C6=st(880,3), D6=st(880,5), E6=st(880,7);
+  const _ = 0;
 
-  // Each track is 16 sixteenth-steps. step = seconds per step (lower = faster/more intense).
+  // ── Track library ──
+  // Each track: step (s/16th), vol, oscillator types,
+  //   segments[]: {b:bass[32], l:lead[32], d:drum[16]}
+  //   order[]: segment indices forming the full arrangement
+  // At step 0.22 × 32 steps × 24 entries ≈ 169 s ≈ 2.8 min before exact repeat.
   const TRACKS = {
-    // ── MENU SELECTION (calm, ambient) ──
-    menu0: { name:"Dreamscape", step:0.24, vol:0.16, leadType:"triangle", bassType:"sine",
-      bass: [N.A2,_,_,_, N.F2,_,_,_, N.C3,_,_,_, N.E2,_,_,_],
-      lead: [N.A4,_,N.C5,_, N.E5,_,N.C5,_, N.G4,_,N.C5,_, N.B4,_,N.E5,_],
-      drum: [] },
-    menu1: { name:"Starlight", step:0.26, vol:0.15, leadType:"sine", bassType:"sine",
-      bass: [N.D2,_,_,_, N.A2,_,_,_, N.B2,_,_,_, N.G2,_,_,_],
-      lead: [N.D5,_,N.F5,_,N.A5,_,N.F5,_, N.E5,_,N.G5,_,N.B5,_,N.G5,_],
-      drum: [] },
-    menu2: { name:"Neon Drift", step:0.20, vol:0.15, leadType:"triangle", bassType:"triangle",
-      bass: [N.E2,_,N.E2,_, N.G2,_,N.G2,_, N.A2,_,N.A2,_, N.D2,_,N.D2,_],
-      lead: [N.E5,N.B4,N.G4,_, N.A4,_,N.E5,_, N.D5,N.A4,N.F4,_, N.D5,_,N.A4,_],
-      drum: [] },
-    // ── EASY (light, upbeat) ──
-    easy: { name:"Easy", step:0.18, vol:0.17, leadType:"square", bassType:"triangle",
-      bass: [N.C3,_,_,_, N.G2,_,_,_, N.A2,_,_,_, N.F2,_,_,_],
-      lead: [N.C5,_,N.E5,_, N.G5,_,N.E5,_, N.A4,_,N.C5,_, N.F4,_,N.A4,_],
-      drum: ['K',_,'H',_, 'K',_,'H',_, 'K',_,'H',_, 'K',_,'H','H'] },
-    // ── HARD (driving) ──
-    hard: { name:"Hard", step:0.14, vol:0.18, leadType:"square", bassType:"sawtooth",
-      bass: [N.A2,_,N.A2,N.A2, N.A2,_,N.E3,_, N.F2,_,N.F2,N.F2, N.G2,_,N.G2,_],
-      lead: [N.A4,N.C5,N.E5,N.C5, N.A4,N.E5,N.G5,N.E5, N.F5,N.A5,N.F5,N.C5, N.G5,N.B5,N.G5,N.D5],
-      drum: ['K',_,'H','K', 'H',_,'K','H', 'K',_,'H','K', 'H','K','H','H'] },
-    // ── EXTREME (intense, fast) ──
-    extreme: { name:"Extreme", step:0.105, vol:0.19, leadType:"sawtooth", bassType:"sawtooth",
-      bass: [N.A1,N.A1,N.A2,N.A1, N.A1,N.A1,N.E2,N.A1, N.F2,N.F2,N.A2,N.F2, N.G2,N.G2,N.B2,N.G2],
-      lead: [N.A5,N.E5,N.A5,N.B5, N.G5,N.E5,N.A5,N.C5, N.F5,N.A5,N.C5,N.A5, N.G5,N.B5,N.D5,N.B5],
-      drum: ['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+    // ════════════════════════════════════════════════════════════
+    //  MENU 0 — "Dreamscape"  (slow ambient, A minor, triangle)
+    // ════════════════════════════════════════════════════════════
+    menu0: { name:"Dreamscape", step:0.22, vol:0.15, lt:"triangle", bt:"sine",
+      segments: [
+        { // 0 – Intro: sparse Am → F pads
+          b:[A2,_,_,_,  _,_,A2,_,  _,_,_,_,  C3,_,_,_,  F2,_,_,_,  _,_,F2,_,  _,_,_,_,  A2,_,_,_],
+          l:[_,_,A4,_,  _,_,_,_,  E5,_,_,C5, _,_,_,_,   F4,_,A4,_,  _,C5,_,_,  _,_,A4,_,  _,E5,_,_],
+          d:[] },
+        { // 1 – Verse A: Am → F → C → Em flowing melody
+          b:[A2,_,_,A2, _,E2,_,_,  F2,_,_,F2, _,_,C2,_,  C3,_,_,_,  G2,_,C3,_,  E2,_,_,E2, B2,_,E2,_],
+          l:[A4,_,C5,_, E5,_,C5,_, A4,_,G4,_, E4,_,_,_,  F4,_,A4,C5,_,E5,_,_,  E5,_,C5,A4,_,G4,_,E4],
+          d:[] },
+        { // 2 – Bridge: C → G → Am → Dm colour shift
+          b:[C3,_,_,_,  E3,_,G3,_, C3,_,_,_,  G3,_,_,_,  G2,_,D3,_, B2,_,G2,_,  A2,_,E3,_, A2,_,_,_],
+          l:[E5,_,G5,_, _,E5,_,C5, G5,_,_,E5, D5,_,_,_,  D5,B4,G4,_, B4,_,D5,_, G5,_,E5,_, _,D5,B4,_],
+          d:[] },
+        { // 3 – Breakdown: Am only, wide intervals, breathes
+          b:[A2,_,_,_,  _,_,_,_,   A3,_,_,_,  _,_,_,_,   A2,_,_,_,  E3,_,_,_,   _,_,A2,_,  _,_,C3,_],
+          l:[_,_,_,A4,  _,_,E5,_,  _,C5,_,_,  A4,_,_,_,  _,_,A5,_,  _,G5,_,E5,  _,C5,_,_,  A4,_,_,_],
+          d:[] },
+        { // 4 – Chorus: F → C → G → Am, fuller
+          b:[F2,_,A2,_, C3,_,F2,_,  C3,_,_,G3, E3,_,C3,_,  G2,_,D3,_, B2,_,G2,_,  A2,_,E3,A2,C3,_,A2,_],
+          l:[F4,A4,C5,F5,_,C5,A4,_, E5,C5,G4,_, E5,_,C5,_,  G5,_,D5,B4,G4,_,D5,_,  A5,_,E5,C5,A4,E5,_,A4],
+          d:[] },
+      ],
+      order:[0,1,2,1,3,4,1,2,4,3,1,0,4,2,1,3,4,0,2,1,4,3,2,1,0,4,1,2,3,4] },
+
+    // ════════════════════════════════════════════════════════════
+    //  MENU 1 — "Starlight"  (medium tempo, D major, sine)
+    // ════════════════════════════════════════════════════════════
+    menu1: { name:"Starlight", step:0.24, vol:0.14, lt:"sine", bt:"sine",
+      segments: [
+        { // 0 – Opening arpeggios D → A → Bm → G
+          b:[D2,_,_,_,  A2,_,D3,_, D2,_,_,_,  _,_,D2,_,  A2,_,_,_,  E2,_,A2,_,  G2,_,_,_,  D3,_,G2,_],
+          l:[D4,_,F4,A4,D5,_,A4,_,  F4,_,D4,_,  _,_,_,_,   E5,_,B4,_,  G5,_,E5,B4, D5,_,_,_,  B4,_,_,_],
+          d:[] },
+        { // 1 – Flowing verse Bm → G → D → A
+          b:[B1,_,_,D2, F2,_,B1,_,  G2,_,_,D3, B2,_,G2,_,  D2,_,A2,D3,_,F2,_,_,   A2,_,_,E2, C3,_,A2,_],
+          l:[B4,D5,F5,_, D5,_,B4,G4, G5,_,D5,B4,G4,_,_,_,  D5,F5,A5,_, D5,_,A4,_,  A5,_,E5,C5,A4,_,E5,_],
+          d:[] },
+        { // 2 – Climax D → G → A → D rising
+          b:[D2,_,A2,D3,_,F2,A2,_,  G2,_,D3,_,  B2,_,G2,_,  A2,_,E3,A3,C3,_,A2,_,  D2,D3,_,A2,F2,_,D2,_],
+          l:[D5,_,F5,A5,D5,_,_,A4,  G5,D5,B4,_, G4,_,D5,G5, A5,_,E5,C5,A4,C5,E5,_,  D6,_,A5,F5,D5,A4,F4,_],
+          d:[] },
+        { // 3 – Rest phrase G → D sparse
+          b:[G2,_,_,_,  _,_,G2,_,  _,_,D3,_,  _,_,_,_,  D2,_,_,_,  A2,_,_,_,  D2,_,_,_,  _,F2,_,_],
+          l:[_,_,G4,_,  B4,_,_,_,  D5,_,_,G4,  _,_,_,_,  _,D5,_,_,  F5,_,_,D5, _,_,A4,_,  D5,_,_,_],
+          d:[] },
+        { // 4 – Bright run G → D → Em → A
+          b:[G2,D3,G3,_, B2,_,G2,_,  D2,A2,D3,_, F2,_,D2,_,  E2,B2,E3,_, G2,_,E2,_,  A2,_,E3,A3,C3,_,A2,_],
+          l:[G5,_,B5,D5, G4,_,B4,D5, D6,_,A5,F5, D5,A4,_,_,  E5,G5,B5,_,  E5,_,B4,G4, A5,_,E5,C5, A4,E5,A5,_],
+          d:[] },
+      ],
+      order:[0,1,3,2,1,4,0,2,1,3,4,1,2,0,4,3,1,2,4,0,1,3,2,4,1,0,3,4,2,1] },
+
+    // ════════════════════════════════════════════════════════════
+    //  MENU 2 — "Neon Drift"  (groove, E minor, triangle/tri)
+    // ════════════════════════════════════════════════════════════
+    menu2: { name:"Neon Drift", step:0.19, vol:0.14, lt:"triangle", bt:"triangle",
+      segments: [
+        { // 0 – Intro groove Em → C → G → D
+          b:[E2,_,_,E2, _,_,E2,_,  C3,_,_,_,  G3,_,C3,_,  G2,_,D3,_, G2,_,_,_,  D2,_,A2,_, D3,_,D2,_],
+          l:[E4,G4,B4,_, E5,_,B4,G4,C5,_,G4,_,  E5,_,C5,_,  G5,_,D5,B4,G4,_,_,_,  D5,F5,A5,_,D5,_,A4,_],
+          d:[] },
+        { // 1 – Em → Am → D with syncopation
+          b:[E2,E2,_,E2, B2,_,E2,_,  A2,_,E3,_, A2,_,_,A2,  D2,_,D2,A2,_,D3,_,_,  G2,_,D3,_, B2,_,G2,_],
+          l:[E5,_,G5,B5, E5,B4,G4,E4,A4,C5,E5,_, A5,_,E5,C5, D5,F5,A5,_, A4,_,D5,_, G5,_,B4,_,  D5,_,G4,_],
+          d:[] },
+        { // 2 – Melodic run C → G → Am → Em
+          b:[C3,_,E3,G3, C3,G2,_,_,  G2,B2,D3,_, G2,_,_,_,  A2,_,E3,A2, C3,_,A2,_,  E2,_,B2,E3,_,G2,_,_],
+          l:[C5,E5,G5,_, C5,_,G4,_,  G5,_,D5,B4, G4,_,_,_,  A5,_,E5,C5, A4,_,C5,E5, E5,G5,B5,_,  E5,_,B4,G4],
+          d:[] },
+        { // 3 – Full groove Em → D → C → G
+          b:[E2,E2,B2,E2,E2,_,E3,_,  D2,D2,A2,D2,D2,_,D3,_,  C3,_,G3,C3,_,_,C3,_,   G2,D3,_,B2, G2,_,G3,_],
+          l:[E5,G5,B5,E5,G4,B4,E5,G5,D5,F5,A5,_,D5,A4,_,F4,  C5,_,E5,G5,C5,G5,E5,_,  G5,D5,_,B4, G4,D5,G5,_],
+          d:[] },
+        { // 4 – Big outro Am → Em → G → D
+          b:[A2,_,E3,A2, C3,_,A2,_,  E2,B2,E3,_, B2,_,E2,_,  G2,_,D3,G2, B2,G2,_,_,  D2,A2,D3,_, F2,D2,A2,_],
+          l:[A5,_,E5,C5, A4,_,C5,E5, B5,_,E5,G5, E5,_,B4,_,  G5,B5,D5,_,  G4,_,B4,D5, D6,_,A5,F5, D5,_,A4,_],
+          d:[] },
+      ],
+      order:[0,1,0,2,3,1,0,4,2,3,1,4,0,2,1,3,4,0,3,2,1,4,3,0,2,1,4,3,2,0] },
+
+    // ════════════════════════════════════════════════════════════
+    //  EASY — "Sunny Run"  (upbeat, C major, square/triangle)
+    // ════════════════════════════════════════════════════════════
+    easy: { name:"Sunny Run", step:0.175, vol:0.17, lt:"square", bt:"triangle",
+      segments: [
+        { // 0 – Intro C → G → Am → F cheerful
+          b:[C3,_,_,C3, _,_,G3,_,  G2,_,D3,_, G2,_,_,_,  A2,_,_,A2, E3,_,A2,_,  F2,_,C3,F2,_,A2,_,_],
+          l:[C5,_,E5,_, G5,_,E5,C5,E5,_,G5,_, D5,_,B4,G4, A4,C5,E5,_, A5,_,E5,C5, F5,_,A5,C5,F5,_,_,C5],
+          d:['K',_,'H',_, 'K',_,'H',_, 'K',_,'H',_, 'K',_,'H','H'] },
+        { // 1 – Verse F → C → G → C bounce
+          b:[F2,_,_,F2, A2,_,C3,_,  C3,_,G3,C3,_,_,C3,_,  G2,_,_,G2, D3,_,G2,_,  C3,_,E3,G3,C3,_,_,_],
+          l:[F4,A4,C5,F5,_,C5,A4,_,  E5,_,G5,C5, E5,C5,_,_,  G5,_,D5,B4,G4,_,D5,_,  C5,E5,G5,_, C5,_,G4,_],
+          d:['K',_,'H',_, 'K','H',_,'K','H',_,'K',_, 'H',_,'H','K'] },
+        { // 2 – Build Am → G → F → G energy rise
+          b:[A2,_,A2,E3,A2,_,_,_,   G2,_,D3,G3,_,_,G2,_,  F2,_,F2,C3,F2,_,_,_,   G2,_,D3,G2, B2,_,G2,_],
+          l:[A4,C5,E5,A5,E5,C5,A4,_, G5,_,D5,B4,G4,_,_,_,  F5,_,A5,C5,F5,_,_,_,   G5,B5,D5,_,  G4,D5,G5,D6],
+          d:['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+        { // 3 – Bounce G → D → Em → C with fills
+          b:[G2,_,G2,D3,G2,B2,_,_,   D2,_,A2,D3,_,F2,D2,_,  E2,_,B2,E3,_,G2,E2,_,  C3,_,G3,E3,C3,_,_,_],
+          l:[G5,_,B5,D5,G5,_,D5,B4,  D5,F5,A5,_,D5,_,A4,F4, E5,G5,B5,_, E5,B4,G4,_,  C5,E5,G5,E5,C5,_,G4,_],
+          d:['K',_,'H','H', 'K',_,'H',_, 'K',_,'H','K', 'H',_,'H','H'] },
+        { // 4 – Full chorus C → Am → F → G all in
+          b:[C3,E3,G3,C3,_,_,C3,_,   A2,_,E3,A2,C3,_,_,_,   F2,A2,C3,F2,_,_,F2,_,  G2,B2,D3,G2,_,_,G2,_],
+          l:[C5,_,G5,E5,C5,G4,E5,G5, A5,_,E5,C5,A4,E5,_,_,  F5,A5,C5,F5,_,C5,A4,_,  G5,D5,B4,G4,D5,G5,_,D6],
+          d:['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+      ],
+      order:[0,1,0,2,1,3,2,4,1,0,3,1,4,2,0,3,1,4,0,2,3,1,4,2,0,1,3,4,2,1] },
+
+    // ════════════════════════════════════════════════════════════
+    //  HARD — "Voltage"  (driving 16ths, A minor, square/saw)
+    // ════════════════════════════════════════════════════════════
+    hard: { name:"Voltage", step:0.135, vol:0.18, lt:"square", bt:"sawtooth",
+      segments: [
+        { // 0 – Riff Am → F → C → G pumping bass
+          b:[A2,_,A2,A2,A2,E2,_,A2,  F2,_,F2,F2,C3,_,F2,_,  C3,_,C3,G3,E3,_,C3,_,  G2,_,G2,D3,B2,_,G2,_],
+          l:[A4,E5,A5,_, E5,C5,A4,E4, F5,_,A5,F5,C5,_,A4,_,  C5,G5,E5,C5,_,E5,G5,_, G5,D5,B4,_, G4,D5,G5,_],
+          d:['K',_,'H','K', 'H',_,'K','H', 'K',_,'H','K', 'H','K','H','H'] },
+        { // 1 – Em → C → D → Am with synco lead
+          b:[E2,E2,E2,B2,E2,B2,_,E2,  C3,_,C3,G3,C3,_,_,_,   D2,D2,A2,D3,A2,_,D2,_,  A2,_,E3,A2,A2,C3,_,A2],
+          l:[E5,G5,B5,E5,_,B4,E5,G5,  C5,E5,G5,_,C5,_,G4,_,  D5,F5,A5,D5,_,A4,D5,_,  A5,_,E5,C5,A4,_,G4,E4],
+          d:['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+        { // 2 – Breakdown Am groove, stripped
+          b:[A2,_,_,A2, A2,_,E3,_, A2,_,_,A2, C3,_,_,A2,  A2,A2,_,A2,E3,_,A2,_,  A2,_,C3,A2,_,E3,_,A2],
+          l:[A4,_,C5,_, E5,_,_,A4, _,C5,_,_,  E5,A5,_,E5, A5,G5,E5,_,_,C5,_,A4,  E5,_,G5,_,  A5,_,E5,_],
+          d:['K',_,'H',_, 'K',_,'H',_, 'K',_,'H',_, 'K',_,'H','H'] },
+        { // 3 – Tension Dm → Bb → Am → E chromatic
+          b:[D2,_,D2,A2,D3,_,D2,_,  G2,_,D3,G2,_,D3,_,G2,  A2,_,E3,A2,A2,_,E2,_,  E2,E2,B2,E2,E2,_,B2,E2],
+          l:[D5,F5,A5,_,A5,F5,D5,_,  G5,_,D5,B4,G5,D5,_,_,  A5,_,C5,E5,A5,E5,C5,_, E5,G5,B5,E5,_,B4,G4,E4],
+          d:['K','K','H','K', 'H','K','H','H', 'K','K','H','K', 'H','K','H','K'] },
+        { // 4 – Full intensity Am → G → F → E all out
+          b:[A2,A2,E3,A2,A2,E3,A2,A2, G2,G2,D3,G2,D3,_,G2,G2, F2,F2,C3,F2,A2,_,F2,F2, E2,E2,B2,E2,B2,_,E3,E2],
+          l:[A5,G5,E5,C5,A4,E5,A5,G5, G5,_,D5,B4,G4,D5,G5,_,  F5,_,A5,C5,F5,C5,A4,_,  E5,G5,B5,E5,_,B4,E5,G5],
+          d:['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+      ],
+      order:[0,1,2,1,0,3,1,4,0,2,4,1,3,0,2,4,1,0,3,2,4,1,3,0,2,4,3,1,0,2] },
+
+    // ════════════════════════════════════════════════════════════
+    //  EXTREME — "Overdrive"  (max intensity, saw/saw, 100ms)
+    // ════════════════════════════════════════════════════════════
+    extreme: { name:"Overdrive", step:0.10, vol:0.19, lt:"sawtooth", bt:"sawtooth",
+      segments: [
+        { // 0 – Pounding Am wall
+          b:[A1,A1,A2,A1,A1,A1,E2,A1, A1,A1,A2,A1,C2,A1,E2,A1, F1,F1,C2,F1,F1,F1,A1,F1, A1,A1,E2,A1,E1,A1,E2,A1],
+          l:[A5,G5,E5,A5,C5,A4,E5,A5, G5,E5,C5,A4,E5,A5,G5,E5, F5,A5,C5,F5,A5,F5,C5,A4, E5,A5,G5,E5,B4,E5,G5,B5],
+          d:['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+        { // 1 – Dark Em → Am → Dm fast
+          b:[E2,E2,E2,B2,E2,B2,E2,E2, A1,A1,A2,E2,A1,E2,A1,A1, D2,D2,A2,D2,A1,D2,F2,A1, E2,E2,B2,E2,B1,E2,G2,B2],
+          l:[E5,_,G5,B5,E5,B4,G4,E4,  A5,E5,C5,A4,E4,A4,C5,E5, D5,A4,F4,D4,F5,A5,D5,F4, E5,B4,G4,B4,G5,E5,B4,E5],
+          d:['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+        { // 2 – Chromatic blast tension build
+          b:[A1,B1,C2,D2,E2,F2,G2,A2, A1,G1,F1,E1,D1,E1,F1,A1, C2,C2,G2,C2,C2,G2,C2,C2, E2,E2,B2,E2,B1,G2,E2,B1],
+          l:[A5,B5,C5,A5,E5,G5,A5,E5, A5,G5,F5,E5,D5,E5,A5,_,  C5,E5,G5,C5,E5,C5,A4,_,  B4,E5,G5,B5,G5,E5,B4,_],
+          d:['K','K','H','K', 'K','H','K','K', 'H','K','K','H', 'K','K','K','H'] },
+        { // 3 – Riff groove Am max speed
+          b:[A1,A2,A1,A2,E2,A1,E2,A2, A1,A2,E2,A1,G2,A1,A2,E2, F1,F2,C2,F1,C2,F1,A1,C2, E2,E1,B1,E2,E1,B1,E2,G2],
+          l:[A5,E5,A4,E5,A5,C5,E5,A5, G5,E5,C5,A4,E5,G5,A5,G5, F5,C5,F4,C5,F5,A5,C5,F5, E5,B4,E5,B5,G5,E5,B4,_],
+          d:['K','H','K','K', 'H','K','H','K', 'K','H','K','H', 'K','K','H','K'] },
+        { // 4 – Climax all voices
+          b:[A1,A1,A2,E2,A1,E2,A1,G2, F1,F1,C2,F1,E1,F1,A1,E1, C2,G2,C2,G2,E2,C2,G2,E2, A1,A1,A2,A1,A1,A2,E2,A2],
+          l:[A5,G5,E5,G5,A5,E5,C5,A4, F5,A5,C5,A5,E5,_,A5,G5,  C5,E5,G5,E5,C5,G5,E5,C5, A5,E5,A4,E5,A5,G5,E5,A5],
+          d:['K','K','H','K', 'K','H','K','K', 'H','K','K','K', 'H','K','K','H'] },
+      ],
+      order:[0,1,0,2,1,3,0,4,2,0,3,1,4,2,0,3,1,4,0,2,3,4,1,0,3,2,4,0,1,3] },
   };
 
   const MENU_TRACKS = ["menu0","menu1","menu2"];
   let menuIndex = S.get("rg-menuTrack", 0) % MENU_TRACKS.length;
-  const MENU_SWITCH_MS = 5 * 60 * 1000; // 5 minutes
+  const MENU_SWITCH_MS = 5 * 60 * 1000;
 
-  let current = null, timer = null, step = 0, nextNoteTime = 0, master = null;
+  let current = null, timer = null, master = null;
+  let segStep = 0, arrPos = 0, nextNoteTime = 0;
   let menuAutoTimer = null;
 
   function clearMenuAuto() { if (menuAutoTimer) { clearTimeout(menuAutoTimer); menuAutoTimer = null; } }
@@ -1234,24 +1379,23 @@ const Music = (() => {
       menuIndex = (menuIndex + 1) % MENU_TRACKS.length;
       S.set("rg-menuTrack", menuIndex);
       const name = TRACKS[MENU_TRACKS[menuIndex]].name;
-      // Crossfade to next track
-      current = null; // force play() to restart
-      if (audioEnabled) {
-        step = 0;
-        nextNoteTime = audioCtx ? audioCtx.currentTime + 0.05 : 0;
+      current = null; segStep = 0; arrPos = 0;
+      if (audioEnabled && master && audioCtx) {
         const tr = TRACKS[MENU_TRACKS[menuIndex]];
-        if (master && audioCtx) {
-          master.gain.cancelScheduledValues(audioCtx.currentTime);
-          master.gain.setValueAtTime(master.gain.value, audioCtx.currentTime);
-          master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
-          setTimeout(() => { current = MENU_TRACKS[menuIndex]; master.gain.linearRampToValueAtTime(tr.vol, audioCtx.currentTime + 0.6); }, 650);
-        }
+        master.gain.cancelScheduledValues(audioCtx.currentTime);
+        master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+        setTimeout(() => {
+          current = MENU_TRACKS[menuIndex];
+          nextNoteTime = audioCtx.currentTime + 0.05;
+          master.gain.linearRampToValueAtTime(tr.vol, audioCtx.currentTime + 0.5);
+        }, 550);
+      } else {
+        current = MENU_TRACKS[menuIndex];
       }
-      current = MENU_TRACKS[menuIndex];
       const btn = document.getElementById("menuMusicBtn");
       if (btn) btn.textContent = "🎵 Music: " + name;
       showToast("🎵 Now playing: " + name);
-      scheduleMenuAuto(); // schedule next switch
+      scheduleMenuAuto();
     }, MENU_SWITCH_MS);
   }
 
@@ -1263,11 +1407,10 @@ const Music = (() => {
 
   function tone(freq, t, dur, type, vol) {
     if (!freq) return;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
     o.type = type; o.frequency.value = freq;
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.linearRampToValueAtTime(vol, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(master);
     o.start(t); o.stop(t + dur + 0.02);
@@ -1276,43 +1419,41 @@ const Music = (() => {
   function kick(t) {
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
     o.type = "sine";
-    o.frequency.setValueAtTime(150, t);
-    o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-    g.gain.setValueAtTime(0.5, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+    g.gain.setValueAtTime(0.55, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
     o.connect(g); g.connect(master);
-    o.start(t); o.stop(t + 0.18);
+    o.start(t); o.stop(t + 0.2);
   }
 
   function hat(t) {
-    const dur = 0.03;
-    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const dur = 0.028;
+    const buf = audioCtx.createBuffer(1, Math.ceil(audioCtx.sampleRate * dur), audioCtx.sampleRate);
     const d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     const src = audioCtx.createBufferSource(); src.buffer = buf;
-    const hp = audioCtx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
+    const hp = audioCtx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7200;
     const g = audioCtx.createGain();
-    g.gain.setValueAtTime(0.18, t);
+    g.gain.setValueAtTime(0.16, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(hp); hp.connect(g); g.connect(master);
-    src.start(t); src.stop(t + dur);
-  }
-
-  function scheduleStep(s, t, tr) {
-    if (tr.bass[s]) tone(tr.bass[s], t, tr.step * 1.6, tr.bassType, tr.vol * 0.6);
-    if (tr.lead[s]) tone(tr.lead[s], t, tr.step * 0.9, tr.leadType, tr.vol * 0.5);
-    const dr = tr.drum[s];
-    if (dr === 'K') kick(t);
-    else if (dr === 'H') hat(t);
+    src.start(t); src.stop(t + dur + 0.005);
   }
 
   function scheduler() {
     if (!current || !audioCtx) return;
     const tr = TRACKS[current];
-    while (nextNoteTime < audioCtx.currentTime + 0.12) {
-      scheduleStep(step, nextNoteTime, tr);
+    while (nextNoteTime < audioCtx.currentTime + 0.15) {
+      const seg = tr.segments[tr.order[arrPos % tr.order.length]];
+      if (seg.b[segStep]) tone(seg.b[segStep], nextNoteTime, tr.step * 1.7, tr.bt, tr.vol * 0.65);
+      if (seg.l[segStep]) tone(seg.l[segStep], nextNoteTime, tr.step * 0.82, tr.lt, tr.vol * 0.52);
+      const dr = seg.d[segStep % 16];
+      if (dr === 'K') kick(nextNoteTime);
+      else if (dr === 'H') hat(nextNoteTime);
       nextNoteTime += tr.step;
-      step = (step + 1) % 16;
+      segStep++;
+      if (segStep >= 32) { segStep = 0; arrPos = (arrPos + 1) % tr.order.length; }
     }
   }
 
@@ -1321,11 +1462,11 @@ const Music = (() => {
     ensureAudio();
     if (!master) buildMaster();
     if (current === trackKey && timer) return;
+    const changed = current !== trackKey;
     current = trackKey;
-    step = 0;
+    if (changed) { segStep = 0; arrPos = 0; }
     nextNoteTime = audioCtx.currentTime + 0.05;
     const tr = TRACKS[trackKey];
-    // smooth fade-in
     master.gain.cancelScheduledValues(audioCtx.currentTime);
     master.gain.setValueAtTime(master.gain.value, audioCtx.currentTime);
     master.gain.linearRampToValueAtTime(tr.vol, audioCtx.currentTime + 0.4);
@@ -1334,20 +1475,13 @@ const Music = (() => {
   }
 
   return {
-    playMenu() {
-      play(MENU_TRACKS[menuIndex]);
-      scheduleMenuAuto(); // start 5-min auto-switch countdown
-    },
-    playDifficulty(mode) {
-      if (!TRACKS[mode]) return;
-      clearMenuAuto(); // game music never auto-switches
-      play(mode);
-    },
+    playMenu() { play(MENU_TRACKS[menuIndex]); scheduleMenuAuto(); },
+    playDifficulty(mode) { if (!TRACKS[mode]) return; clearMenuAuto(); play(mode); },
     nextMenuTrack() {
       menuIndex = (menuIndex + 1) % MENU_TRACKS.length;
       S.set("rg-menuTrack", menuIndex);
       const t = TRACKS[MENU_TRACKS[menuIndex]];
-      current = null; // force restart
+      current = null; segStep = 0; arrPos = 0;
       if (audioEnabled) this.playMenu(); else scheduleMenuAuto();
       const btn = document.getElementById("menuMusicBtn");
       if (btn) btn.textContent = "🎵 Music: " + t.name;
@@ -1368,7 +1502,10 @@ const Music = (() => {
     setPaused(p) {
       if (!master || !audioCtx) return;
       master.gain.cancelScheduledValues(audioCtx.currentTime);
-      master.gain.linearRampToValueAtTime(p ? 0.0001 : (TRACKS[current]?.vol || 0.15), audioCtx.currentTime + 0.15);
+      master.gain.linearRampToValueAtTime(
+        p ? 0.0001 : (TRACKS[current]?.vol || 0.15),
+        audioCtx.currentTime + 0.15
+      );
     },
   };
 })();
