@@ -651,6 +651,7 @@
 
     <div class="menu-actions">
       <button class="btn secondary" id="menuMusicBtn" onclick="cycleMenuMusic()" style="font-size:12px;">🎵 Music: —</button>
+      <button class="btn secondary" id="menuMuteBtn" onclick="toggleSound()" style="font-size:12px;">🔊 Sound On</button>
     </div>
 
     <div class="menu-actions">
@@ -1169,6 +1170,8 @@ function toggleSound() {
   audioEnabled = !audioEnabled;
   S.set("rg-sound", audioEnabled);
   document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
+  const muteBtn = document.getElementById("menuMuteBtn");
+  if (muteBtn) muteBtn.textContent = audioEnabled ? "🔊 Sound On" : "🔇 Muted";
   if (audioEnabled) { beep(880, 0.06); Music.resume(); }
   else Music.stop();
 }
@@ -1221,7 +1224,7 @@ const Music = (() => {
           l:[F4,A4,C5,F5,_,C5,A4,_, E5,C5,G4,_, E5,_,C5,_,  G5,_,D5,B4,G4,_,D5,_,  A5,_,E5,C5,A4,E5,_,A4],
           d:[] },
       ],
-      order:[0,1,2,1,3,4,1,2,4,3,1,0,4,2,1,3,4,0,2,1,4,3,2,1,0,4,1,2,3,4] },
+      order:[0,1,2,1,3,4,1,2,4,3,1,0,4,2,1,3,4,0,2,1,4,3,2,1,0,4,1,2,3,4,3,1,0,2,4,1,3,0,4,2,1,3,0] },
 
     // ════════════════════════════════════════════════════════════
     //  MENU 1 — "Starlight"  (medium tempo, D major, sine)
@@ -1249,7 +1252,7 @@ const Music = (() => {
           l:[G5,_,B5,D5, G4,_,B4,D5, D6,_,A5,F5, D5,A4,_,_,  E5,G5,B5,_,  E5,_,B4,G4, A5,_,E5,C5, A4,E5,A5,_],
           d:[] },
       ],
-      order:[0,1,3,2,1,4,0,2,1,3,4,1,2,0,4,3,1,2,4,0,1,3,2,4,1,0,3,4,2,1] },
+      order:[0,1,3,2,1,4,0,2,1,3,4,1,2,0,4,3,1,2,4,0,1,3,2,4,1,0,3,4,2,1,3,0,4,2,1,4,3,1,2] },
 
     // ════════════════════════════════════════════════════════════
     //  MENU 2 — "Neon Drift"  (groove, E minor, triangle/tri)
@@ -1277,7 +1280,7 @@ const Music = (() => {
           l:[A5,_,E5,C5, A4,_,C5,E5, B5,_,E5,G5, E5,_,B4,_,  G5,B5,D5,_,  G4,_,B4,D5, D6,_,A5,F5, D5,_,A4,_],
           d:[] },
       ],
-      order:[0,1,0,2,3,1,0,4,2,3,1,4,0,2,1,3,4,0,3,2,1,4,3,0,2,1,4,3,2,0] },
+      order:[0,1,0,2,3,1,0,4,2,3,1,4,0,2,1,3,4,0,3,2,1,4,3,0,2,1,4,3,2,0,1,3,4,2,0,3,1,4,2,3,0,1,4,0,2,3,1,0,4] },
 
     // ════════════════════════════════════════════════════════════
     //  EASY — "Sunny Run"  (upbeat, C major, square/triangle)
@@ -3768,6 +3771,7 @@ giveStarterSkins();
 updateStreak();
 refreshHUD();
 document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
+document.getElementById("menuMuteBtn").textContent = audioEnabled ? "🔊 Sound On" : "🔇 Muted";
 document.getElementById("menuMusicBtn").textContent = "🎵 Music: " + Music.menuTrackName();
 document.getElementById("streakCount").textContent = streak;
 document.getElementById("streakBonus").textContent =
