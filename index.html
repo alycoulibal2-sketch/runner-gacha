@@ -650,6 +650,10 @@
     </div>
 
     <div class="menu-actions">
+      <button class="btn secondary" id="menuMusicBtn" onclick="cycleMenuMusic()" style="font-size:12px;">🎵 Music: —</button>
+    </div>
+
+    <div class="menu-actions">
       <button class="btn secondary" onclick="AuthUI.open()" id="menuAccountBtn">👤 Account / Sign In</button>
     </div>
     <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
@@ -882,6 +886,16 @@
         <button class="btn shop-btn" style="width:100%;padding:8px;" onclick="AuthUI.changeDisplayName()">Change Display Name</button>
         <div id="dnCooldown" style="font-size:11px;opacity:.5;text-align:center;"></div>
         <div id="dnError" class="auth-error"></div>
+      </div>
+
+      <!-- Add email/password login (shown only for Google-only accounts) -->
+      <div id="linkEmailSection" style="display:none;width:100%;max-width:320px;background:rgba(124,77,255,0.08);border:1px solid rgba(124,77,255,0.22);border-radius:14px;padding:14px;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;font-weight:800;opacity:.7;letter-spacing:.5px;text-transform:uppercase;">🔑 Add Email Login</div>
+        <div style="font-size:11px;opacity:.55;">Set a password to also sign in with <strong id="linkEmailAddr"></strong> — stays the same account.</div>
+        <input class="auth-input" id="linkPw1" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password" />
+        <input class="auth-input" id="linkPw2" type="password" placeholder="Confirm password" autocomplete="new-password" />
+        <button class="btn shop-btn" style="width:100%;padding:8px;" onclick="AuthUI.linkEmailPassword()">Enable Email Login</button>
+        <div id="linkError" class="auth-error"></div>
       </div>
 
       <button class="btn secondary" style="width:100%;max-width:320px;" onclick="AuthUI.doSignout()">Sign Out</button>
@@ -1155,8 +1169,167 @@ function toggleSound() {
   audioEnabled = !audioEnabled;
   S.set("rg-sound", audioEnabled);
   document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
-  if (audioEnabled) beep(880, 0.06);
+  if (audioEnabled) { beep(880, 0.06); Music.resume(); }
+  else Music.stop();
 }
+
+// ─────────────────────────────────────────────
+//  PROCEDURAL MUSIC ENGINE
+//  Generative chiptune loops — intensity scales with difficulty.
+// ─────────────────────────────────────────────
+const Music = (() => {
+  // Note frequencies (Hz)
+  const N = {
+    A1:55.00, C2:65.41, D2:73.42, E2:82.41, F2:87.31, G2:98.00,
+    A2:110.00, B2:123.47, C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00,
+    A3:220.00, B3:246.94, C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00,
+    A4:440.00, B4:493.88, C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
+  };
+  const _ = 0; // rest
+
+  // Each track is 16 sixteenth-steps. step = seconds per step (lower = faster/more intense).
+  const TRACKS = {
+    // ── MENU SELECTION (calm, ambient) ──
+    menu0: { name:"Dreamscape", step:0.24, vol:0.16, leadType:"triangle", bassType:"sine",
+      bass: [N.A2,_,_,_, N.F2,_,_,_, N.C3,_,_,_, N.E2,_,_,_],
+      lead: [N.A4,_,N.C5,_, N.E5,_,N.C5,_, N.G4,_,N.C5,_, N.B4,_,N.E5,_],
+      drum: [] },
+    menu1: { name:"Starlight", step:0.26, vol:0.15, leadType:"sine", bassType:"sine",
+      bass: [N.D2,_,_,_, N.A2,_,_,_, N.B2,_,_,_, N.G2,_,_,_],
+      lead: [N.D5,_,N.F5,_,N.A5,_,N.F5,_, N.E5,_,N.G5,_,N.B5,_,N.G5,_],
+      drum: [] },
+    menu2: { name:"Neon Drift", step:0.20, vol:0.15, leadType:"triangle", bassType:"triangle",
+      bass: [N.E2,_,N.E2,_, N.G2,_,N.G2,_, N.A2,_,N.A2,_, N.D2,_,N.D2,_],
+      lead: [N.E5,N.B4,N.G4,_, N.A4,_,N.E5,_, N.D5,N.A4,N.F4,_, N.D5,_,N.A4,_],
+      drum: [] },
+    // ── EASY (light, upbeat) ──
+    easy: { name:"Easy", step:0.18, vol:0.17, leadType:"square", bassType:"triangle",
+      bass: [N.C3,_,_,_, N.G2,_,_,_, N.A2,_,_,_, N.F2,_,_,_],
+      lead: [N.C5,_,N.E5,_, N.G5,_,N.E5,_, N.A4,_,N.C5,_, N.F4,_,N.A4,_],
+      drum: ['K',_,'H',_, 'K',_,'H',_, 'K',_,'H',_, 'K',_,'H','H'] },
+    // ── HARD (driving) ──
+    hard: { name:"Hard", step:0.14, vol:0.18, leadType:"square", bassType:"sawtooth",
+      bass: [N.A2,_,N.A2,N.A2, N.A2,_,N.E3,_, N.F2,_,N.F2,N.F2, N.G2,_,N.G2,_],
+      lead: [N.A4,N.C5,N.E5,N.C5, N.A4,N.E5,N.G5,N.E5, N.F5,N.A5,N.F5,N.C5, N.G5,N.B5,N.G5,N.D5],
+      drum: ['K',_,'H','K', 'H',_,'K','H', 'K',_,'H','K', 'H','K','H','H'] },
+    // ── EXTREME (intense, fast) ──
+    extreme: { name:"Extreme", step:0.105, vol:0.19, leadType:"sawtooth", bassType:"sawtooth",
+      bass: [N.A1,N.A1,N.A2,N.A1, N.A1,N.A1,N.E2,N.A1, N.F2,N.F2,N.A2,N.F2, N.G2,N.G2,N.B2,N.G2],
+      lead: [N.A5,N.E5,N.A5,N.B5, N.G5,N.E5,N.A5,N.C5, N.F5,N.A5,N.C5,N.A5, N.G5,N.B5,N.D5,N.B5],
+      drum: ['K','H','K','H', 'K','H','K','H', 'K','H','K','H', 'K','H','K','K'] },
+  };
+
+  const MENU_TRACKS = ["menu0","menu1","menu2"];
+  let menuIndex = S.get("rg-menuTrack", 0) % MENU_TRACKS.length;
+
+  let current = null, timer = null, step = 0, nextNoteTime = 0, master = null;
+
+  function buildMaster() {
+    master = audioCtx.createGain();
+    master.gain.value = 0;
+    master.connect(audioCtx.destination);
+  }
+
+  function tone(freq, t, dur, type, vol) {
+    if (!freq) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+
+  function kick(t) {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    g.gain.setValueAtTime(0.5, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g); g.connect(master);
+    o.start(t); o.stop(t + 0.18);
+  }
+
+  function hat(t) {
+    const dur = 0.03;
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource(); src.buffer = buf;
+    const hp = audioCtx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 7000;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.18, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(hp); hp.connect(g); g.connect(master);
+    src.start(t); src.stop(t + dur);
+  }
+
+  function scheduleStep(s, t, tr) {
+    if (tr.bass[s]) tone(tr.bass[s], t, tr.step * 1.6, tr.bassType, tr.vol * 0.6);
+    if (tr.lead[s]) tone(tr.lead[s], t, tr.step * 0.9, tr.leadType, tr.vol * 0.5);
+    const dr = tr.drum[s];
+    if (dr === 'K') kick(t);
+    else if (dr === 'H') hat(t);
+  }
+
+  function scheduler() {
+    if (!current || !audioCtx) return;
+    const tr = TRACKS[current];
+    while (nextNoteTime < audioCtx.currentTime + 0.12) {
+      scheduleStep(step, nextNoteTime, tr);
+      nextNoteTime += tr.step;
+      step = (step + 1) % 16;
+    }
+  }
+
+  function play(trackKey) {
+    if (!audioEnabled) { current = trackKey; return; }
+    ensureAudio();
+    if (!master) buildMaster();
+    if (current === trackKey && timer) return;
+    current = trackKey;
+    step = 0;
+    nextNoteTime = audioCtx.currentTime + 0.05;
+    const tr = TRACKS[trackKey];
+    // smooth fade-in
+    master.gain.cancelScheduledValues(audioCtx.currentTime);
+    master.gain.setValueAtTime(master.gain.value, audioCtx.currentTime);
+    master.gain.linearRampToValueAtTime(tr.vol, audioCtx.currentTime + 0.4);
+    if (timer) clearInterval(timer);
+    timer = setInterval(scheduler, 25);
+  }
+
+  return {
+    playMenu() { play(MENU_TRACKS[menuIndex]); },
+    playDifficulty(mode) { if (TRACKS[mode]) play(mode); },
+    nextMenuTrack() {
+      menuIndex = (menuIndex + 1) % MENU_TRACKS.length;
+      S.set("rg-menuTrack", menuIndex);
+      const t = TRACKS[MENU_TRACKS[menuIndex]];
+      if (audioEnabled) this.playMenu();
+      showToast("🎵 " + t.name);
+      return t.name;
+    },
+    menuTrackName() { return TRACKS[MENU_TRACKS[menuIndex]].name; },
+    stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (master && audioCtx) {
+        master.gain.cancelScheduledValues(audioCtx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, audioCtx.currentTime);
+        master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.25);
+      }
+    },
+    resume() { if (current) play(current); else this.playMenu(); },
+    setPaused(p) {
+      if (!master || !audioCtx) return;
+      master.gain.cancelScheduledValues(audioCtx.currentTime);
+      master.gain.linearRampToValueAtTime(p ? 0.0001 : (TRACKS[current]?.vol || 0.15), audioCtx.currentTime + 0.15);
+    },
+  };
+})();
 
 // ─────────────────────────────────────────────
 //  SKIN RENDERING
@@ -1755,6 +1928,7 @@ function selectDifficulty(mode) {
   currentDiff = DIFFS[mode];
   document.getElementById("modeLabel").textContent = currentDiff.name;
   document.getElementById("modeDisplay").style.display = "flex";
+  Music.playDifficulty(mode);
   startGame();
 }
 
@@ -1829,6 +2003,7 @@ function gameOver() {
   setTimeout(() => {
     document.getElementById("menu").style.display = "flex";
     menuOpen = true;
+    Music.playMenu();
   }, 600);
 }
 
@@ -2698,6 +2873,7 @@ function togglePause() {
   if (!running) return;
   paused = !paused;
   document.getElementById("pauseBtn").textContent = paused ? "▶️" : "⏸";
+  Music.setPaused(paused);
   beep(600, 0.06);
 }
 
@@ -2722,6 +2898,8 @@ canvas.addEventListener("click", () => {
 
 window.addEventListener("click", function once() {
   ensureAudio();
+  // Kick off menu music on the first interaction (browsers block autoplay before a gesture)
+  if (!running && audioEnabled) Music.playMenu();
   window.removeEventListener("click", once);
 });
 
@@ -2737,16 +2915,27 @@ function refreshHUD() {
 // ─────────────────────────────────────────────
 //  STARTER SKINS
 // ─────────────────────────────────────────────
+// The three free base skins every account starts with — the only unlocked skins.
+const BASE_SKINS = { player: "Sapphire Block", background: "Starfield", obstacle: "Stone Wall" };
+
 function giveStarterSkins() {
   let changed = false;
-  if (!ownedSkins.player.includes("Sapphire Block"))   { ownedSkins.player.push("Sapphire Block"); changed = true; }
-  if (!ownedSkins.background.includes("Starfield"))     { ownedSkins.background.push("Starfield"); changed = true; }
-  if (!ownedSkins.obstacle.includes("Stone Wall"))      { ownedSkins.obstacle.push("Stone Wall"); changed = true; }
+  if (!ownedSkins.player.includes(BASE_SKINS.player))         { ownedSkins.player.push(BASE_SKINS.player); changed = true; }
+  if (!ownedSkins.background.includes(BASE_SKINS.background)) { ownedSkins.background.push(BASE_SKINS.background); changed = true; }
+  if (!ownedSkins.obstacle.includes(BASE_SKINS.obstacle))    { ownedSkins.obstacle.push(BASE_SKINS.obstacle); changed = true; }
   // Auto-equip starters for brand-new players
-  if (selectedSkins.player === "default")     { selectedSkins.player = "Sapphire Block"; changed = true; }
-  if (selectedSkins.background === "default") { selectedSkins.background = "Starfield"; changed = true; }
-  if (selectedSkins.obstacle === "default")   { selectedSkins.obstacle = "Stone Wall"; changed = true; }
+  if (selectedSkins.player === "default")     { selectedSkins.player = BASE_SKINS.player; changed = true; }
+  if (selectedSkins.background === "default") { selectedSkins.background = BASE_SKINS.background; changed = true; }
+  if (selectedSkins.obstacle === "default")   { selectedSkins.obstacle = BASE_SKINS.obstacle; changed = true; }
   if (changed) saveAll();
+}
+
+// Wipe all skin progress back to the three base skins (used for brand-new accounts).
+function resetToBaseSkins() {
+  ownedSkins    = { player: [], background: [], obstacle: [] };
+  selectedSkins = { player: "default", background: "default", obstacle: "default" };
+  pity          = { player: 0, background: 0, obstacle: 0 };
+  giveStarterSkins();
 }
 
 // ─────────────────────────────────────────────
@@ -2786,7 +2975,14 @@ try {
   fbAuth.onAuthStateChanged(user => {
     currentUser = user;
     if (user) {
-      DB.load(user.uid).then(() => {
+      DB.load(user.uid).then(existed => {
+        if (!existed) {
+          // Brand-new account → start with ONLY the base skins.
+          resetToBaseSkins();
+          DB.save();
+        }
+        // Special accounts get every skin unlocked, saved to their account.
+        if (GRANT_ALL_SKINS_UIDS.includes(user.uid)) grantAllSkins();
         AuthUI.showProfile();
         updateAccountBtn(true);
         showToast(`👋 Welcome back, ${getDisplayName()}!`);
@@ -2881,13 +3077,31 @@ const DB = {
   },
 
   async load(uid) {
-    if (!fbReady) return;
+    if (!fbReady) return false;
     try {
       const snap = await fbDb.collection("users").doc(uid).get();
-      if (snap.exists) this.applyDoc(snap.data());
-    } catch(e) { console.warn("DB load failed", e); }
+      if (snap.exists) { this.applyDoc(snap.data()); return true; }
+      return false; // brand-new account — no cloud data yet
+    } catch(e) { console.warn("DB load failed", e); return false; }
   },
 };
+
+// Accounts that should own every skin (granted on sign-in, then saved to their account).
+const GRANT_ALL_SKINS_UIDS = [
+  "OEhFtyqvCHewIDLZMWVBEWb2UYp2",
+  "xLq1948wlxVidYjomsWshgrdaVh1",
+  "ETMRBRssR3UgnC7ZeTSpBdzAjcd2",
+  "u8cTshDOgrVLVI1QNdzqBk90lD33",
+];
+
+function grantAllSkins() {
+  ["player","background","obstacle"].forEach(t => {
+    const all = SKINS.filter(s => s.type === t).map(s => s.name);
+    ownedSkins[t] = [...new Set([...(ownedSkins[t] || []), ...all])];
+  });
+  saveAll();
+  refreshHUD();
+}
 
 // Auto-save to Firestore on a debounce whenever saveAll() is called
 const _origSaveAll = saveAll;
@@ -2983,6 +3197,21 @@ const AuthUI = {
     document.getElementById("dnInput").value               = "";
     document.getElementById("dnError").textContent         = "";
 
+    // Show "Add Email Login" only for accounts that use Google but have no password yet
+    const providers = (currentUser?.providerData || []).map(p => p.providerId);
+    const linkSec = document.getElementById("linkEmailSection");
+    if (linkSec) {
+      if (providers.includes("google.com") && !providers.includes("password")) {
+        linkSec.style.display = "flex";
+        document.getElementById("linkEmailAddr").textContent = currentUser?.email || "";
+        document.getElementById("linkPw1").value = "";
+        document.getElementById("linkPw2").value = "";
+        document.getElementById("linkError").textContent = "";
+      } else {
+        linkSec.style.display = "none";
+      }
+    }
+
     // Cooldown display
     const weekMs = 7 * 24 * 60 * 60 * 1000;
     const remaining = weekMs - (Date.now() - lastDisplayNameChange);
@@ -3015,6 +3244,31 @@ const AuthUI = {
     if (pw1 !== pw2)     { errEl.textContent = "Passwords don't match."; return; }
 
     try {
+      // If this email is already registered with Google, link a password to that
+      // SAME account instead of erroring — Google + email become one account.
+      const existingMethods = await fbAuth.fetchSignInMethodsForEmail(email);
+      if (existingMethods.includes("google.com") && !existingMethods.includes("password")) {
+        errEl.style.color = "#94a3b8";
+        errEl.textContent = "Confirming your Google account to link your password…";
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ login_hint: email });
+        const gCred = await fbAuth.signInWithPopup(provider);
+        if ((gCred.user.email || "").toLowerCase() !== email.toLowerCase()) {
+          await fbAuth.signOut();
+          errEl.style.color = "";
+          errEl.textContent = "That Google account doesn't match this email.";
+          return;
+        }
+        const emailCred = firebase.auth.EmailAuthProvider.credential(email, pw1);
+        await gCred.user.linkWithCredential(emailCred);
+        saveRecentAccount(gCred.user.uid, S.get("rg-username", username), email);
+        errEl.style.color = "";
+        showToast("✅ Password added! You can now sign in with Google or email.");
+        beep(1200, 0.14, "sine", 0.07);
+        return;
+      }
+      if (existingMethods.length) { errEl.textContent = "Email already has an account. Try signing in."; return; }
+
       // Check username uniqueness
       const usernameDoc = await fbDb.collection("usernames").doc(username).get();
       if (usernameDoc.exists) { errEl.textContent = "Username already taken."; return; }
@@ -3032,6 +3286,7 @@ const AuthUI = {
       showToast("✅ Account created! Welcome, " + username + "!");
       beep(1200, 0.14, "sine", 0.07);
     } catch(e) {
+      errEl.style.color = "";
       errEl.textContent = friendlyAuthError(e.code);
     }
   },
@@ -3175,7 +3430,44 @@ const AuthUI = {
       }
       saveRecentAccount(user.uid, S.get("rg-username", user.displayName || "Player"), user.email);
     } catch(e) {
+      if (e.code === "auth/account-exists-with-different-credential") {
+        // This email already signs in with a password. Link Google onto that account.
+        try {
+          const pendingCred = e.credential;
+          const email = e.customData?.email || e.email;
+          const pw = window.prompt(`This email (${email}) already has a password.\nEnter it to link Google to the same account:`);
+          if (!pw) return;
+          const userCred = await fbAuth.signInWithEmailAndPassword(email, pw);
+          await userCred.user.linkWithCredential(pendingCred);
+          showToast("✅ Google linked! Same account, either way to sign in.");
+        } catch(le) {
+          showToast("❌ " + friendlyAuthError(le.code));
+        }
+        return;
+      }
       if (e.code !== "auth/popup-closed-by-user") showToast("❌ " + friendlyAuthError(e.code));
+    }
+  },
+
+  // ── Add email/password login to a Google account ──
+  async linkEmailPassword() {
+    const errEl = document.getElementById("linkError");
+    errEl.style.color = "";
+    errEl.textContent = "";
+    if (!fbReady || !currentUser || !currentUser.email) { errEl.textContent = "Account not available."; return; }
+    const pw1 = document.getElementById("linkPw1").value;
+    const pw2 = document.getElementById("linkPw2").value;
+    if (pw1.length < 6) { errEl.textContent = "Password must be at least 6 characters."; return; }
+    if (pw1 !== pw2)    { errEl.textContent = "Passwords don't match."; return; }
+    try {
+      const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, pw1);
+      await currentUser.linkWithCredential(cred);
+      saveRecentAccount(currentUser.uid, S.get("rg-username", "Player"), currentUser.email);
+      showToast("✅ Email login enabled! Sign in with " + currentUser.email);
+      beep(1200, 0.12, "sine", 0.06);
+      this.showProfile();
+    } catch(e) {
+      errEl.textContent = friendlyAuthError(e.code);
     }
   },
 
@@ -3204,6 +3496,9 @@ function friendlyAuthError(code) {
     "auth/invalid-credential":      "Incorrect email or password.",
     "auth/too-many-requests":       "Too many attempts — try again later.",
     "auth/network-request-failed":  "Network error — check your connection.",
+    "auth/credential-already-in-use":"That login is already linked to another account.",
+    "auth/provider-already-linked": "This account already has email login enabled.",
+    "auth/requires-recent-login":   "Please sign in again, then retry.",
   };
   return map[code] || "Something went wrong. Try again.";
 }
@@ -3211,6 +3506,14 @@ function friendlyAuthError(code) {
 // ─────────────────────────────────────────────
 //  EXPOSE GLOBALS
 // ─────────────────────────────────────────────
+function cycleMenuMusic() {
+  const name = Music.nextMenuTrack();
+  const btn = document.getElementById("menuMusicBtn");
+  if (btn) btn.textContent = "🎵 Music: " + name;
+}
+
+window.Music            = Music;
+window.cycleMenuMusic   = cycleMenuMusic;
 window.AuthUI           = AuthUI;
 window.selectDifficulty = selectDifficulty;
 window.claimDaily       = claimDaily;
@@ -3285,6 +3588,7 @@ giveStarterSkins();
 updateStreak();
 refreshHUD();
 document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
+document.getElementById("menuMusicBtn").textContent = "🎵 Music: " + Music.menuTrackName();
 document.getElementById("streakCount").textContent = streak;
 document.getElementById("streakBonus").textContent =
   (Date.now() - lastDaily >= 86400000) ? " · Daily bonus ready!" : " · Keep the streak!";
