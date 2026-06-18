@@ -2569,6 +2569,22 @@ const AuthUI = {
     await fbAuth.signOut();
     currentUser = null;
     if (uid) removeRecentAccount(uid);
+    // Clear local game data so the next sign-in loads fresh from that user's Firestore
+    ["rg-coins","rg-best","rg-streak","rg-lastLogin","rg-lastDaily",
+     "rg-skins","rg-selected","rg-pity","rg-ach","rg-scores","rg-pass",
+     "rg-adDay","rg-adCount","rg-totalSpins","rg-totalCoins","rg-username",
+     "rg-displayName","rg-lastDNChange","rg-statRuns","rg-statExtreme"].forEach(k => {
+       try { localStorage.removeItem(k); } catch {}
+     });
+    coins = 0; best = 0; streak = 0; lastLogin = 0; lastDaily = 0;
+    ownedSkins = { player: [], background: [], obstacle: [] };
+    selectedSkins = { player: "default", background: "default", obstacle: "default" };
+    pity = { player: 0, background: 0, obstacle: 0 };
+    achievements = {}; scores = []; hasPass = false;
+    adWatchCount = 0; totalSpins = 0; totalCoins = 0;
+    lastDisplayNameChange = 0;
+    giveStarterSkins();
+    refreshHUD();
     updateAccountBtn(false);
     this.showWelcome();
     showToast("👋 Signed out.");
