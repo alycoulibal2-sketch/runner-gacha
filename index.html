@@ -1181,6 +1181,7 @@ function toggleSound() {
 const Music = (() => {
   // ── Note frequencies (A natural minor + relative major keys) ──
   const st = (f, n) => f * 2 ** (n / 12);
+  const D1=st(55,-7), E1=st(55,-5), F1=st(55,-4), G1=st(55,-2);
   const A1=55,  B1=st(55,2),  C2=st(55,3),  D2=st(55,5),  E2=st(55,7),  F2=st(55,8),  G2=st(55,10),
         A2=110, B2=st(110,2), C3=st(110,3), D3=st(110,5), E3=st(110,7), F3=st(110,8), G3=st(110,10),
         A3=220, B3=st(220,2), C4=st(220,3), D4=st(220,5), E4=st(220,7), F4=st(220,8), G4=st(220,10),
