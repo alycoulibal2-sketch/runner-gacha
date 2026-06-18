@@ -728,7 +728,7 @@
     <div style="background:linear-gradient(90deg,rgba(124,77,255,0.15),rgba(255,122,89,0.1));border:1px solid rgba(124,77,255,0.25);border-radius:14px;padding:12px;width:100%;font-size:12px;cursor:pointer;" onclick="Shop.buyPass()">
       <div style="font-weight:900;font-size:14px;margin-bottom:4px;">🚀 Runner Pass</div>
       <div style="opacity:.75;">• 3× coin income  • Exclusive monthly skin  • No ads  • 200 coins/day bonus</div>
-      <div style="margin-top:8px;"><button class="btn shop-btn" style="min-width:auto;padding:7px 16px;font-size:12px;" onclick="Shop.buyPass()">Subscribe</button></div>
+      <div style="margin-top:8px;"><button class="btn shop-btn" style="min-width:auto;padding:7px 16px;font-size:12px;" onclick="event.stopPropagation();Shop.buyPass()">Subscribe</button></div>
     </div>
 
     <button class="btn secondary" onclick="UI.closeShop()" style="flex-shrink:0;">Close</button>
