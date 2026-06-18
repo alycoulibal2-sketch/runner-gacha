@@ -359,8 +359,15 @@
     .ach-claim { border: none; background: linear-gradient(90deg,#34d399,#059669); color: #021021; padding: 5px 10px; border-radius: 999px; font-weight: 800; cursor: pointer; font-size: 11px; }
 
     /* ── Leaderboard ── */
-    #leaderboardModal { padding: 12px; }
-    #leaderboardModal h2 { text-align: center; font-size: 16px; }
+    #leaderboardModal { padding: 12px; gap: 8px; }
+    #leaderboardModal h2 { text-align: center; font-size: 16px; flex-shrink: 0; }
+    .lb-tabs { display: flex; gap: 6px; justify-content: center; flex-shrink: 0; }
+    .lb-tab {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 800;
+      padding: 6px 16px; border-radius: 999px; cursor: pointer; transition: all .2s;
+    }
+    .lb-tab.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #fff; border-color: transparent; }
     .lb-list { display: flex; flex-direction: column; gap: 6px; width: 100%; overflow-y: auto; flex: 1; }
     .lb-row {
       background: rgba(255,255,255,0.025);
@@ -371,10 +378,16 @@
       gap: 10px;
       font-size: 12px;
     }
-    .lb-row.you { border: 1px solid rgba(255,184,107,0.3); background: rgba(255,184,107,0.06); }
-    .lb-rank { font-size: 14px; font-weight: 900; width: 24px; }
-    .lb-name { flex: 1; font-weight: 700; }
-    .lb-score { font-weight: 800; color: #facc15; }
+    .lb-row.you { border: 1px solid rgba(255,184,107,0.4); background: rgba(255,184,107,0.08); }
+    .lb-row.gold   { border: 1px solid rgba(250,204,21,0.4);  background: rgba(250,204,21,0.06); }
+    .lb-row.silver { border: 1px solid rgba(192,192,192,0.4); background: rgba(192,192,192,0.04); }
+    .lb-row.bronze { border: 1px solid rgba(205,127,50,0.4);  background: rgba(205,127,50,0.05); }
+    .lb-rank { font-size: 14px; font-weight: 900; width: 26px; flex-shrink: 0; }
+    .lb-name { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-mode { font-size: 10px; opacity: .55; font-weight: 600; margin-left: 4px; }
+    .lb-score { font-weight: 800; color: #facc15; flex-shrink: 0; }
+    .lb-loading { text-align: center; opacity: .5; font-size: 12px; padding: 20px 0; }
+    .lb-divider { text-align: center; opacity: .3; font-size: 11px; letter-spacing: 3px; padding: 4px 0; }
 
     /* ── Quick buttons ── */
     #quickButtons {
@@ -730,7 +743,11 @@
 
   <!-- Leaderboard Modal -->
   <div id="leaderboardModal" class="modal-overlay modal-bg">
-    <h2>🏆 Top Scores</h2>
+    <h2>🏆 Leaderboard</h2>
+    <div class="lb-tabs">
+      <button class="lb-tab active" id="lbTabWorld"    onclick="switchLbTab('world')">🌍 World</button>
+      <button class="lb-tab"        id="lbTabPersonal" onclick="switchLbTab('personal')">👤 Personal</button>
+    </div>
     <div class="lb-list" id="lbList"></div>
     <button class="btn secondary" onclick="UI.closeLeaderboard()" style="flex-shrink:0;">Close</button>
   </div>
@@ -1343,16 +1360,18 @@ function gameOver() {
     if (score > prev) S.set("rg-statExtreme", score);
   }
 
+  const modeName = currentDiff ? currentDiff.name : "Easy";
   if (score > best) {
     best = score;
     beep(1400, 0.2, "sine", 0.07);
     showToast(`🏆 New best: ${best}!`);
+    submitWorldScore(score, modeName);
   } else {
     beep(220, 0.1);
   }
 
   // leaderboard
-  scores.push({ score, mode: currentDiff ? currentDiff.name : "Easy", ts: Date.now() });
+  scores.push({ score, mode: modeName, ts: Date.now() });
   scores.sort((a, b) => b.score - a.score);
   if (scores.length > 20) scores.length = 20;
 
@@ -1990,25 +2009,133 @@ function renderAchievements() {
 // ─────────────────────────────────────────────
 //  LEADERBOARD UI
 // ─────────────────────────────────────────────
+let lbCurrentTab = 'world';
+
+function switchLbTab(tab) {
+  lbCurrentTab = tab;
+  document.getElementById("lbTabWorld").classList.toggle("active", tab === 'world');
+  document.getElementById("lbTabPersonal").classList.toggle("active", tab === 'personal');
+  renderLeaderboard();
+}
+
 function renderLeaderboard() {
+  if (lbCurrentTab === 'personal') renderPersonalLeaderboard();
+  else renderWorldLeaderboard();
+}
+
+function renderPersonalLeaderboard() {
   const lb = document.getElementById("lbList");
   lb.innerHTML = "";
   const display = scores.slice(0, 10);
   if (!display.length) {
-    lb.innerHTML = '<div class="lb-row" style="opacity:.5;font-size:12px;">No scores yet — play a game!</div>';
+    lb.innerHTML = '<div class="lb-loading">No scores yet — play a game!</div>';
     return;
   }
   const medals = ["🥇","🥈","🥉"];
+  const tierClass = ["gold","silver","bronze"];
   display.forEach((entry, i) => {
     const row = document.createElement("div");
-    row.className = "lb-row you";
+    row.className = "lb-row " + (tierClass[i] || "you");
     row.innerHTML = `
-      <span class="lb-rank">${medals[i] || `#${i+1}`}</span>
-      <span class="lb-name">You · ${entry.mode}</span>
+      <span class="lb-rank">${medals[i] || "#" + (i+1)}</span>
+      <span class="lb-name">You<span class="lb-mode">${entry.mode}</span></span>
       <span class="lb-score">${entry.score}</span>
     `;
     lb.appendChild(row);
   });
+}
+
+async function renderWorldLeaderboard() {
+  const lb = document.getElementById("lbList");
+  lb.innerHTML = '<div class="lb-loading">⏳ Loading…</div>';
+
+  if (!fbDb) {
+    lb.innerHTML = '<div class="lb-loading">Sign in to see the world leaderboard</div>';
+    return;
+  }
+
+  try {
+    const snap = await fbDb.collection("leaderboard").orderBy("score", "desc").limit(10).get();
+    lb.innerHTML = "";
+
+    const medals = ["🥇","🥈","🥉"];
+    const tierClass = ["gold","silver","bronze"];
+    const myUid = currentUser ? currentUser.uid : null;
+    let myEntryInTop = false;
+
+    snap.docs.forEach((doc, i) => {
+      const d = doc.data();
+      const isMe = myUid && doc.id === myUid;
+      if (isMe) myEntryInTop = true;
+      const row = document.createElement("div");
+      row.className = "lb-row " + (isMe ? "you" : (tierClass[i] || ""));
+      row.innerHTML = `
+        <span class="lb-rank">${medals[i] || "#" + (i+1)}</span>
+        <span class="lb-name">${escHtml(d.name || "Player")}<span class="lb-mode">${d.mode || ""}</span></span>
+        <span class="lb-score">${d.score}</span>
+      `;
+      lb.appendChild(row);
+    });
+
+    if (!snap.docs.length) {
+      lb.innerHTML = '<div class="lb-loading">No scores yet — be the first! 🚀</div>';
+      return;
+    }
+
+    // Show the current player's entry below if not in top 10
+    if (myUid && !myEntryInTop) {
+      try {
+        const mySnap = await fbDb.collection("leaderboard").doc(myUid).get();
+        if (mySnap.exists) {
+          const d = mySnap.data();
+          const div = document.createElement("div");
+          div.className = "lb-divider";
+          div.textContent = "· · ·";
+          lb.appendChild(div);
+          const row = document.createElement("div");
+          row.className = "lb-row you";
+          row.innerHTML = `
+            <span class="lb-rank">—</span>
+            <span class="lb-name">${escHtml(d.name || "You")}<span class="lb-mode">${d.mode || ""}</span></span>
+            <span class="lb-score">${d.score}</span>
+          `;
+          lb.appendChild(row);
+        }
+      } catch {}
+    }
+
+    if (!myUid) {
+      const note = document.createElement("div");
+      note.className = "lb-loading";
+      note.style.marginTop = "8px";
+      note.textContent = "Sign in to appear on the world leaderboard";
+      lb.appendChild(note);
+    }
+
+  } catch (e) {
+    lb.innerHTML = '<div class="lb-loading">Could not load scores</div>';
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+async function submitWorldScore(score, modeName) {
+  if (!currentUser || !fbDb) return;
+  try {
+    const ref = fbDb.collection("leaderboard").doc(currentUser.uid);
+    const snap = await ref.get();
+    if (!snap.exists || snap.data().score < score) {
+      await ref.set({
+        uid: currentUser.uid,
+        name: getDisplayName(),
+        score,
+        mode: modeName,
+        ts: Date.now()
+      });
+    }
+  } catch {}
 }
 
 // ─────────────────────────────────────────────
