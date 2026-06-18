@@ -567,6 +567,33 @@
     width: 88%; max-width: 300px;
     display: flex; flex-direction: column; align-items: center; gap: 12px;
   }
+
+  /* ── Ability / Revival animations ── */
+  @keyframes mythicPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255,107,148,0.7), 0 0 16px rgba(168,85,247,0.3); border-color: rgba(255,107,148,0.6); }
+    50%       { box-shadow: 0 0 18px rgba(255,107,148,1),  0 0 32px rgba(168,85,247,0.7); border-color: rgba(255,107,148,1); }
+  }
+  @keyframes revivePulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255,184,107,0.6); opacity: 1; }
+    50%       { box-shadow: 0 0 18px rgba(255,184,107,1);  opacity: 0.85; }
+  }
+  #mythicAbilityBtn {
+    background: linear-gradient(135deg, rgba(255,107,148,0.25), rgba(168,85,247,0.25));
+    border: 1px solid rgba(255,107,148,0.5);
+    animation: mythicPulse 2s ease-in-out infinite;
+    font-weight: 900;
+  }
+  #mythicAbilityBtn:disabled {
+    animation: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  #reviveBadge {
+    background: rgba(255,184,107,0.18);
+    border: 1px solid rgba(255,184,107,0.55);
+    color: #ffb86b;
+    animation: revivePulse 1.5s ease-in-out infinite;
+  }
   </style>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3564432250969796"
           crossorigin="anonymous"></script>
@@ -583,6 +610,7 @@
     <div class="badge">🏆 <span id="best">0</span></div>
     <div class="badge">💰 <span id="coinAmount">0</span></div>
     <div class="badge" id="modeDisplay" style="display:none">🎮 <span id="modeLabel">-</span></div>
+    <div class="badge" id="reviveBadge" style="display:none;">💛 Revival Ready</div>
     <button class="badge-btn" onclick="UI.openCollection()" title="Collection">📦</button>
     <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
     <button class="badge-btn" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
@@ -768,6 +796,7 @@
 
   <!-- Quick buttons in-game -->
   <div id="quickButtons">
+    <button id="mythicAbilityBtn" class="quick" style="display:none;" onclick="useMythicAbility()">⚡ Ability</button>
     <button class="quick" onclick="UI.openGacha()">🎰 Wheel</button>
     <button class="quick" onclick="UI.openShop()">🛒 Shop</button>
   </div>
@@ -936,6 +965,13 @@ let doubleJumpUsed = false;
 let frameCount = 0;
 let powerups = [];
 
+// Ability state
+let legendaryReviveAvailable = false;
+let legendaryReviveUsed = false;
+let reviveFlashTimer = 0;
+let mythicAbilityCooldown = 0;
+const MYTHIC_ABILITY_MAX_CD = 300;
+
 // player object
 const player = { x: 70, y: H - 140, w: 48, h: 48, vy: 0, onGround: true };
 
@@ -949,81 +985,81 @@ const DIFFS = {
 //  SKINS DATA
 // ─────────────────────────────────────────────
 const SKINS = [
-  // Common (20)
-  { name:"Green Block",            rarity:"commun",    type:"player"     },
-  { name:"Blue Block",             rarity:"commun",    type:"player"     },
-  { name:"Red Block",              rarity:"commun",    type:"player"     },
-  { name:"Grey Block",             rarity:"commun",    type:"player"     },
-  { name:"Orange Block",           rarity:"commun",    type:"player"     },
-  { name:"Mint Block",             rarity:"commun",    type:"player"     },
-  { name:"Pastel Block",           rarity:"commun",    type:"player"     },
-  { name:"Sand Block",             rarity:"commun",    type:"player"     },
-  { name:"Simple Background",      rarity:"commun",    type:"background" },
-  { name:"Grey Background",        rarity:"commun",    type:"background" },
-  { name:"Midnight Background",    rarity:"commun",    type:"background" },
-  { name:"Concrete Background",    rarity:"commun",    type:"background" },
-  { name:"Thin Lines Background",  rarity:"commun",    type:"background" },
-  { name:"Soft Clouds Background", rarity:"commun",    type:"background" },
-  { name:"Soft Tiles Background",  rarity:"commun",    type:"background" },
-  { name:"Red Obstacle",           rarity:"commun",    type:"obstacle"   },
-  { name:"Grey Obstacle",          rarity:"commun",    type:"obstacle"   },
-  { name:"Light Obstacle",         rarity:"commun",    type:"obstacle"   },
-  { name:"Wood Obstacle",          rarity:"commun",    type:"obstacle"   },
-  { name:"Stone Obstacle",         rarity:"commun",    type:"obstacle"   },
-  // Rare (20)
-  { name:"Sky Stripes Block",      rarity:"rare",      type:"player"     },
-  { name:"Diagonal Block",         rarity:"rare",      type:"player"     },
-  { name:"Tech Light Block",       rarity:"rare",      type:"player"     },
-  { name:"Blue Edge Block",        rarity:"rare",      type:"player"     },
-  { name:"City Block",             rarity:"rare",      type:"player"     },
-  { name:"Edge Block",             rarity:"rare",      type:"player"     },
-  { name:"Blue Gradient Block",    rarity:"rare",      type:"player"     },
-  { name:"Tiles Background",       rarity:"rare",      type:"background" },
-  { name:"Blue Lines Background",  rarity:"rare",      type:"background" },
-  { name:"Blue Stripes Background",rarity:"rare",      type:"background" },
-  { name:"Waves Background",       rarity:"rare",      type:"background" },
-  { name:"Violet Background",      rarity:"rare",      type:"background" },
-  { name:"City Dusk Background",   rarity:"rare",      type:"background" },
-  { name:"Holo Background",        rarity:"rare",      type:"background" },
-  { name:"Carbon Obstacle",        rarity:"rare",      type:"obstacle"   },
-  { name:"Metal Obstacle",         rarity:"rare",      type:"obstacle"   },
-  { name:"Cyan Obstacle",          rarity:"rare",      type:"obstacle"   },
-  { name:"Tiled Obstacle",         rarity:"rare",      type:"obstacle"   },
-  { name:"Rust Obstacle",          rarity:"rare",      type:"obstacle"   },
-  { name:"Grill Obstacle",         rarity:"rare",      type:"obstacle"   },
-  // Epic (15)
-  { name:"Galaxy Dots Background", rarity:"epic",      type:"background" },
-  { name:"Neon Lines Background",  rarity:"epic",      type:"background" },
-  { name:"Laser Background",       rarity:"epic",      type:"background" },
-  { name:"Nebula Background",      rarity:"epic",      type:"background" },
-  { name:"Holo Waves Background",  rarity:"epic",      type:"background" },
-  { name:"Techno Background",      rarity:"epic",      type:"background" },
-  { name:"Neon Block",             rarity:"epic",      type:"player"     },
-  { name:"Techno Block",           rarity:"epic",      type:"player"     },
-  { name:"Prism Block",            rarity:"epic",      type:"player"     },
-  { name:"Pastel Neon Block",      rarity:"epic",      type:"player"     },
-  { name:"Shimmer Block",          rarity:"epic",      type:"player"     },
-  { name:"Violet Lines Obstacle",  rarity:"epic",      type:"obstacle"   },
-  { name:"Prism Obstacle",         rarity:"epic",      type:"obstacle"   },
-  { name:"Neon Grid Obstacle",     rarity:"epic",      type:"obstacle"   },
-  { name:"Crystal Blue Obstacle",  rarity:"epic",      type:"obstacle"   },
-  // Legendary (10)
-  { name:"Gold Lines Block",       rarity:"legendaire",type:"player"     },
-  { name:"Flame Block",            rarity:"legendaire",type:"player"     },
-  { name:"Magma Block",            rarity:"legendaire",type:"player"     },
-  { name:"Brushed Gold Block",     rarity:"legendaire",type:"player"     },
-  { name:"Cyber Dusk Background",  rarity:"legendaire",type:"background" },
-  { name:"Solar Temple Background",rarity:"legendaire",type:"background" },
-  { name:"Neon Sunset Background", rarity:"legendaire",type:"background" },
-  { name:"Gold Pattern Obstacle",  rarity:"legendaire",type:"obstacle"   },
-  { name:"Pharaoh Obstacle",       rarity:"legendaire",type:"obstacle"   },
-  { name:"Royal Obstacle",         rarity:"legendaire",type:"obstacle"   },
-  // Mythic (5)
-  { name:"Bananas Block",          rarity:"mythique",  type:"player"     },
-  { name:"Mythic Runes Block",     rarity:"mythique",  type:"player"     },
-  { name:"Sky Bananas Background", rarity:"mythique",  type:"background" },
-  { name:"Mythic Portal Background",rarity:"mythique", type:"background" },
-  { name:"Crystal Obstacle",       rarity:"mythique",  type:"obstacle"   },
+  // ── COMMON (20) ──────────────────────────────
+  { name:"Crimson Block",    rarity:"commun",    type:"player"     },
+  { name:"Sapphire Block",   rarity:"commun",    type:"player"     },
+  { name:"Jade Block",       rarity:"commun",    type:"player"     },
+  { name:"Obsidian Block",   rarity:"commun",    type:"player"     },
+  { name:"Ivory Block",      rarity:"commun",    type:"player"     },
+  { name:"Coral Block",      rarity:"commun",    type:"player"     },
+  { name:"Slate Block",      rarity:"commun",    type:"player"     },
+  { name:"Amber Block",      rarity:"commun",    type:"player"     },
+  { name:"Starfield",        rarity:"commun",    type:"background" },
+  { name:"Ocean Floor",      rarity:"commun",    type:"background" },
+  { name:"Midnight Forest",  rarity:"commun",    type:"background" },
+  { name:"Desert Dusk",      rarity:"commun",    type:"background" },
+  { name:"Arctic Plain",     rarity:"commun",    type:"background" },
+  { name:"Storm Clouds",     rarity:"commun",    type:"background" },
+  { name:"Rolling Hills",    rarity:"commun",    type:"background" },
+  { name:"Iron Block",       rarity:"commun",    type:"obstacle"   },
+  { name:"Stone Wall",       rarity:"commun",    type:"obstacle"   },
+  { name:"Cracked Brick",    rarity:"commun",    type:"obstacle"   },
+  { name:"Rust Cube",        rarity:"commun",    type:"obstacle"   },
+  { name:"Concrete Slab",    rarity:"commun",    type:"obstacle"   },
+  // ── RARE (20) ────────────────────────────────
+  { name:"Neon Edge",        rarity:"rare",      type:"player"     },
+  { name:"Circuit Board",    rarity:"rare",      type:"player"     },
+  { name:"Arctic Fox",       rarity:"rare",      type:"player"     },
+  { name:"Lava Flow",        rarity:"rare",      type:"player"     },
+  { name:"Deep Ocean",       rarity:"rare",      type:"player"     },
+  { name:"Forest Spirit",    rarity:"rare",      type:"player"     },
+  { name:"Chrome Knight",    rarity:"rare",      type:"player"     },
+  { name:"Northern Lights",  rarity:"rare",      type:"background" },
+  { name:"Cyber City",       rarity:"rare",      type:"background" },
+  { name:"Undersea Realm",   rarity:"rare",      type:"background" },
+  { name:"Sakura Storm",     rarity:"rare",      type:"background" },
+  { name:"Blood Moon",       rarity:"rare",      type:"background" },
+  { name:"Neon Grid",        rarity:"rare",      type:"background" },
+  { name:"Volcanic Sky",     rarity:"rare",      type:"background" },
+  { name:"Chrome Steel",     rarity:"rare",      type:"obstacle"   },
+  { name:"Carbon Fiber",     rarity:"rare",      type:"obstacle"   },
+  { name:"Ice Crystal",      rarity:"rare",      type:"obstacle"   },
+  { name:"Copper Vein",      rarity:"rare",      type:"obstacle"   },
+  { name:"Glass Prism",      rarity:"rare",      type:"obstacle"   },
+  { name:"Vine Wall",        rarity:"rare",      type:"obstacle"   },
+  // ── EPIC (15) ────────────────────────────────
+  { name:"Plasma Core",      rarity:"epic",      type:"player"     },
+  { name:"Void Walker",      rarity:"epic",      type:"player"     },
+  { name:"Crystal Heart",    rarity:"epic",      type:"player"     },
+  { name:"Shadow Form",      rarity:"epic",      type:"player"     },
+  { name:"Quantum Shift",    rarity:"epic",      type:"player"     },
+  { name:"Galactic Storm",   rarity:"epic",      type:"background" },
+  { name:"Digital Rain",     rarity:"epic",      type:"background" },
+  { name:"Hyperdrive",       rarity:"epic",      type:"background" },
+  { name:"Ethereal Mist",    rarity:"epic",      type:"background" },
+  { name:"Thunder Plains",   rarity:"epic",      type:"background" },
+  { name:"Vortex",           rarity:"epic",      type:"background" },
+  { name:"Energy Barrier",   rarity:"epic",      type:"obstacle"   },
+  { name:"Dark Matter",      rarity:"epic",      type:"obstacle"   },
+  { name:"Laser Grid",       rarity:"epic",      type:"obstacle"   },
+  { name:"Plasma Wall",      rarity:"epic",      type:"obstacle"   },
+  // ── LEGENDARY (10) ───────────────────────────
+  { name:"Dragon Flame",     rarity:"legendaire",type:"player",    ability:"revival" },
+  { name:"Golden God",       rarity:"legendaire",type:"player",    ability:"revival" },
+  { name:"Thunder King",     rarity:"legendaire",type:"player",    ability:"revival" },
+  { name:"Solar Phoenix",    rarity:"legendaire",type:"player",    ability:"revival" },
+  { name:"Dragon Realm",     rarity:"legendaire",type:"background" },
+  { name:"Sacred Temple",    rarity:"legendaire",type:"background" },
+  { name:"Inferno Sky",      rarity:"legendaire",type:"background" },
+  { name:"Dragon Scale",     rarity:"legendaire",type:"obstacle"   },
+  { name:"Royal Decree",     rarity:"legendaire",type:"obstacle"   },
+  { name:"Thunder Wall",     rarity:"legendaire",type:"obstacle"   },
+  // ── MYTHIC (5) ───────────────────────────────
+  { name:"Cosmic God",       rarity:"mythique",  type:"player",    ability:"revival" },
+  { name:"Time Rift",        rarity:"mythique",  type:"player",    ability:"revival" },
+  { name:"Void Realm",       rarity:"mythique",  type:"background" },
+  { name:"Dimension Break",  rarity:"mythique",  type:"background" },
+  { name:"Reality Wall",     rarity:"mythique",  type:"obstacle",  ability:"sink" },
 ];
 
 const RARITY_COLORS = {
@@ -1129,75 +1165,471 @@ const _patCache = {};
 function getSkinColor(name) {
   if (!name || name === "default") return null;
   if (_patCache[name]) return _patCache[name];
-  const c = document.createElement("canvas");
-  c.width = 80; c.height = 80;
+  const S = 120;
+  const c = document.createElement("canvas"); c.width = S; c.height = S;
   const p = c.getContext("2d");
-  const fill = col => { p.fillStyle = col; p.fillRect(0, 0, 80, 80); };
+
+  const fill  = col => { p.fillStyle = col; p.fillRect(0,0,S,S); };
+  const lgrad = (c1,c2,x1=0,y1=0,x2=0,y2=S) => { const g=p.createLinearGradient(x1,y1,x2,y2); g.addColorStop(0,c1); g.addColorStop(1,c2); p.fillStyle=g; p.fillRect(0,0,S,S); };
+  const lgrad3= (c1,c2,c3,x1=0,y1=0,x2=0,y2=S) => { const g=p.createLinearGradient(x1,y1,x2,y2); g.addColorStop(0,c1); g.addColorStop(0.5,c2); g.addColorStop(1,c3); p.fillStyle=g; p.fillRect(0,0,S,S); };
+  const rgrad = (c1,c2,cx=60,cy=60,r1=0,r2=85) => { const g=p.createRadialGradient(cx,cy,r1,cx,cy,r2); g.addColorStop(0,c1); g.addColorStop(1,c2); p.fillStyle=g; p.fillRect(0,0,S,S); };
+  const shine = () => { const g=p.createLinearGradient(0,0,S*0.6,S*0.4); g.addColorStop(0,"rgba(255,255,255,0.22)"); g.addColorStop(1,"rgba(255,255,255,0)"); p.fillStyle=g; p.fillRect(0,0,S*0.7,S*0.45); };
+  const border= (col,lw=3) => { p.strokeStyle=col; p.lineWidth=lw; p.strokeRect(lw/2,lw/2,S-lw,S-lw); };
+
   const n = name.toLowerCase();
 
-  // Backgrounds
-  if (n.includes("background") || n.includes("nebula") || n.includes("portal")) {
-    if (n.includes("neon sunset") || n.includes("cyber")) {
-      const g = p.createLinearGradient(0,0,80,80);
-      g.addColorStop(0, "#1a0533"); g.addColorStop(1, "#300a1a");
-      p.fillStyle = g; p.fillRect(0,0,80,80);
-      p.fillStyle = "rgba(255,100,180,0.15)";
-      for (let i = 0; i < 5; i++) { p.beginPath(); p.arc(Math.random()*80,Math.random()*80,3+Math.random()*6,0,Math.PI*2); p.fill(); }
-    } else if (n.includes("galaxy") || n.includes("space") || n.includes("nebula")) {
-      fill("#06050f");
-      p.fillStyle = "rgba(180,120,255,0.15)"; p.fillRect(0,0,80,80);
-      for (let i = 0; i < 20; i++) { p.fillStyle = `rgba(255,255,255,${Math.random()*0.7})`; p.beginPath(); p.arc(Math.random()*80,Math.random()*80,Math.random()*1.5,0,Math.PI*2); p.fill(); }
-    } else if (n.includes("neon") || n.includes("laser") || n.includes("techno")) {
-      fill("#040b1a");
-      p.strokeStyle = "rgba(0,255,200,0.25)"; p.lineWidth = 1.5;
-      for (let i = 0; i < 80; i += 10) { p.beginPath(); p.moveTo(i,0); p.lineTo(i,80); p.stroke(); p.beginPath(); p.moveTo(0,i); p.lineTo(80,i); p.stroke(); }
-    } else {
-      const g = p.createLinearGradient(0,0,80,80);
-      g.addColorStop(0, "#07102a"); g.addColorStop(1, "#0f172a");
-      p.fillStyle = g; p.fillRect(0,0,80,80);
-      for (let i = 0; i < 8; i++) { p.fillStyle = "rgba(255,255,255,0.03)"; p.beginPath(); p.arc(Math.random()*80,Math.random()*80,Math.random()*5,0,Math.PI*2); p.fill(); }
-    }
-  }
-  // Player blocks
-  else if (n.includes("block") || n.includes("bananas") || n.includes("runes")) {
-    if      (n.includes("green")  || n.includes("mint"))    fill("#34d399");
-    else if (n.includes("blue"))   fill("#38bdf8");
-    else if (n.includes("red"))    fill("#ef4444");
-    else if (n.includes("gold") || n.includes("brushed"))   fill("#ffb86b");
-    else if (n.includes("flame") || n.includes("magma"))    { fill("#7f1d1d"); p.fillStyle="rgba(255,100,0,0.3)"; for(let i=0;i<80;i+=8){p.fillRect(i-4,Math.random()*80,8,20);} }
-    else if (n.includes("neon"))   { fill("#050d20"); p.strokeStyle="#00ffcc"; p.lineWidth=2; p.strokeRect(4,4,72,72); }
-    else if (n.includes("prism"))  { const g=p.createLinearGradient(0,0,80,80); g.addColorStop(0,"#ff6b94"); g.addColorStop(0.5,"#7c4dff"); g.addColorStop(1,"#38bdf8"); p.fillStyle=g; p.fillRect(0,0,80,80); }
-    else if (n.includes("techno")) { fill("#0d1b33"); p.fillStyle="rgba(0,200,255,0.2)"; for(let i=0;i<80;i+=10){p.fillRect(i,0,2,80);} }
-    else if (n.includes("bananas")){ fill("#fef08a"); p.fillStyle="#d97706"; [[8,10,6,20],[30,14,6,18],[52,8,6,22]].forEach(([x,y,w,h])=>p.fillRect(x,y,w,h)); }
-    else if (n.includes("orange") || n.includes("sand")) fill("#fb923c");
-    else if (n.includes("pastel")) fill("#c4b5fd");
-    else if (n.includes("grey"))   fill("#6b7280");
-    else                           fill("#1e40af");
+  // ── COMMON PLAYERS ───────────────────────────────────────
+  if (n==="crimson block")  { lgrad("#ff4444","#7f1d1d"); shine(); border("rgba(255,120,120,0.3)"); }
+  else if (n==="sapphire block") { lgrad("#3b82f6","#1e3a8a"); shine(); border("rgba(147,197,253,0.35)"); }
+  else if (n==="jade block")     { lgrad("#10b981","#064e3b"); shine(); border("rgba(110,231,183,0.35)"); }
+  else if (n==="obsidian block") { lgrad3("#374151","#1f2937","#111827",0,0,S,S); p.fillStyle="rgba(99,102,241,0.08)"; p.fillRect(0,0,S,S); shine(); border("rgba(99,102,241,0.25)"); }
+  else if (n==="ivory block")    { lgrad("#fefce8","#fde68a"); p.fillStyle="rgba(255,255,255,0.4)"; p.fillRect(0,0,S,S*0.35); border("rgba(253,211,77,0.4)"); }
+  else if (n==="coral block")    { lgrad3("#f97316","#ec4899","#db2777",0,0,S,S); shine(); border("rgba(249,168,212,0.35)"); }
+  else if (n==="slate block")    { lgrad("#475569","#0f172a"); shine(); border("rgba(148,163,184,0.3)"); }
+  else if (n==="amber block")    { lgrad("#f59e0b","#b45309"); shine(); border("rgba(253,211,77,0.4)"); }
 
-    if (n.includes("stripes") || n.includes("sky stripes")) {
-      p.strokeStyle = "rgba(255,255,255,0.12)"; p.lineWidth = 3;
-      for (let i = 0; i < 80; i += 8) { p.beginPath(); p.moveTo(i,0); p.lineTo(i-40,80); p.stroke(); }
-    }
-    if (n.includes("shimmer")) {
-      const g = p.createLinearGradient(0,0,80,80);
-      g.addColorStop(0,"rgba(255,255,255,0.3)"); g.addColorStop(0.5,"rgba(255,255,255,0)"); g.addColorStop(1,"rgba(255,255,255,0.3)");
-      p.fillStyle = g; p.fillRect(0,0,80,80);
-    }
+  // ── COMMON BACKGROUNDS ───────────────────────────────────
+  else if (n==="starfield") {
+    fill("#020617");
+    p.fillStyle="#fff";
+    [[15,18],[40,8],[70,25],[95,12],[20,55],[58,40],[85,60],[10,80],[50,72],[100,85],[32,95],[75,90]].forEach(([x,y])=>{ p.beginPath(); p.arc(x,y,Math.random()*1.2+0.4,0,Math.PI*2); p.fill(); });
   }
-  // Obstacles
-  else {
-    if      (n.includes("red"))     fill("#7f1d1d");
-    else if (n.includes("cyan"))    fill("#164e63");
-    else if (n.includes("prism"))   { const g=p.createLinearGradient(0,0,80,80); g.addColorStop(0,"#4c1d95"); g.addColorStop(1,"#1e3a5f"); p.fillStyle=g; p.fillRect(0,0,80,80); }
-    else if (n.includes("crystal")) { fill("#0a0a20"); p.strokeStyle="rgba(120,200,255,0.4)"; p.lineWidth=1.5; for(let i=0;i<80;i+=15){p.beginPath();p.moveTo(0,i);p.lineTo(80,80-i);p.stroke();} }
-    else if (n.includes("neon") || n.includes("violet lines")) { fill("#09031a"); p.strokeStyle="rgba(168,85,247,0.5)"; p.lineWidth=2; for(let i=0;i<80;i+=10){p.beginPath();p.moveTo(0,i);p.lineTo(80,i);p.stroke();} }
-    else if (n.includes("gold") || n.includes("pharaoh") || n.includes("royal")) { const g=p.createLinearGradient(0,0,0,80); g.addColorStop(0,"#78350f"); g.addColorStop(1,"#92400e"); p.fillStyle=g; p.fillRect(0,0,80,80); p.strokeStyle="rgba(255,184,107,0.4)"; p.lineWidth=1; p.strokeRect(4,4,72,72); }
-    else if (n.includes("carbon")) { fill("#111827"); p.strokeStyle="rgba(255,255,255,0.04)"; p.lineWidth=1; for(let i=0;i<80;i+=10){p.beginPath();p.moveTo(i,0);p.lineTo(i,80);p.stroke(); p.beginPath();p.moveTo(0,i);p.lineTo(80,i);p.stroke();} }
-    else { fill("#1f2937"); p.fillStyle="rgba(255,255,255,0.04)"; for(let y=6;y<80;y+=12){p.fillRect(6,y,68,5);} }
+  else if (n==="ocean floor") {
+    lgrad("#0c4a6e","#082f49");
+    p.strokeStyle="rgba(56,189,248,0.12)"; p.lineWidth=1.5;
+    for(let i=0;i<S;i+=14){ p.beginPath(); p.moveTo(0,i); p.bezierCurveTo(S/3,i-4,S*2/3,i+4,S,i); p.stroke(); }
   }
+  else if (n==="midnight forest") {
+    lgrad("#052e16","#0a0a0a");
+    p.fillStyle="rgba(21,128,61,0.18)";
+    for(let x=5;x<S;x+=12){ p.fillRect(x,20+Math.sin(x)*15,4,S); }
+  }
+  else if (n==="desert dusk") { lgrad3("#92400e","#dc2626","#b45309"); p.fillStyle="rgba(255,200,100,0.12)"; p.fillRect(0,0,S,S); }
+  else if (n==="arctic plain") {
+    lgrad("#e0f2fe","#bfdbfe",0,0,0,S);
+    p.strokeStyle="rgba(186,230,253,0.5)"; p.lineWidth=1;
+    for(let i=10;i<S;i+=18){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+  }
+  else if (n==="storm clouds") {
+    lgrad("#1e293b","#0f172a");
+    p.fillStyle="rgba(100,116,139,0.15)";
+    [[20,20,35,20],[60,30,30,18],[90,15,25,15],[10,50,40,22],[70,55,35,20]].forEach(([x,y,rx,ry])=>{ p.beginPath(); p.ellipse(x,y,rx,ry,0,0,Math.PI*2); p.fill(); });
+  }
+  else if (n==="rolling hills") {
+    lgrad("#14532d","#166534");
+    p.fillStyle="#052e16";
+    p.beginPath(); p.moveTo(0,S); p.bezierCurveTo(30,60,70,80,S,55); p.lineTo(S,S); p.closePath(); p.fill();
+  }
+
+  // ── COMMON OBSTACLES ─────────────────────────────────────
+  else if (n==="iron block")    { lgrad("#374151","#1f2937"); p.strokeStyle="rgba(255,255,255,0.06)"; p.lineWidth=1; for(let i=10;i<S;i+=10){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); } border("rgba(75,85,99,0.5)",2); }
+  else if (n==="stone wall")    { lgrad("#6b7280","#374151"); p.strokeStyle="rgba(55,65,81,0.5)"; p.lineWidth=2; for(let y=0;y<S;y+=15){ for(let x=(y%30===0?0:15);x<S;x+=30){ p.strokeRect(x,y,28,13); } } border("rgba(107,114,128,0.4)",2); }
+  else if (n==="cracked brick") { lgrad("#b45309","#7f1d1d"); p.strokeStyle="rgba(0,0,0,0.3)"; p.lineWidth=1.5; for(let y=0;y<S;y+=12){ for(let x=(y%24===0?0:12);x<S;x+=24){ p.strokeRect(x+1,y+1,22,10); } } p.strokeStyle="rgba(255,200,100,0.3)"; p.beginPath(); p.moveTo(30,0); p.lineTo(45,40); p.lineTo(35,S); p.stroke(); }
+  else if (n==="rust cube")     { lgrad("#92400e","#78350f"); p.fillStyle="rgba(0,0,0,0.15)"; for(let i=0;i<8;i++){ const rx=Math.sin(i*37)*50+30, ry=Math.cos(i*71)*50+30; p.beginPath(); p.arc(rx,ry,6+i%4*3,0,Math.PI*2); p.fill(); } border("rgba(180,83,9,0.5)",2); }
+  else if (n==="concrete slab") { fill("#6b7280"); p.fillStyle="rgba(0,0,0,0.06)"; for(let i=0;i<20;i++){ const dx=Math.sin(i*13)*50+30, dy=Math.cos(i*27)*50+30; p.fillRect(dx,dy,2,2); } border("rgba(107,114,128,0.6)",2); }
+
+  // ── RARE PLAYERS ─────────────────────────────────────────
+  else if (n==="neon edge") {
+    fill("#0a0f1e"); p.strokeStyle="#00e5ff"; p.lineWidth=3; p.strokeRect(5,5,S-10,S-10);
+    p.strokeStyle="rgba(0,229,255,0.3)"; p.lineWidth=1; p.strokeRect(10,10,S-20,S-20);
+    p.fillStyle="#00e5ff"; [[5,5,6,6],[S-11,5,6,6],[5,S-11,6,6],[S-11,S-11,6,6]].forEach(([x,y,w,h])=>p.fillRect(x,y,w,h));
+    p.fillStyle="rgba(0,229,255,0.15)"; p.fillRect(0,0,S,S);
+  }
+  else if (n==="circuit board") {
+    fill("#052e16");
+    p.strokeStyle="rgba(52,211,153,0.6)"; p.lineWidth=1.5;
+    [[0,30,80,30],[0,70,S,70],[40,0,40,60],[90,30,90,S],[20,70,20,S],[60,0,60,30]].forEach(([x1,y1,x2,y2])=>{ p.beginPath(); p.moveTo(x1,y1); p.lineTo(x2,y2); p.stroke(); });
+    p.fillStyle="#34d399"; [[40,30],[90,30],[20,70],[60,30],[80,70]].forEach(([x,y])=>{ p.beginPath(); p.arc(x,y,3,0,Math.PI*2); p.fill(); });
+  }
+  else if (n==="arctic fox") {
+    lgrad("#dbeafe","#ffffff",0,0,S,S);
+    p.strokeStyle="rgba(96,165,250,0.25)"; p.lineWidth=1;
+    for(let i=-S;i<S*2;i+=10){ p.beginPath(); p.moveTo(i,0); p.lineTo(i+S,S); p.stroke(); }
+    border("rgba(147,197,253,0.5)",2);
+  }
+  else if (n==="lava flow") {
+    lgrad3("#7f1d1d","#dc2626","#f97316",0,S,0,0);
+    p.strokeStyle="rgba(251,191,36,0.4)"; p.lineWidth=2;
+    for(let i=0;i<3;i++){ p.beginPath(); p.moveTo(i*40,S); p.bezierCurveTo(i*40+10,S*0.6,i*40+25,S*0.3,i*40+20,0); p.stroke(); }
+  }
+  else if (n==="deep ocean") {
+    rgrad("#0369a1","#0c4a6e",60,60,5,75);
+    p.fillStyle="rgba(186,230,253,0.15)";
+    for(let i=0;i<6;i++){ p.beginPath(); p.arc(15+i*18,50+Math.sin(i)*15,3+i%3,0,Math.PI*2); p.fill(); }
+  }
+  else if (n==="forest spirit") {
+    lgrad("#14532d","#052e16");
+    p.strokeStyle="rgba(134,239,172,0.35)"; p.lineWidth=1;
+    [[60,0,20,S],[60,0,40,60,60,S],[60,0,0,70,S,70]].forEach(([sx,sy,cx,cy,ex,ey])=>{ p.beginPath(); p.moveTo(sx,sy); if(cx!==undefined){ p.quadraticCurveTo(cx,cy,ex,ey); } else p.lineTo(sx,S); p.stroke(); });
+    p.fillStyle="rgba(74,222,128,0.12)"; p.fillRect(0,0,S,S);
+  }
+  else if (n==="chrome knight") {
+    rgrad("#e2e8f0","#334155",60,30,0,90);
+    p.strokeStyle="rgba(255,255,255,0.2)"; p.lineWidth=1;
+    for(let i=5;i<S;i+=8){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+    border("rgba(148,163,184,0.6)",2);
+  }
+
+  // ── RARE BACKGROUNDS ─────────────────────────────────────
+  else if (n==="northern lights") {
+    lgrad("#0f172a","#020617");
+    p.strokeStyle="rgba(52,211,153,0.3)"; p.lineWidth=8;
+    for(let i=0;i<3;i++){ p.beginPath(); p.moveTo(0,60+i*20); p.bezierCurveTo(30,20+i*10,80,40+i*5,S,30+i*15); p.stroke(); }
+    p.strokeStyle="rgba(56,189,248,0.2)"; p.lineWidth=5;
+    p.beginPath(); p.moveTo(0,90); p.bezierCurveTo(40,50,80,70,S,45); p.stroke();
+  }
+  else if (n==="cyber city") {
+    fill("#020617");
+    p.fillStyle="rgba(30,58,138,0.4)";
+    [[0,60,15,60],[20,50,10,70],[35,40,12,80],[50,65,8,55],[62,45,14,75],[80,55,10,65],[95,35,15,85]].forEach(([x,y,w,h])=>p.fillRect(x,y,w,h));
+    p.fillStyle="rgba(250,204,21,0.8)";
+    [[5,65],[8,75],[25,55],[26,65],[40,50],[58,70],[68,55],[85,60],[98,45]].forEach(([x,y])=>p.fillRect(x,y,2,2));
+    p.strokeStyle="rgba(99,102,241,0.2)"; p.lineWidth=1; for(let i=0;i<S;i+=12){ p.beginPath(); p.moveTo(i,0); p.lineTo(i,S); p.stroke(); }
+  }
+  else if (n==="undersea realm") {
+    lgrad3("#0c4a6e","#164e63","#0e7490");
+    p.strokeStyle="rgba(186,230,253,0.15)"; p.lineWidth=20;
+    for(let i=0;i<3;i++){ p.beginPath(); p.moveTo(20+i*30,S); p.bezierCurveTo(15+i*30,0,25+i*30,0,20+i*30,S); p.stroke(); }
+    p.fillStyle="rgba(224,242,254,0.2)";
+    for(let i=0;i<5;i++){ p.beginPath(); p.arc(10+i*22,30+Math.sin(i)*20,4,0,Math.PI*2); p.fill(); }
+  }
+  else if (n==="sakura storm") {
+    lgrad("#fdf2f8","#fce7f3");
+    p.fillStyle="rgba(244,114,182,0.35)";
+    for(let i=0;i<8;i++){ const x=Math.sin(i*37)*50+50, y=Math.cos(i*61)*50+50; p.save(); p.translate(x,y); p.rotate(i*0.8); p.fillRect(-4,-1.5,8,3); p.fillRect(-1.5,-4,3,8); p.restore(); }
+  }
+  else if (n==="blood moon") {
+    lgrad("#1c0505","#7f1d1d");
+    p.fillStyle="rgba(239,68,68,0.6)"; p.beginPath(); p.arc(90,20,22,0,Math.PI*2); p.fill();
+    p.fillStyle="rgba(239,68,68,0.15)"; p.beginPath(); p.arc(90,20,35,0,Math.PI*2); p.fill();
+    p.fillStyle="#fff"; for(let i=0;i<8;i++){ p.beginPath(); p.arc(Math.sin(i*67)*55+50,Math.cos(i*41)*55+50,0.8,0,Math.PI*2); p.fill(); }
+  }
+  else if (n==="neon grid") {
+    fill("#000");
+    p.strokeStyle="rgba(168,85,247,0.6)"; p.lineWidth=1; for(let i=0;i<S;i+=12){ p.beginPath(); p.moveTo(i,0); p.lineTo(i,S); p.stroke(); }
+    p.strokeStyle="rgba(6,182,212,0.6)"; for(let i=0;i<S;i+=12){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+  }
+  else if (n==="volcanic sky") {
+    lgrad3("#7f1d1d","#dc2626","#ea580c",0,S,0,0);
+    p.fillStyle="rgba(251,191,36,0.7)";
+    for(let i=0;i<10;i++){ const ex=Math.sin(i*41)*55+50, ey=Math.cos(i*53)*55+50; p.beginPath(); p.arc(ex,ey,1.5,0,Math.PI*2); p.fill(); }
+  }
+
+  // ── RARE OBSTACLES ───────────────────────────────────────
+  else if (n==="chrome steel") {
+    rgrad("#e2e8f0","#1e293b",60,30,0,90);
+    p.strokeStyle="rgba(255,255,255,0.15)"; p.lineWidth=1.5;
+    for(let i=4;i<S;i+=8){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+    border("rgba(148,163,184,0.7)",3);
+  }
+  else if (n==="carbon fiber") {
+    fill("#1a1a1a");
+    for(let y=0;y<S;y+=8){ for(let x=0;x<S;x+=8){ const off=(y/8%2)*4; p.fillStyle=x%8<4?"#2a2a2a":"#222"; p.fillRect(x+off,y,4,4); p.fillStyle=x%8<4?"#222":"#2a2a2a"; p.fillRect(x+off,y+4,4,4); } }
+    border("rgba(100,100,100,0.4)",2);
+  }
+  else if (n==="ice crystal") {
+    rgrad("#e0f2fe","#0369a1",60,40,0,80);
+    p.strokeStyle="rgba(255,255,255,0.6)"; p.lineWidth=1.5;
+    [[60,10,60,110],[10,60,110,60],[20,20,100,100],[100,20,20,100]].forEach(([x1,y1,x2,y2])=>{ p.beginPath(); p.moveTo(x1,y1); p.lineTo(x2,y2); p.stroke(); });
+    border("rgba(186,230,253,0.7)",2);
+  }
+  else if (n==="copper vein") {
+    lgrad("#92400e","#78350f");
+    p.strokeStyle="rgba(180,83,9,0.7)"; p.lineWidth=2;
+    [[0,30,40,20,80,40,S,25],[0,70,35,60,75,80,S,65]].forEach(pts=>{ p.beginPath(); p.moveTo(pts[0],pts[1]); p.bezierCurveTo(pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]); p.stroke(); });
+    border("rgba(251,191,36,0.35)",2);
+  }
+  else if (n==="glass prism") {
+    fill("rgba(224,242,254,0.85)");
+    const g=p.createLinearGradient(0,0,S,S); ["#ff000030","#ff7f0030","#ffff0030","#00ff0030","#0000ff30","#8b00ff30"].forEach((col,i)=>g.addColorStop(i/5,col));
+    p.fillStyle=g; p.fillRect(0,0,S,S);
+    border("rgba(255,255,255,0.8)",3);
+  }
+  else if (n==="vine wall") {
+    fill("#052e16");
+    p.strokeStyle="rgba(74,222,128,0.5)"; p.lineWidth=2;
+    for(let i=0;i<3;i++){ p.beginPath(); p.moveTo(i*50,S); p.bezierCurveTo(i*50-15,S*0.6,i*50+20,S*0.3,i*50+10,0); p.stroke(); }
+    p.fillStyle="rgba(34,197,94,0.5)";
+    for(let i=0;i<8;i++){ p.beginPath(); p.ellipse(20+i*15,20+i*12,6,4,i,0,Math.PI*2); p.fill(); }
+  }
+
+  // ── EPIC PLAYERS ─────────────────────────────────────────
+  else if (n==="plasma core") {
+    rgrad("#c026d3","#4c1d95",60,60,5,75);
+    p.strokeStyle="rgba(240,171,252,0.5)"; p.lineWidth=1.5;
+    for(let i=0;i<4;i++){ p.beginPath(); p.arc(60,60,15+i*12,0,Math.PI*2); p.stroke(); }
+    border("#d946ef",3); shine();
+  }
+  else if (n==="void walker") {
+    fill("#030712");
+    p.fillStyle="rgba(67,56,202,0.3)"; p.fillRect(0,0,S,S);
+    p.strokeStyle="rgba(99,102,241,0.4)"; p.lineWidth=1;
+    for(let i=0;i<5;i++){ p.beginPath(); p.arc(60,60,20+i*10,0.5+i*0.3,3+i*0.4); p.stroke(); }
+    p.fillStyle="rgba(255,255,255,0.8)"; for(let i=0;i<6;i++){ p.beginPath(); p.arc(Math.sin(i*67)*45+60,Math.cos(i*41)*45+60,1,0,Math.PI*2); p.fill(); }
+    border("rgba(99,102,241,0.8)",3);
+  }
+  else if (n==="crystal heart") {
+    rgrad("#bae6fd","#0369a1",60,50,0,70);
+    p.strokeStyle="rgba(255,255,255,0.5)"; p.lineWidth=1.5;
+    for(let a=0;a<Math.PI*2;a+=Math.PI/4){ p.beginPath(); p.moveTo(60,60); p.lineTo(60+Math.cos(a)*55,60+Math.sin(a)*55); p.stroke(); }
+    border("rgba(56,189,248,0.9)",3);
+  }
+  else if (n==="shadow form") {
+    fill("#030712");
+    p.fillStyle="rgba(99,102,241,0.2)";
+    for(let i=0;i<5;i++){ p.fillRect(i*25,i*22,30,28); }
+    p.strokeStyle="rgba(129,140,248,0.5)"; p.lineWidth=2;
+    p.beginPath(); p.arc(60,60,40,0,Math.PI*2); p.stroke();
+    border("rgba(99,102,241,0.8)",3);
+  }
+  else if (n==="quantum shift") {
+    const g=p.createLinearGradient(0,0,S,S); g.addColorStop(0,"#7c3aed"); g.addColorStop(0.3,"#0ea5e9"); g.addColorStop(0.6,"#7c3aed"); g.addColorStop(1,"#a855f7");
+    p.fillStyle=g; p.fillRect(0,0,S,S);
+    p.strokeStyle="rgba(255,255,255,0.2)"; p.lineWidth=1; for(let i=0;i<S;i+=15){ p.beginPath(); p.moveTo(i,0); p.lineTo(i,S); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+    border("rgba(167,139,250,0.9)",3);
+  }
+
+  // ── EPIC BACKGROUNDS ─────────────────────────────────────
+  else if (n==="galactic storm") {
+    fill("#030712");
+    p.fillStyle="rgba(124,58,237,0.2)"; p.beginPath(); p.arc(60,50,60,0,Math.PI*2); p.fill();
+    p.fillStyle="rgba(56,189,248,0.15)"; p.beginPath(); p.arc(30,70,40,0,Math.PI*2); p.fill();
+    p.fillStyle="#fff"; for(let i=0;i<20;i++){ p.beginPath(); p.arc(Math.sin(i*37)*55+60,Math.cos(i*53)*55+60,Math.random()*1.2+0.3,0,Math.PI*2); p.fill(); }
+  }
+  else if (n==="digital rain") {
+    fill("#030712");
+    p.fillStyle="rgba(0,255,70,0.7)"; p.font="bold 8px monospace";
+    for(let x=4;x<S;x+=8){ for(let y=4;y<S;y+=10){ if(Math.sin(x*y*0.01)>0.2) p.fillText(Math.random()>0.5?"1":"0",x,y); } }
+    p.fillStyle="rgba(0,255,70,0.15)"; p.fillRect(0,0,S,S);
+  }
+  else if (n==="hyperdrive") {
+    fill("#020617");
+    p.strokeStyle="rgba(255,255,255,0.4)"; p.lineWidth=1;
+    for(let a=0;a<Math.PI*2;a+=0.25){ const len=30+Math.sin(a*7)*20; p.beginPath(); p.moveTo(60+Math.cos(a)*8,60+Math.sin(a)*8); p.lineTo(60+Math.cos(a)*(8+len),60+Math.sin(a)*(8+len)); p.stroke(); }
+    p.fillStyle="rgba(255,255,255,0.9)"; p.beginPath(); p.arc(60,60,4,0,Math.PI*2); p.fill();
+  }
+  else if (n==="ethereal mist") {
+    lgrad("#0f172a","#1e1b4b");
+    p.fillStyle="rgba(255,255,255,0.07)";
+    for(let i=0;i<4;i++){ p.beginPath(); p.ellipse(20+i*30,40+Math.sin(i)*20,30,18,i*0.5,0,Math.PI*2); p.fill(); }
+  }
+  else if (n==="thunder plains") {
+    lgrad3("#0f172a","#1e3a5f","#0f172a");
+    p.strokeStyle="rgba(250,204,21,0.85)"; p.lineWidth=1.5;
+    for(let i=0;i<3;i++){ p.beginPath(); p.moveTo(20+i*40,0); p.lineTo(10+i*40,35); p.lineTo(22+i*40,35); p.lineTo(12+i*40,S); p.stroke(); }
+  }
+  else if (n==="vortex") {
+    fill("#0f0a1f");
+    p.strokeStyle="rgba(139,92,246,0.5)"; p.lineWidth=1.5;
+    for(let r=8;r<60;r+=8){ p.beginPath(); p.arc(60,60,r,0,Math.PI*1.8); p.stroke(); }
+  }
+
+  // ── EPIC OBSTACLES ───────────────────────────────────────
+  else if (n==="energy barrier") {
+    lgrad("#0c4a6e","#1e3a8a");
+    p.strokeStyle="rgba(56,189,248,0.9)"; p.lineWidth=2;
+    for(let i=8;i<S;i+=14){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+    border("#38bdf8",3);
+  }
+  else if (n==="dark matter") {
+    fill("#030712");
+    p.fillStyle="rgba(124,58,237,0.3)";
+    for(let i=0;i<5;i++){ p.beginPath(); p.arc(20+i*22,20+i*18,15,0,Math.PI*2); p.fill(); }
+    border("rgba(124,58,237,0.9)",3);
+  }
+  else if (n==="laser grid") {
+    fill("#0a0000");
+    p.strokeStyle="rgba(239,68,68,0.9)"; p.lineWidth=1.5;
+    for(let i=8;i<S;i+=15){ p.beginPath(); p.moveTo(0,i); p.lineTo(S,i); p.stroke(); }
+    border("#ef4444",3);
+  }
+  else if (n==="plasma wall") {
+    rgrad("#db2777","#7e22ce",60,60,0,80);
+    p.strokeStyle="rgba(255,255,255,0.2)"; p.lineWidth=1;
+    for(let i=0;i<5;i++){ p.beginPath(); p.arc(60,60,18+i*10,0,Math.PI*2); p.stroke(); }
+    border("#ec4899",3);
+  }
+
+  // ── LEGENDARY PLAYERS ────────────────────────────────────
+  else if (n==="dragon flame") {
+    lgrad3("#7f1d1d","#dc2626","#f97316",0,S,0,0);
+    p.fillStyle="rgba(251,191,36,0.3)";
+    for(let i=0;i<5;i++){ p.beginPath(); p.moveTo(20+i*22,S); p.bezierCurveTo(15+i*22,S*0.5,25+i*22,S*0.3,18+i*22,0); p.lineTo(23+i*22,0); p.bezierCurveTo(26+i*22,S*0.3,18+i*22,S*0.5,24+i*22,S); p.closePath(); p.fill(); }
+    border("#f97316",4);
+  }
+  else if (n==="golden god") {
+    lgrad3("#78350f","#f59e0b","#fef3c7",0,S,0,0);
+    for(let i=0;i<6;i++){ const a=i/6*Math.PI*2, x=60+Math.cos(a)*38, y=60+Math.sin(a)*38; p.beginPath(); p.arc(x,y,3,0,Math.PI*2); p.fillStyle="rgba(251,191,36,0.8)"; p.fill(); }
+    p.strokeStyle="#fde68a"; p.lineWidth=1; for(let a=0;a<Math.PI*2;a+=Math.PI/6){ p.beginPath(); p.moveTo(60+Math.cos(a)*15,60+Math.sin(a)*15); p.lineTo(60+Math.cos(a)*50,60+Math.sin(a)*50); p.stroke(); }
+    border("#fbbf24",4); shine();
+  }
+  else if (n==="thunder king") {
+    lgrad3("#1e3a8a","#1d4ed8","#93c5fd",0,S,0,0);
+    p.strokeStyle="rgba(250,204,21,0.9)"; p.lineWidth=2.5;
+    p.beginPath(); p.moveTo(55,5); p.lineTo(40,55); p.lineTo(60,55); p.lineTo(45,S-5); p.stroke();
+    p.strokeStyle="rgba(250,204,21,0.3)"; p.lineWidth=8; p.stroke();
+    border("#60a5fa",4);
+  }
+  else if (n==="solar phoenix") {
+    rgrad("#fef3c7","#f97316",60,80,0,90);
+    p.strokeStyle="rgba(251,191,36,0.6)"; p.lineWidth=2;
+    for(let a=0;a<Math.PI;a+=Math.PI/5){ p.beginPath(); p.moveTo(60,70); p.bezierCurveTo(60+Math.cos(a+Math.PI/2)*50,70-50,60+Math.cos(a)*60,70-40,60+Math.cos(a)*20,70-70); p.stroke(); }
+    border("#f97316",4);
+  }
+
+  // ── LEGENDARY BACKGROUNDS ────────────────────────────────
+  else if (n==="dragon realm") {
+    lgrad3("#1c0505","#7f1d1d","#92400e",0,S,0,0);
+    p.fillStyle="rgba(0,0,0,0.6)";
+    [[0,60,25,60],[20,50,20,60],[40,40,18,60],[65,55,15,60],[85,45,18,60],[100,60,20,60]].forEach(([x,y,w,h])=>p.fillRect(x,y,w,h));
+    p.fillStyle="rgba(251,191,36,0.3)"; p.beginPath(); p.arc(60,S,50,Math.PI,0); p.fill();
+  }
+  else if (n==="sacred temple") {
+    lgrad3("#78350f","#b45309","#fef3c7",0,S,0,0);
+    p.fillStyle="rgba(0,0,0,0.5)";
+    [[10,40,8,80],[30,30,8,90],[50,20,12,100],[70,30,8,90],[90,40,8,80]].forEach(([x,y,w,h])=>p.fillRect(x,y,w,h));
+    p.fillStyle="rgba(253,211,77,0.4)"; p.fillRect(0,S-20,S,20);
+    p.strokeStyle="rgba(253,211,77,0.6)"; p.lineWidth=2; p.beginPath(); p.moveTo(0,S-20); p.lineTo(S,S-20); p.stroke();
+  }
+  else if (n==="inferno sky") {
+    lgrad3("#030712","#7f1d1d","#dc2626",0,S,0,0);
+    p.fillStyle="rgba(251,191,36,0.5)";
+    for(let i=0;i<12;i++){ p.beginPath(); p.arc(Math.sin(i*41)*55+60,Math.cos(i*53)*55+60,1.5,0,Math.PI*2); p.fill(); }
+    p.fillStyle="rgba(239,68,68,0.35)"; p.beginPath(); p.arc(60,60,50,0,Math.PI*2); p.fill();
+  }
+
+  // ── LEGENDARY OBSTACLES ──────────────────────────────────
+  else if (n==="dragon scale") {
+    lgrad("#7f1d1d","#450a0a");
+    p.strokeStyle="rgba(251,191,36,0.5)"; p.lineWidth=1.5;
+    for(let row=0;row<5;row++){ for(let col=0;col<4;col++){ const x=(col+(row%2)*0.5)*28, y=row*22; p.beginPath(); p.arc(x+14,y+22,14,Math.PI,0); p.stroke(); } }
+    border("#f59e0b",4);
+  }
+  else if (n==="royal decree") {
+    lgrad3("#78350f","#f59e0b","#78350f",0,0,S,0);
+    p.strokeStyle="rgba(254,243,199,0.5)"; p.lineWidth=1;
+    for(let i=8;i<S;i+=14){ p.beginPath(); p.moveTo(0,i); p.bezierCurveTo(S/4,i-3,S*3/4,i+3,S,i); p.stroke(); }
+    border("#fbbf24",4);
+  }
+  else if (n==="thunder wall") {
+    lgrad("#1e3a8a","#0f172a");
+    p.strokeStyle="rgba(250,204,21,0.7)"; p.lineWidth=2;
+    for(let i=0;i<3;i++){ const x=20+i*38; p.beginPath(); p.moveTo(x,5); p.lineTo(x-8,40); p.lineTo(x+4,40); p.lineTo(x-4,S-5); p.stroke(); }
+    border("#60a5fa",4);
+  }
+
+  // ── MYTHIC PLAYERS ───────────────────────────────────────
+  else if (n==="cosmic god") {
+    fill("#000");
+    p.fillStyle="rgba(124,58,237,0.35)"; p.beginPath(); p.arc(40,50,50,0,Math.PI*2); p.fill();
+    p.fillStyle="rgba(6,182,212,0.25)";  p.beginPath(); p.arc(80,60,40,0,Math.PI*2); p.fill();
+    p.fillStyle="rgba(236,72,153,0.2)";  p.beginPath(); p.arc(60,30,35,0,Math.PI*2); p.fill();
+    p.fillStyle="rgba(255,255,255,0.85)"; for(let i=0;i<12;i++){ p.beginPath(); p.arc(Math.sin(i*37)*55+60,Math.cos(i*53)*55+60,1.2,0,Math.PI*2); p.fill(); }
+    ["#f59e0baa","#ec4899aa","#06b6d4aa","#8b5cf6aa"].forEach((col,i)=>{ p.strokeStyle=col; p.lineWidth=2; p.strokeRect(i*2,i*2,S-i*4,S-i*4); });
+  }
+  else if (n==="time rift") {
+    fill("#020617");
+    p.strokeStyle="rgba(56,189,248,0.4)"; p.lineWidth=1.5;
+    for(let r=10;r<65;r+=10){ p.beginPath(); p.ellipse(60,60,r,r*(0.5+r*0.005),r*0.02,0,Math.PI*2); p.stroke(); }
+    p.strokeStyle="rgba(255,255,255,0.7)"; p.lineWidth=2;
+    p.beginPath(); p.moveTo(60,60); p.lineTo(60,25); p.stroke();
+    p.beginPath(); p.moveTo(60,60); p.lineTo(85,60); p.stroke();
+    ["#38bdf888","#a78bfa88","#f0abfc88"].forEach((col,i)=>{ p.strokeStyle=col; p.lineWidth=2.5-i*0.5; p.strokeRect(i*3,i*3,S-i*6,S-i*6); });
+  }
+
+  // ── MYTHIC BACKGROUNDS ───────────────────────────────────
+  else if (n==="void realm") {
+    fill("#000");
+    const voidColors=["rgba(124,58,237,","rgba(6,182,212,","rgba(236,72,153,"];
+    for(let i=0;i<6;i++){ p.strokeStyle=voidColors[i%3]+"0.25)"; p.lineWidth=1; p.beginPath(); p.moveTo(60,60); const a=i/6*Math.PI*2; p.bezierCurveTo(60+Math.cos(a)*30,60+Math.sin(a)*30,60+Math.cos(a+1)*60,60+Math.sin(a+1)*60,60+Math.cos(a+0.5)*S,60+Math.sin(a+0.5)*S); p.stroke(); }
+    p.fillStyle="rgba(255,255,255,0.7)"; for(let i=0;i<8;i++){ p.beginPath(); p.arc(Math.sin(i*41)*55+60,Math.cos(i*37)*55+60,1,0,Math.PI*2); p.fill(); }
+  }
+  else if (n==="dimension break") {
+    lgrad("#7c3aed","#0ea5e9",0,0,S,S);
+    p.fillStyle="rgba(0,0,0,0.5)"; p.beginPath(); p.moveTo(0,0); p.lineTo(S,S); p.lineTo(S,0); p.closePath(); p.fill();
+    p.strokeStyle="rgba(255,255,255,0.8)"; p.lineWidth=2.5; p.beginPath(); p.moveTo(0,0); p.lineTo(S,S); p.stroke();
+    p.strokeStyle="rgba(255,255,255,0.3)"; p.lineWidth=1; [[10,0,0,20],[S,20,S-15,0],[0,S-15,20,S],[S-20,S,S,S-20]].forEach(([x1,y1,x2,y2])=>{ p.beginPath(); p.moveTo(x1,y1); p.lineTo(x2,y2); p.stroke(); });
+  }
+
+  // ── MYTHIC OBSTACLE ──────────────────────────────────────
+  else if (n==="reality wall") {
+    const g=p.createLinearGradient(0,0,S,S);
+    ["#ff0000","#ff7f00","#ffff00","#00ff00","#0000ff","#8b00ff"].forEach((col,i)=>g.addColorStop(i/5,col));
+    p.fillStyle=g; p.fillRect(0,0,S,S); p.globalAlpha=0.55; p.fillStyle="#fff"; p.fillRect(0,0,S,S); p.globalAlpha=1;
+    p.strokeStyle="rgba(0,0,0,0.4)"; p.lineWidth=2;
+    [[60,0,30,40,80,80,60,S],[40,0,60,30,20,70,50,S]].forEach(pts=>{ p.beginPath(); p.moveTo(pts[0],pts[1]); p.bezierCurveTo(pts[2],pts[3],pts[4],pts[5],pts[6],pts[7]); p.stroke(); });
+    ["#ff000088","#00ff0088","#0000ff88","#ff00ff88"].forEach((col,i)=>{ p.strokeStyle=col; p.lineWidth=2; p.strokeRect(i*2,i*2,S-i*4,S-i*4); });
+  }
+
+  // ── FALLBACK ─────────────────────────────────────────────
+  else { lgrad("#1e293b","#0f172a"); shine(); }
 
   _patCache[name] = p.createPattern(c, "repeat");
   return _patCache[name];
+}
+
+// ─────────────────────────────────────────────
+//  ANIMATED SKIN EFFECTS (drawn each frame)
+// ─────────────────────────────────────────────
+function drawSkinEffects(ctx2, skinName, x, y, w, h, t) {
+  if (!skinName || skinName === "default") return;
+  const skin = SKINS.find(s => s.name === skinName);
+  if (!skin) return;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);
+  ctx2.save();
+
+  if (skin.rarity === "epic") {
+    ctx2.shadowBlur = 10 + 8 * pulse;
+    ctx2.shadowColor = skin.type === "obstacle" ? "#06b6d4" : "#a855f7";
+    ctx2.strokeStyle = skin.type === "obstacle" ? `rgba(6,182,212,${0.4+0.3*pulse})` : `rgba(168,85,247,${0.4+0.3*pulse})`;
+    ctx2.lineWidth = 2;
+    ctx2.strokeRect(x + 1, y + 1, w - 2, h - 2);
+  }
+
+  if (skin.rarity === "legendaire") {
+    const col = skin.name === "Thunder King" ? "#60a5fa" : skin.name === "Golden God" ? "#fbbf24" : "#f97316";
+    ctx2.shadowBlur = 18 + 12 * pulse;
+    ctx2.shadowColor = col;
+    ctx2.strokeStyle = col;
+    ctx2.lineWidth = 3;
+    ctx2.strokeRect(x - 1, y - 1, w + 2, h + 2);
+    if (skin.type === "player") {
+      for (let i = 0; i < 4; i++) {
+        const fx = x + 6 + ((Math.floor(t * 40 + i * 30)) % (w - 12));
+        const fy = y - 5 - Math.abs(Math.sin(t * 4 + i * 1.5)) * 12;
+        ctx2.fillStyle = `rgba(251,191,36,${0.5 + 0.4 * Math.sin(t * 5 + i)})`;
+        ctx2.shadowBlur = 6; ctx2.shadowColor = "#fbbf24";
+        ctx2.beginPath(); ctx2.arc(fx, fy, 3 + Math.sin(t * 4 + i) * 1.5, 0, Math.PI * 2); ctx2.fill();
+      }
+    }
+  }
+
+  if (skin.rarity === "mythique") {
+    const hue = (t * 60) % 360;
+    ctx2.shadowBlur = 24 + 8 * pulse;
+    ctx2.shadowColor = `hsl(${hue},100%,65%)`;
+    ctx2.strokeStyle = `hsl(${hue},100%,70%)`;
+    ctx2.lineWidth = 3;
+    ctx2.strokeRect(x - 2, y - 2, w + 4, h + 4);
+    if (skin.type === "player") {
+      for (let i = 0; i < 5; i++) {
+        const angle = t * 2.5 + (i / 5) * Math.PI * 2;
+        const orbitR = w * 0.65 + 6;
+        const ox = x + w / 2 + Math.cos(angle) * orbitR;
+        const oy = y + h / 2 + Math.sin(angle) * (orbitR * 0.6);
+        ctx2.fillStyle = `hsl(${(hue + i * 72) % 360},100%,70%)`;
+        ctx2.shadowBlur = 8; ctx2.shadowColor = ctx2.fillStyle;
+        ctx2.beginPath(); ctx2.arc(ox, oy, 3, 0, Math.PI * 2); ctx2.fill();
+      }
+    }
+    if (skin.name === "Reality Wall") {
+      ctx2.strokeStyle = `hsl(${(hue + 120) % 360},100%,70%)`;
+      ctx2.lineWidth = 2;
+      ctx2.strokeRect(x + 3, y + 3, w - 6, h - 6);
+    }
+  }
+
+  ctx2.restore();
 }
 
 // ─────────────────────────────────────────────
@@ -1337,6 +1769,20 @@ function startGame() {
   shieldActive = false; shieldTimer = 0;
   doubleJumpUsed = false;
   spawnTimer = currentDiff.spawnBase;
+
+  // Ability init
+  const activeSkinNames = [selectedSkins.player, selectedSkins.obstacle];
+  const activeSkinData = SKINS.filter(s => activeSkinNames.includes(s.name));
+  legendaryReviveAvailable = activeSkinData.some(s => s.ability === "revival");
+  legendaryReviveUsed = false;
+  reviveFlashTimer = 0;
+  mythicAbilityCooldown = 0;
+  const hasMythicSink = activeSkinData.some(s => s.ability === "sink");
+  const abilityBtn = document.getElementById("mythicAbilityBtn");
+  abilityBtn.style.display = hasMythicSink ? "flex" : "none";
+  abilityBtn.disabled = false;
+  abilityBtn.textContent = "⚡ Ability";
+  document.getElementById("reviveBadge").style.display = legendaryReviveAvailable ? "flex" : "none";
   coinSpawnTimer = 110;
   document.getElementById("score").textContent = 0;
   running = true; paused = false; menuOpen = false;
@@ -1430,12 +1876,44 @@ function spawnPowerup() {
   powerups.push({ x: W + 60, y: GROUND_Y - 60 - Math.random() * 60, r: 14, type: types[Math.floor(Math.random() * types.length)], taken: false });
 }
 
+function useMythicAbility() {
+  if (!running || paused) return;
+  if (mythicAbilityCooldown > 0) { showToast("⚡ Ability recharging..."); return; }
+  const skinData = SKINS.find(s => s.name === selectedSkins.obstacle && s.ability === "sink");
+  if (!skinData) return;
+
+  let nearest = null, minDist = Infinity;
+  obstacles.forEach(ob => {
+    if (!ob.passed && ob.x + ob.w > player.x) {
+      const dist = ob.x - (player.x + player.w);
+      if (dist < minDist) { minDist = dist; nearest = ob; }
+    }
+  });
+
+  if (nearest) {
+    const idx = obstacles.indexOf(nearest);
+    spawnParticles(nearest.x + nearest.w / 2, nearest.y + nearest.h / 2, "#ff6b94", 18);
+    floatText("🌊 Reality Wall!", nearest.x + nearest.w / 2, nearest.y - 10, "#ff6b94");
+    obstacles.splice(idx, 1);
+    mythicAbilityCooldown = MYTHIC_ABILITY_MAX_CD;
+    const btn = document.getElementById("mythicAbilityBtn");
+    btn.disabled = true;
+    btn.textContent = "⚡ 0%";
+    beep(300, 0.15, "sine", 0.08);
+    beep(500, 0.1, "sine", 0.06);
+    showToast("🌊 Obstacle sunk into the ground!");
+  } else {
+    showToast("No obstacle in range!");
+  }
+}
+
 let bgStars = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * GROUND_Y, r: Math.random() * 1.5, speed: 0.2 + Math.random() * 0.5 }));
 
 function gameLoop() {
   if (!running) return;
   if (paused) { requestAnimationFrame(gameLoop); return; }
   frameCount++;
+  const t = frameCount * 0.05;
 
   // ── Background ──
   const bgPat = getSkinColor(selectedSkins.background);
@@ -1487,6 +1965,27 @@ function gameLoop() {
   }
   ctx.fillStyle = playerPat || (currentDiff ? currentDiff.color : "#38bdf8");
   ctx.fillRect(player.x, Math.round(player.y), player.w, player.h);
+  drawSkinEffects(ctx, selectedSkins.player, player.x, Math.round(player.y), player.w, player.h, t);
+
+  // Revival flash overlay
+  if (reviveFlashTimer > 0) {
+    ctx.save();
+    ctx.globalAlpha = (reviveFlashTimer / 60) * 0.45;
+    ctx.fillStyle = "#ffb86b";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    reviveFlashTimer--;
+  }
+
+  // Ability cooldown UI
+  if (mythicAbilityCooldown > 0) {
+    mythicAbilityCooldown--;
+    const btn = document.getElementById("mythicAbilityBtn");
+    const pct = Math.round((MYTHIC_ABILITY_MAX_CD - mythicAbilityCooldown) / MYTHIC_ABILITY_MAX_CD * 100);
+    btn.textContent = `⚡ ${pct}%`;
+    btn.disabled = true;
+    if (mythicAbilityCooldown <= 0) { btn.textContent = "⚡ Ability"; btn.disabled = false; }
+  }
 
   // ── Spawn ──
   spawnTimer--;
@@ -1509,6 +2008,7 @@ function gameLoop() {
     const obPat = getSkinColor(selectedSkins.obstacle);
     ctx.fillStyle = obPat || "#f43f5e";
     ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+    drawSkinEffects(ctx, selectedSkins.obstacle, ob.x, ob.y, ob.w, ob.h, t);
 
     // collision
     if (!ob.passed &&
@@ -1522,6 +2022,17 @@ function gameLoop() {
         spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#38bdf8", 10);
         showToast("🛡 Shield absorbed a hit!");
         beep(880, 0.1, "square", 0.06);
+      } else if (legendaryReviveAvailable && !legendaryReviveUsed) {
+        legendaryReviveUsed = true;
+        legendaryReviveAvailable = false;
+        ob.passed = true;
+        reviveFlashTimer = 60;
+        document.getElementById("reviveBadge").style.display = "none";
+        spawnParticles(player.x + player.w / 2, player.y + player.h / 2, "#ffb86b", 20);
+        floatText("💛 Second Chance!", W / 2, H / 2 - 20, "#ffb86b");
+        showToast("💛 Legendary revival saved you!");
+        beep(1320, 0.18, "sine", 0.09);
+        beep(880, 0.12, "sine", 0.06);
       } else {
         spawnParticles(player.x + player.w / 2, player.y + player.h / 2, currentDiff?.color || "#f87171", 12);
         gameOver();
@@ -1663,10 +2174,10 @@ const Gacha = (() => {
 
   function rollRarity() {
     const r = Math.random();
-    if (r < 0.01)        return "mythique";
-    if (r < 0.028)       return "legendaire";
-    if (r < 0.118)       return "epic";
-    if (r < 0.398)       return "rare";
+    if (r < 0.003)       return "mythique";
+    if (r < 0.010)       return "legendaire";
+    if (r < 0.050)       return "epic";
+    if (r < 0.250)       return "rare";
     return "commun";
   }
 
@@ -2228,9 +2739,13 @@ function refreshHUD() {
 // ─────────────────────────────────────────────
 function giveStarterSkins() {
   let changed = false;
-  if (!ownedSkins.player.includes("Blue Block"))       { ownedSkins.player.push("Blue Block"); changed = true; }
-  if (!ownedSkins.background.includes("Simple Background")) { ownedSkins.background.push("Simple Background"); changed = true; }
-  if (!ownedSkins.obstacle.includes("Grey Obstacle"))  { ownedSkins.obstacle.push("Grey Obstacle"); changed = true; }
+  if (!ownedSkins.player.includes("Sapphire Block"))   { ownedSkins.player.push("Sapphire Block"); changed = true; }
+  if (!ownedSkins.background.includes("Starfield"))     { ownedSkins.background.push("Starfield"); changed = true; }
+  if (!ownedSkins.obstacle.includes("Stone Wall"))      { ownedSkins.obstacle.push("Stone Wall"); changed = true; }
+  // Auto-equip starters for brand-new players
+  if (selectedSkins.player === "default")     { selectedSkins.player = "Sapphire Block"; changed = true; }
+  if (selectedSkins.background === "default") { selectedSkins.background = "Starfield"; changed = true; }
+  if (selectedSkins.obstacle === "default")   { selectedSkins.obstacle = "Stone Wall"; changed = true; }
   if (changed) saveAll();
 }
 
