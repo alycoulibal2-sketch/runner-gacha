@@ -2272,7 +2272,7 @@ function startGame() {
 
   // Active sink ability + cooldown (shorter for mythic)
   mythicAbilityCooldown = 0;
-  MYTHIC_ABILITY_MAX_CD = obsSkinData?.rarity === 'mythique' ? 150 : 300;
+  MYTHIC_ABILITY_MAX_CD = 1800;
   const hasMythicSink = obsSkinData?.ability === "sink";
   const abilityBtn = document.getElementById("mythicAbilityBtn");
   abilityBtn.style.display = hasMythicSink ? "flex" : "none";
@@ -2382,29 +2382,29 @@ function useMythicAbility() {
   const skinData = SKINS.find(s => s.name === selectedSkins.obstacle && s.ability === "sink");
   if (!skinData) return;
 
-  let nearest = null, minDist = Infinity;
-  obstacles.forEach(ob => {
-    if (!ob.passed && ob.x + ob.w > player.x) {
-      const dist = ob.x - (player.x + player.w);
-      if (dist < minDist) { minDist = dist; nearest = ob; }
-    }
-  });
+  const toSink = obstacles.filter(ob => !ob.passed && ob.x + ob.w > player.x)
+                          .sort((a, b) => a.x - b.x)
+                          .slice(0, 10);
 
-  if (nearest) {
-    const idx = obstacles.indexOf(nearest);
-    spawnParticles(nearest.x + nearest.w / 2, nearest.y + nearest.h / 2, "#ff6b94", 18);
-    floatText("🌊 Reality Wall!", nearest.x + nearest.w / 2, nearest.y - 10, "#ff6b94");
-    obstacles.splice(idx, 1);
-    mythicAbilityCooldown = MYTHIC_ABILITY_MAX_CD;
-    const btn = document.getElementById("mythicAbilityBtn");
-    btn.disabled = true;
-    btn.textContent = "⚡ 0%";
-    beep(300, 0.15, "sine", 0.08);
-    beep(500, 0.1, "sine", 0.06);
-    showToast("🌊 Obstacle sunk into the ground!");
-  } else {
-    showToast("No obstacle in range!");
-  }
+  if (toSink.length === 0) { showToast("No obstacles in range!"); return; }
+
+  toSink.forEach((ob, i) => {
+    setTimeout(() => {
+      spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#ff6b94", 14);
+      if (i === 0) floatText(`🌊 ${toSink.length} Obstacles Sunk!`, W / 2, H / 2 - 20, "#ff6b94");
+    }, i * 60);
+    ob.passed = true;
+  });
+  obstacles = obstacles.filter(ob => !toSink.includes(ob));
+
+  mythicAbilityCooldown = MYTHIC_ABILITY_MAX_CD;
+  const btn = document.getElementById("mythicAbilityBtn");
+  btn.disabled = true;
+  btn.textContent = "⚡ 30s";
+  beep(200, 0.18, "sine", 0.1);
+  beep(350, 0.14, "sine", 0.08);
+  beep(500, 0.10, "sine", 0.06);
+  showToast(`🌊 ${toSink.length} obstacle${toSink.length > 1 ? "s" : ""} sunk!`);
 }
 
 let bgStars = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * GROUND_Y, r: Math.random() * 1.5, speed: 0.2 + Math.random() * 0.5 }));
@@ -2483,8 +2483,8 @@ function gameLoop(timestamp) {
   if (mythicAbilityCooldown > 0) {
     mythicAbilityCooldown -= dt;
     const btn = document.getElementById("mythicAbilityBtn");
-    const pct = Math.round((MYTHIC_ABILITY_MAX_CD - mythicAbilityCooldown) / MYTHIC_ABILITY_MAX_CD * 100);
-    btn.textContent = `⚡ ${pct}%`;
+    const secsLeft = Math.ceil(mythicAbilityCooldown / 60);
+    btn.textContent = `⚡ ${secsLeft}s`;
     btn.disabled = true;
     if (mythicAbilityCooldown <= 0) { btn.textContent = "⚡ Ability (E)"; btn.disabled = false; }
   }
