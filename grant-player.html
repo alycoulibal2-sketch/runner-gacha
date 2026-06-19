@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Grant Player · One-Shot</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,sans-serif;background:#0a0a0f;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .card{background:#13131f;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:36px;width:460px;max-width:100%}
+    h1{font-size:18px;font-weight:900;margin-bottom:4px}
+    .sub{font-size:12px;color:rgba(232,232,240,0.5);margin-bottom:24px}
+    .row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+    label{font-size:11px;font-weight:700;color:rgba(232,232,240,0.5);text-transform:uppercase;letter-spacing:1px}
+    input{padding:10px 14px;background:#1c1c2e;border:1px solid rgba(255,255,255,0.07);border-radius:10px;color:#e8e8f0;font-size:14px;font-family:inherit;outline:none}
+    input:focus{border-color:#7c4dff}
+    .btn{width:100%;padding:12px;background:#7c4dff;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;margin-top:8px}
+    .btn:hover{filter:brightness(1.1)}
+    .btn:disabled{opacity:0.5;cursor:default}
+    .log{margin-top:20px;background:#0a0a0f;border-radius:10px;padding:14px;font-size:12px;line-height:1.8;min-height:60px;white-space:pre-wrap;word-break:break-all}
+    .ok{color:#34d399}.err{color:#f87171}.dim{color:rgba(232,232,240,0.4)}
+    .login{display:flex;flex-direction:column;gap:12px}
+    .login h2{font-size:15px;font-weight:700;margin-bottom:4px}
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Grant Player · One-Shot</h1>
+  <p class="sub">Sign in as admin, then grant skins + score to the target UID.</p>
+
+  <!-- Login -->
+  <div id="loginBox" class="login">
+    <div class="row"><label>Admin Email</label><input id="email" type="email" placeholder="admin@email.com"/></div>
+    <div class="row"><label>Password</label><input id="pw" type="password" placeholder="••••••••"/></div>
+    <button class="btn" onclick="doLogin()">Sign In as Admin</button>
+    <div id="loginErr" style="color:#f87171;font-size:12px;text-align:center;min-height:18px"></div>
+  </div>
+
+  <!-- Grant form (shown after login) -->
+  <div id="grantBox" style="display:none">
+    <div class="row"><label>Target UID</label><input id="targetUid" value="SEbAruA3ZPRrgENJC0cvIGXrYln1"/></div>
+    <div class="row"><label>Score to Set (Best)</label><input id="scoreVal" type="number" value="63"/></div>
+    <div class="row"><label>Mode</label><input id="modeVal" value="Extreme"/></div>
+    <div class="row"><label>Skins to Add (comma-separated)</label><input id="skinNames" value="Thunder King,Thunder Plains,Thunder Wall"/></div>
+    <button class="btn" id="runBtn" onclick="runGrant()">Run Grant</button>
+  </div>
+
+  <div class="log dim" id="log">Waiting…</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const ADMIN_UIDS = [
+  "OEhFtyqvCHewIDLZMWVBEWb2UYp2",
+  "xLq1948wlxVidYjomsWshgrdaVh1",
+  "ETMRBRssR3UgnC7ZeTSpBdzAjcd2",
+  "u8cTshDOgrVLVI1QNdzqBk90lD33",
+];
+
+firebase.initializeApp({
+  apiKey:            "AIzaSyBeKaxJLpYxf0dg_YiamJmbYrRYd_Xymfo",
+  authDomain:        "runnergacha.firebaseapp.com",
+  projectId:         "runnergacha",
+  storageBucket:     "runnergacha.firebasestorage.app",
+  messagingSenderId: "348255300422",
+  appId:             "1:348255300422:web:980101ef761775cea09347",
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+const SKIN_TYPES = {
+  "Thunder King":   "player",
+  "Thunder Plains": "background",
+  "Thunder Wall":   "obstacle",
+};
+
+function log(msg, cls='') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+}
+
+auth.onAuthStateChanged(u => {
+  if (!u) return;
+  if (!ADMIN_UIDS.includes(u.uid)) {
+    auth.signOut();
+    document.getElementById('loginErr').textContent = '⛔ Access denied — not an admin UID';
+    return;
+  }
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('grantBox').style.display = 'block';
+  document.getElementById('log').textContent = '';
+  log(`✅ Signed in as ${u.email}`, 'ok');
+  log('Ready. Click "Run Grant" to proceed.', 'dim');
+});
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const pw    = document.getElementById('pw').value;
+  document.getElementById('loginErr').textContent = '';
+  try {
+    await auth.signInWithEmailAndPassword(email, pw);
+  } catch(ex) {
+    document.getElementById('loginErr').textContent = ex.message;
+  }
+}
+
+async function runGrant() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  document.getElementById('log').textContent = '';
+
+  const uid      = document.getElementById('targetUid').value.trim();
+  const score    = parseInt(document.getElementById('scoreVal').value) || 63;
+  const mode     = document.getElementById('modeVal').value.trim() || 'Extreme';
+  const skinList = document.getElementById('skinNames').value.split(',').map(s => s.trim()).filter(Boolean);
+
+  log(`Target UID: ${uid}`, 'dim');
+  log(`Score: ${score} · Mode: ${mode}`, 'dim');
+  log(`Skins: ${skinList.join(', ')}`, 'dim');
+  log('─'.repeat(40), 'dim');
+
+  try {
+    // 1. Read existing user doc
+    log('1/4 Reading user document…');
+    const snap = await db.collection('users').doc(uid).get();
+    const existing = snap.exists ? snap.data() : {};
+    log(`    ${snap.exists ? 'Found' : 'No doc yet — will create'}`, snap.exists ? 'ok' : 'err');
+
+    // 2. Build merged ownedSkins
+    const owned = existing.ownedSkins || { player:[], background:[], obstacle:[] };
+    skinList.forEach(name => {
+      const type = SKIN_TYPES[name];
+      if (!type) { log(`    ⚠ Unknown skin type for "${name}" — skipping`, 'err'); return; }
+      if (!owned[type]) owned[type] = [];
+      if (!owned[type].includes(name)) owned[type].push(name);
+    });
+
+    // 3. Build scores array — keep existing, add new entry at top
+    const existingScores = existing.scores || [];
+    const newEntry = { score, mode, ts: Date.now() };
+    const mergedScores = [newEntry, ...existingScores].sort((a,b)=>b.score-a.score).slice(0,20);
+
+    const currentBest = Math.max(existing.best || 0, score);
+    const displayName = existing.displayName || existing.username || 'Player';
+
+    // 4. Update user doc
+    log('2/4 Updating user document (skins + score + best)…');
+    await db.collection('users').doc(uid).set({
+      ...existing,
+      ownedSkins: owned,
+      best:       currentBest,
+      scores:     mergedScores,
+      updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    log('    User doc updated.', 'ok');
+
+    // 5. Update leaderboard
+    log('3/4 Updating world leaderboard…');
+    await db.collection('leaderboard').doc(uid).set({
+      uid,
+      name:  displayName,
+      score: currentBest,
+      mode,
+      ts:    Date.now(),
+    });
+    log('    Leaderboard updated.', 'ok');
+
+    log('4/4 Done!', 'ok');
+    log('─'.repeat(40), 'dim');
+    log(`✅ ${displayName} (${uid})`, 'ok');
+    log(`   Skins added: ${skinList.join(', ')}`, 'ok');
+    log(`   Best score: ${currentBest} · Mode: ${mode}`, 'ok');
+    log(`   Leaderboard score: ${currentBest}`, 'ok');
+
+    btn.textContent = '✅ Done!';
+    btn.style.background = '#34d399';
+  } catch(ex) {
+    log(`❌ Error: ${ex.message}`, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Retry Grant';
+  }
+}
+</script>
+</body>
+</html>

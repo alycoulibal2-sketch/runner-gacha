@@ -660,7 +660,16 @@ async function saveEdit(uid) {
     const best   = +document.getElementById('e-best').value   || 0;
     const streak = +document.getElementById('e-streak').value || 0;
     await db.collection('users').doc(uid).update({ displayName, username, coins, best, streak });
-    await db.collection('leaderboard').doc(uid).update({ name: displayName }).catch(()=>{});
+    // Sync leaderboard if score changed
+    const lbSnap = await db.collection('leaderboard').doc(uid).get();
+    if (!lbSnap.exists || lbSnap.data().score !== best) {
+      await db.collection('leaderboard').doc(uid).set(
+        { name: displayName || username, score: best },
+        { merge: true }
+      );
+    } else {
+      await db.collection('leaderboard').doc(uid).update({ name: displayName }).catch(()=>{});
+    }
     toast('Saved.'); openPlayer(uid);
   } catch(ex) { toast('Error: ' + ex.message); }
 }
