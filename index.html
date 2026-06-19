@@ -686,6 +686,232 @@
     color: #ffb86b;
     animation: revivePulse 1.5s ease-in-out infinite;
   }
+
+  /* ── Notification Bell ── */
+  #notifBell { position: relative; }
+  .notif-dot {
+    position: absolute; top: -3px; right: -3px;
+    background: #ef4444; color: #fff;
+    font-size: 8px; font-weight: 900; line-height: 1;
+    padding: 2px 4px; border-radius: 999px;
+    min-width: 14px; text-align: center; display: none;
+    pointer-events: none;
+  }
+  #notifPanel {
+    position: absolute; top: 50px; right: 4px;
+    width: min(320px, calc(100% - 8px));
+    max-height: 380px; background: #13131f;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.8);
+    z-index: 50; display: none; flex-direction: column; overflow: hidden;
+  }
+  .np-header {
+    padding: 12px 16px 8px; display: flex;
+    justify-content: space-between; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .np-title { font-size: 12px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; color: rgba(232,232,240,0.4); }
+  .np-clear { font-size: 11px; color: rgba(232,232,240,0.3); cursor: pointer; }
+  .np-clear:hover { color: rgba(232,232,240,0.6); }
+  .np-body { flex: 1; overflow-y: auto; }
+  .notif-item {
+    display: flex; gap: 10px; padding: 11px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+  }
+  .notif-icon { font-size: 20px; flex-shrink: 0; }
+  .notif-text { flex: 1; }
+  .notif-msg { font-size: 12px; font-weight: 600; line-height: 1.4; }
+  .notif-actions { display: flex; gap: 6px; margin-top: 7px; }
+  .notif-btn { padding: 5px 12px; border-radius: 8px; border: none; font-size: 11px; font-weight: 800; cursor: pointer; }
+  .notif-btn.accept { background: #34d399; color: #021021; }
+  .notif-btn.reject { background: rgba(255,255,255,0.08); color: #e8e8f0; }
+
+  /* ── Social Modal ── */
+  #socialModal { padding: 12px; gap: 8px; z-index: 38; }
+  .social-tabs { display: flex; gap: 6px; width: 100%; flex-shrink: 0; }
+  .social-tab {
+    flex: 1; padding: 8px 6px; border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.03);
+    font-size: 12px; font-weight: 800; cursor: pointer;
+    color: rgba(232,232,240,0.45); transition: all .15s; text-align: center;
+  }
+  .social-tab.active {
+    background: rgba(124,77,255,0.15); border-color: rgba(124,77,255,0.4);
+    color: var(--text);
+  }
+  .social-body { flex: 1; overflow-y: auto; width: 100%; }
+  .search-row { display: flex; gap: 8px; margin-bottom: 10px; flex-shrink: 0; }
+  .search-input {
+    flex: 1; padding: 10px 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; color: var(--text);
+    font-size: 13px; font-family: inherit; outline: none;
+  }
+  .search-input:focus { border-color: rgba(124,77,255,0.6); }
+  .search-go {
+    padding: 10px 16px; background: #7c4dff; border: none;
+    border-radius: 12px; color: #fff; font-weight: 800;
+    cursor: pointer; font-size: 13px; white-space: nowrap;
+  }
+  .friend-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 6px; cursor: pointer; transition: background .12s;
+  }
+  .friend-row:hover { background: rgba(255,255,255,0.06); }
+  .fr-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 900; flex-shrink: 0;
+  }
+  .fr-info { flex: 1; min-width: 0; }
+  .fr-name { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fr-sub  { font-size: 10px; color: rgba(232,232,240,0.4); }
+  .fr-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .fr-dot.online  { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .fr-dot.offline { background: rgba(255,255,255,0.18); }
+  .fr-btn {
+    padding: 6px 12px; border-radius: 8px; border: none;
+    font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  }
+  .fr-btn.add       { background: #7c4dff; color: #fff; }
+  .fr-btn.sent      { background: rgba(255,255,255,0.07); color: rgba(232,232,240,0.45); }
+  .fr-btn.friends   { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .fr-btn.challenge { background: linear-gradient(90deg,#ff7a59,#ff6b94); color: #021021; }
+  .social-empty { text-align: center; padding: 30px 16px; color: rgba(232,232,240,0.3); font-size: 12px; line-height: 1.6; }
+
+  /* ── Profile Modal ── */
+  #profileModal {
+    padding: 0; gap: 0; overflow-y: auto; z-index: 42;
+    background: #080810; justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .prf-banner {
+    width: 100%; padding: 20px 16px 16px; text-align: center;
+    position: relative; border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+  .prf-close {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(255,255,255,0.07); border: none; color: var(--text);
+    border-radius: 50%; width: 30px; height: 30px; font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .prf-avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    margin: 0 auto 10px; display: flex; align-items: center;
+    justify-content: center; font-size: 26px; font-weight: 900;
+    border: 3px solid rgba(255,255,255,0.1); flex-shrink: 0;
+  }
+  .prf-name { font-size: 20px; font-weight: 900; margin-bottom: 2px; }
+  .prf-tag  { font-size: 11px; color: rgba(232,232,240,0.38); font-weight: 700; margin-bottom: 10px; }
+  .prf-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .prf-btn {
+    padding: 8px 16px; border-radius: 12px; border: none;
+    font-size: 12px; font-weight: 800; cursor: pointer;
+  }
+  .prf-btn.add      { background: #7c4dff; color: #fff; }
+  .prf-btn.fr       { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .prf-btn.duel     { background: linear-gradient(90deg,#ff7a59,#ff6b94); color: #021021; }
+  .prf-btn.pending  { background: rgba(255,255,255,0.07); color: rgba(232,232,240,0.4); }
+  .prf-pass-badge {
+    display: inline-block; padding: 3px 10px; margin-bottom: 8px;
+    background: rgba(250,204,21,0.12); border: 1px solid rgba(250,204,21,0.3);
+    border-radius: 999px; font-size: 10px; font-weight: 900; color: #facc15;
+  }
+  .prf-section { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; }
+  .prf-sec-title {
+    font-size: 10px; font-weight: 900; letter-spacing: 2px;
+    text-transform: uppercase; color: rgba(232,232,240,0.32);
+    margin-bottom: 12px; text-align: center;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .prf-sec-title::before,.prf-sec-title::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.06); }
+  .prf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .prf-stat {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 11px 12px;
+  }
+  .prf-stat-val { font-size: 21px; font-weight: 900; }
+  .prf-stat-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(232,232,240,0.35); margin-top: 2px; }
+  .prf-loadout { display: flex; gap: 7px; }
+  .prf-skin-card {
+    flex: 1; border-radius: 12px; padding: 10px 7px; text-align: center;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .prf-skin-ico { font-size: 22px; margin-bottom: 5px; height: 36px; display: flex; align-items: center; justify-content: center; }
+  .prf-skin-nm  { font-size: 9px; font-weight: 800; line-height: 1.3; }
+  .prf-skin-rar { font-size: 8px; font-weight: 700; margin-top: 2px; }
+  .prf-run-row  { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.03); margin-bottom: 5px; }
+  .prf-run-sc   { font-size: 17px; font-weight: 900; flex: 1; }
+  .prf-run-mode { font-size: 9px; padding: 2px 8px; border-radius: 999px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  .prf-run-ts   { font-size: 10px; color: rgba(232,232,240,0.32); }
+  .prf-ach-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .prf-ach {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .prf-ach.done    { border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.07); }
+  .prf-ach.claimed { border-color: rgba(250,204,21,0.4); background: rgba(250,204,21,0.09); }
+
+  /* ── Duel overlays ── */
+  .duel-overlay {
+    position: absolute; inset: 0;
+    background: rgba(5,10,24,0.97); backdrop-filter: blur(14px);
+    z-index: 46; display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px 16px; gap: 14px; overflow-y: auto;
+  }
+  .duel-tag { font-size: 11px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; color: rgba(232,232,240,0.35); }
+  .duel-vs  { font-size: 30px; font-weight: 900; background: linear-gradient(90deg,#ff7a59,#ff6b94,#7c4dff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; flex-shrink:0; }
+  .duel-players { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 340px; }
+  .duel-player  { flex: 1; text-align: center; padding: 12px 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; }
+  .duel-player-name  { font-size: 13px; font-weight: 900; margin-bottom: 3px; }
+  .duel-player-label { font-size: 10px; color: rgba(232,232,240,0.4); }
+  .duel-dots { display: flex; gap: 8px; justify-content: center; }
+  .duel-dot  { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.12); transition: all .3s; }
+  .duel-dot.won  { background: #34d399; box-shadow: 0 0 8px #34d399; }
+  .duel-dot.lost { background: #f87171; }
+  .ban-grid { display: flex; flex-direction: column; gap: 7px; width: 100%; max-width: 310px; }
+  .ban-opt {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+    border-radius: 12px; background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07); cursor: pointer;
+    transition: all .15s;
+  }
+  .ban-opt:hover   { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.4); }
+  .ban-opt.chosen  { background: rgba(239,68,68,0.18); border-color: #ef4444; }
+  .ban-ico { font-size: 22px; flex-shrink: 0; width: 28px; text-align: center; }
+  .ban-name { font-size: 13px; font-weight: 900; }
+  .ban-desc { font-size: 10px; color: rgba(232,232,240,0.4); }
+  #duelHUD {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 24;
+    background: rgba(0,0,0,0.55); padding: 7px 12px;
+    display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+    border-bottom: 1px solid rgba(255,107,148,0.25);
+  }
+  .duel-hud-tag { font-size: 11px; font-weight: 900; color: #ff6b94; }
+  .duel-hud-opp { flex: 1; text-align: center; font-size: 11px; font-weight: 700; color: rgba(232,232,240,0.55); }
+  .duel-score-row { display: flex; gap: 10px; width: 100%; max-width: 320px; }
+  .duel-score-box { flex: 1; padding: 12px; text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; }
+  .duel-score-box.winner { border-color: rgba(250,204,21,0.4); background: rgba(250,204,21,0.07); }
+  .dsb-lbl   { font-size: 10px; color: rgba(232,232,240,0.4); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+  .dsb-score { font-size: 24px; font-weight: 900; }
+  .dsb-wins  { font-size: 11px; color: rgba(232,232,240,0.5); margin-top: 3px; }
+  .duel-final-ico { font-size: 52px; animation: goPopIn .45s cubic-bezier(.34,1.56,.64,1) both; }
+  .duel-final-title { font-size: 13px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; color: rgba(232,232,240,0.35); }
+  .duel-final-name  {
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(90deg,#facc15,#ffb86b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
   </style>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3564432250969796"
           crossorigin="anonymous"></script>
@@ -707,6 +933,20 @@
     <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
     <button class="badge-btn" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
     <button class="badge-btn" id="accountBtn" onclick="AuthUI.open()" title="Account">👤</button>
+    <button class="badge-btn" id="notifBell" onclick="Notif.toggle()" title="Notifications" style="position:relative;">
+      🔔<span class="notif-dot" id="notifDot"></span>
+    </button>
+  </div>
+
+  <!-- Notification Panel -->
+  <div id="notifPanel" style="display:none;flex-direction:column;">
+    <div class="np-header">
+      <span class="np-title">Notifications</span>
+      <span class="np-clear" onclick="Notif.clearAll()">Clear all</span>
+    </div>
+    <div class="np-body" id="notifList">
+      <div style="text-align:center;padding:20px;color:rgba(232,232,240,0.3);font-size:12px;">No notifications</div>
+    </div>
   </div>
 
   <!-- Main Menu -->
@@ -748,7 +988,8 @@
     </div>
 
     <div class="menu-actions">
-      <button class="btn secondary" onclick="AuthUI.open()" id="menuAccountBtn">👤 Account / Sign In</button>
+      <button class="btn secondary" onclick="Social.open()">👥 Friends &amp; Duels</button>
+      <button class="btn secondary" onclick="AuthUI.open()" id="menuAccountBtn">👤 Account</button>
     </div>
     <div class="menu-actions">
       <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">🌍 Share the Game</a>
@@ -808,6 +1049,90 @@
       <button class="btn secondary go-menu-btn" onclick="closeGameOver()">🏠 Menu</button>
     </div>
 
+  </div>
+
+  <!-- Social Modal -->
+  <div id="socialModal" class="modal-overlay modal-bg" style="display:none;">
+    <h2 style="font-size:16px;text-align:center;flex-shrink:0;">👥 Friends &amp; Duels</h2>
+    <div class="social-tabs">
+      <button class="social-tab active" onclick="Social.tab('friends',this)">Friends</button>
+      <button class="social-tab" onclick="Social.tab('search',this)">🔍 Search</button>
+      <button class="social-tab" onclick="Social.tab('requests',this)">Requests</button>
+    </div>
+    <div class="social-body" id="socialBody"></div>
+    <button class="btn secondary" onclick="Social.close()" style="flex-shrink:0;">Close</button>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal-overlay" style="display:none;"></div>
+
+  <!-- Duel: Ban Phase -->
+  <div id="duelBanScreen" class="duel-overlay">
+    <div class="duel-tag">⚔️ Duel · Ban Phase</div>
+    <div class="duel-players" id="banVsRow"></div>
+    <p style="font-size:12px;color:rgba(232,232,240,0.5);text-align:center;max-width:280px;line-height:1.6;">
+      Choose <strong style="color:#f87171;">one ability</strong> to ban from your opponent for all 3 rounds.
+    </p>
+    <div class="ban-grid" id="banGrid"></div>
+    <button id="banConfirmBtn" class="btn" style="background:#ef4444;color:#fff;width:100%;max-width:310px;opacity:.35;pointer-events:none;" onclick="Duel.confirmBan()">Select an ability to ban</button>
+    <div id="banWaiting" style="display:none;font-size:12px;color:rgba(232,232,240,0.4);text-align:center;">⏳ Waiting for opponent's ban choice…</div>
+  </div>
+
+  <!-- Duel: Round Result -->
+  <div id="duelRoundResult" class="duel-overlay">
+    <div class="duel-tag" id="drTag">Round 1 Result</div>
+    <div id="drIcon" style="font-size:52px;animation:goPopIn .4s cubic-bezier(.34,1.56,.64,1) both;"></div>
+    <div id="drText" style="font-size:15px;font-weight:900;text-align:center;"></div>
+    <div class="duel-score-row">
+      <div class="duel-score-box" id="drMyBox">
+        <div class="dsb-lbl" id="drMyLbl">You</div>
+        <div class="dsb-score" id="drMyScore">0</div>
+        <div class="dsb-wins"  id="drMyWins">0 wins</div>
+      </div>
+      <div class="duel-score-box" id="drOppBox">
+        <div class="dsb-lbl" id="drOppLbl">Opponent</div>
+        <div class="dsb-score" id="drOppScore">0</div>
+        <div class="dsb-wins"  id="drOppWins">0 wins</div>
+      </div>
+    </div>
+    <div class="duel-dots">
+      <div class="duel-dot" id="drDot0"></div>
+      <div class="duel-dot" id="drDot1"></div>
+      <div class="duel-dot" id="drDot2"></div>
+    </div>
+    <div id="drNextArea"></div>
+  </div>
+
+  <!-- Duel: Final Result -->
+  <div id="duelFinalResult" class="duel-overlay">
+    <div class="duel-tag">⚔️ Duel Complete</div>
+    <div class="duel-final-ico" id="dfrIcon"></div>
+    <div class="duel-final-title" id="dfrTitle"></div>
+    <div class="duel-final-name"  id="dfrName"></div>
+    <div class="duel-score-row" style="max-width:320px;">
+      <div class="duel-score-box" id="dfrMyBox">
+        <div class="dsb-lbl" id="dfrMyLbl">You</div>
+        <div class="dsb-score" id="dfrMyWins">0–0</div>
+        <div class="dsb-wins"  id="dfrMyScores"></div>
+      </div>
+      <div class="duel-score-box" id="dfrOppBox">
+        <div class="dsb-lbl" id="dfrOppLbl">Opponent</div>
+        <div class="dsb-score" id="dfrOppWins">0–0</div>
+        <div class="dsb-wins"  id="dfrOppScores"></div>
+      </div>
+    </div>
+    <button class="btn go-play-btn" onclick="Duel.exitToMenu()">🏠 Back to Menu</button>
+  </div>
+
+  <!-- Duel HUD (shown during a duel round) -->
+  <div id="duelHUD" style="display:none;position:absolute;top:0;left:0;right:0;z-index:24;background:rgba(0,0,0,0.6);padding:7px 12px;align-items:center;gap:8px;border-bottom:1px solid rgba(255,107,148,0.3);">
+    <span class="duel-hud-tag">⚔️ R<span id="duelRndLbl">1</span>/3</span>
+    <span class="duel-hud-opp">vs <strong id="duelOppLbl" style="color:var(--text);"></strong></span>
+    <div class="duel-dots">
+      <div class="duel-dot" id="duelDot0"></div>
+      <div class="duel-dot" id="duelDot1"></div>
+      <div class="duel-dot" id="duelDot2"></div>
+    </div>
   </div>
 
   <!-- Gacha Modal -->
@@ -1144,6 +1469,11 @@ let bgCoinSpawnBoost = false;
 let passiveShatterAvailable = false;
 let passiveShatterUsed = false;
 let sinksRemaining = 0;
+
+// Social / Duel state
+let duelBannedPerks = []; // perks disabled by opponent's ban choice
+let currentDuelId   = null;
+const Duel = {};  // populated below
 
 // Run-specific stats (reset each game)
 let runCoins = 0;
@@ -2368,6 +2698,782 @@ function selectDifficulty(mode) {
   startGame();
 }
 
+// ── PERK DEFINITIONS ────────────────────────────────────────────────────────
+const PERK_DEFS = {
+  revival_1:     { key:'revival_1',     icon:'💛', name:'1× Revival',    desc:'One extra life per run' },
+  revival_2:     { key:'revival_2',     icon:'💛', name:'2× Revival',    desc:'Two extra lives per run' },
+  coin_mult_leg: { key:'coin_mult_leg', icon:'💰', name:'+25% Coins',    desc:'Legendary coin multiplier' },
+  coin_mult_myt: { key:'coin_mult_myt', icon:'💰', name:'+50% Coins',    desc:'Mythic coin multiplier' },
+  magnet_leg:    { key:'magnet_leg',    icon:'🧲', name:'Coin Magnet',   desc:'Pulls coins from 90px radius' },
+  magnet_myt:    { key:'magnet_myt',    icon:'🧲', name:'Super Magnet',  desc:'Pulls coins from 150px radius' },
+  coin_boost:    { key:'coin_boost',    icon:'✨', name:'Coin Boost',    desc:'+30% more coin spawns' },
+  auto_shatter:  { key:'auto_shatter',  icon:'💥', name:'Auto-Shatter',  desc:'First obstacle auto-destroyed' },
+  sink_ability:  { key:'sink_ability',  icon:'🌊', name:'Sink Ability',  desc:'Active: sink next 10 obstacles' },
+};
+
+function getActivePerks(skins) {
+  const p = [], s = skins || {};
+  const ps = SKINS.find(x => x.name === s.player);
+  const bs = SKINS.find(x => x.name === s.background);
+  const os = SKINS.find(x => x.name === s.obstacle);
+  if (ps?.rarity === 'legendaire') { p.push('revival_1'); p.push('coin_mult_leg'); }
+  if (ps?.rarity === 'mythique')   { p.push('revival_2'); p.push('coin_mult_myt'); }
+  if (bs?.rarity === 'legendaire') p.push('magnet_leg');
+  if (bs?.rarity === 'mythique')   { p.push('magnet_myt'); p.push('coin_boost'); }
+  if (os?.rarity === 'legendaire') p.push('auto_shatter');
+  if (os?.rarity === 'mythique')   { p.push('auto_shatter'); p.push('sink_ability'); }
+  return p;
+}
+
+function uidColor(uid) {
+  const cols = ['#7c4dff','#ff6b94','#38bdf8','#34d399','#ffb86b','#a855f7','#ff7a59','#06b6d4'];
+  let h = 0; for (const c of (uid||'')) h = (h + c.charCodeAt(0)) % cols.length;
+  return `linear-gradient(135deg,${cols[h]},${cols[(h+3)%cols.length]})`;
+}
+
+function fmtAgoSocial(ts) {
+  const d = Date.now() - (ts?.toMillis?.() || ts || 0);
+  if (d < 60000) return `${Math.round(d/1000)}s ago`;
+  if (d < 3600000) return `${Math.round(d/60000)}m ago`;
+  if (d < 86400000) return `${Math.round(d/3600000)}h ago`;
+  return `${Math.round(d/86400000)}d ago`;
+}
+
+// ── NOTIFICATION SYSTEM ─────────────────────────────────────────────────────
+const Notif = {
+  _unsubFR: null, _unsubDuel: null,
+  _items: [],
+
+  init(uid) {
+    this.destroy();
+    if (!fbDb) return;
+    // Listen: incoming pending friend requests
+    this._unsubFR = fbDb.collection('friend_requests')
+      .where('to','==',uid).where('status','==','pending')
+      .onSnapshot(() => this.refresh(), () => {});
+    // Listen: duels involving this user
+    this._unsubDuel = fbDb.collection('duels')
+      .where('players','array-contains',uid)
+      .onSnapshot(snap => {
+        snap.docChanges().forEach(ch => {
+          if ((ch.type==='modified'||ch.type==='added') && currentDuelId===ch.doc.id)
+            _Duel.onUpdate(ch.doc.id, ch.doc.data());
+        });
+        this.refresh();
+      }, () => {});
+  },
+
+  destroy() {
+    this._unsubFR?.(); this._unsubFR = null;
+    this._unsubDuel?.(); this._unsubDuel = null;
+  },
+
+  async refresh() {
+    if (!fbDb || !currentUser) return;
+    try {
+      const uid = currentUser.uid;
+      const [frSnap, duelSnap, respSnap] = await Promise.all([
+        fbDb.collection('friend_requests').where('to','==',uid).where('status','==','pending').get(),
+        fbDb.collection('duels').where('players','array-contains',uid).where('status','==','pending').get(),
+        fbDb.collection('friend_requests').where('from','==',uid).where('status','in',['accepted','rejected'])
+          .orderBy('createdAt','desc').limit(5).get(),
+      ]);
+      this._items = [];
+      frSnap.docs.forEach(doc => {
+        const d = doc.data();
+        this._items.push({ id:doc.id, type:'fr', icon:'👋',
+          msg:`<b>${esc(d.fromDisplayName||'Someone')}</b> sent you a friend request`, d });
+      });
+      duelSnap.docs.forEach(doc => {
+        const d = doc.data();
+        if (d.challenged === uid)
+          this._items.push({ id:doc.id, type:'duel', icon:'⚔️',
+            msg:`<b>${esc(d.challengerName||'Someone')}</b> challenged you to a duel!`, d });
+      });
+      respSnap.docs.forEach(doc => {
+        const d = doc.data();
+        const ok = d.status==='accepted';
+        this._items.push({ id:doc.id, type:'fr_resp', icon: ok?'🤝':'✗',
+          msg: ok ? `<b>@${esc(d.toUsername)}</b> accepted your friend request!`
+                  : `<b>@${esc(d.toUsername)}</b> declined your request.`,
+          noAction:true });
+      });
+      this._updateBadge();
+      this._renderPanel();
+    } catch(e) {}
+  },
+
+  _updateBadge() {
+    const dot = document.getElementById("notifDot");
+    const n = this._items.filter(i => !i.noAction).length;
+    if (dot) { dot.style.display = n?'block':'none'; dot.textContent = n>9?'9+':n; }
+  },
+
+  _renderPanel() {
+    const el = document.getElementById("notifList");
+    if (!el) return;
+    if (!this._items.length) {
+      el.innerHTML='<div style="text-align:center;padding:24px;color:rgba(232,232,240,0.3);font-size:12px;">No notifications</div>';
+      return;
+    }
+    el.innerHTML = this._items.map(item => {
+      let acts = '';
+      if (item.type==='fr')
+        acts = `<div class="notif-actions">
+          <button class="notif-btn accept" onclick="Social._acceptReq('${item.id}','${item.d.from}','${esc(item.d.fromDisplayName||'')}','${esc(item.d.fromUsername||'')}');Notif.toggle();">✓ Accept</button>
+          <button class="notif-btn reject" onclick="Social._rejectReq('${item.id}');Notif.toggle();">✗ Decline</button>
+        </div>`;
+      else if (item.type==='duel')
+        acts = `<div class="notif-actions">
+          <button class="notif-btn accept" onclick="_Duel.accept('${item.id}');Notif.toggle();">⚔️ Accept</button>
+          <button class="notif-btn reject" onclick="_Duel.decline('${item.id}');Notif.toggle();">Decline</button>
+        </div>`;
+      return `<div class="notif-item">
+        <span class="notif-icon">${item.icon}</span>
+        <div class="notif-text"><div class="notif-msg">${item.msg}</div>${acts}</div>
+      </div>`;
+    }).join('');
+  },
+
+  toggle() {
+    const p = document.getElementById("notifPanel");
+    if (!p) return;
+    const shown = p.style.display === 'flex';
+    p.style.display = shown ? 'none' : 'flex';
+    if (!shown) this.refresh();
+    // Close if click outside
+    if (!shown) {
+      setTimeout(() => {
+        const close = (e) => { if (!p.contains(e.target) && e.target.id!=='notifBell') { p.style.display='none'; document.removeEventListener('click',close); } };
+        document.addEventListener('click', close);
+      }, 50);
+    }
+  },
+
+  clearAll() {
+    this._items = [];
+    this._updateBadge();
+    this._renderPanel();
+    document.getElementById("notifPanel").style.display = 'none';
+  },
+};
+
+// ── SOCIAL SYSTEM ────────────────────────────────────────────────────────────
+const Social = {
+  _tab: 'friends',
+
+  open() {
+    if (!currentUser) { showToast("Sign in to use social features!"); AuthUI.open(); return; }
+    document.getElementById("socialModal").style.display = "flex";
+    menuOpen = true;
+    this.tab('friends', document.querySelector('.social-tab'));
+  },
+
+  close() { document.getElementById("socialModal").style.display = "none"; },
+
+  tab(name, btn) {
+    this._tab = name;
+    document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
+    btn?.classList.add('active');
+    this._render(name);
+  },
+
+  async _render(tab) {
+    const body = document.getElementById("socialBody");
+    body.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(232,232,240,0.3);font-size:12px;">Loading…</div>';
+    if (tab==='friends')  await this._renderFriends(body);
+    else if (tab==='search')   this._renderSearch(body);
+    else if (tab==='requests') await this._renderRequests(body);
+  },
+
+  async _renderFriends(body) {
+    if (!fbDb||!currentUser) { body.innerHTML='<div class="social-empty">Sign in to see friends.</div>'; return; }
+    try {
+      const snap = await fbDb.collection('friendships')
+        .where('players','array-contains',currentUser.uid).get();
+      if (snap.empty) { body.innerHTML='<div class="social-empty">No friends yet.<br>Search for players by username to add them!</div>'; return; }
+      const now = Date.now();
+      body.innerHTML = snap.docs.map(doc => {
+        const d = doc.data();
+        const fuid = d.players.find(p=>p!==currentUser.uid);
+        const info = d.info?.[fuid]||{};
+        const online = (info.updatedAt?.toMillis?.()??0) > now-120000;
+        return `<div class="friend-row" onclick="Profile.view('${fuid}')">
+          <div class="fr-avatar" style="background:${uidColor(fuid)}">${(info.displayName||'?')[0]}</div>
+          <div class="fr-info">
+            <div class="fr-name">${esc(info.displayName||'Unknown')}</div>
+            <div class="fr-sub">@${esc(info.username||'—')} · Best: ${info.best||0}</div>
+          </div>
+          <div class="fr-dot ${online?'online':'offline'}"></div>
+          <button class="fr-btn challenge" onclick="event.stopPropagation();_Duel.challenge('${fuid}','${esc(info.displayName||'?')}')">⚔️ Duel</button>
+        </div>`;
+      }).join('');
+    } catch(e) { body.innerHTML=`<div class="social-empty" style="color:#f87171;">Error: ${esc(e.message)}</div>`; }
+  },
+
+  _renderSearch(body) {
+    body.innerHTML = `
+      <div class="search-row">
+        <input class="search-input" id="srchInput" placeholder="@username (exact match)" onkeydown="if(event.key==='Enter')Social._doSearch()"/>
+        <button class="search-go" onclick="Social._doSearch()">Go</button>
+      </div>
+      <div id="srchResults"></div>`;
+    setTimeout(()=>document.getElementById("srchInput")?.focus(),100);
+  },
+
+  async _doSearch() {
+    if (!fbDb||!currentUser) return;
+    const q = document.getElementById("srchInput")?.value.trim().toLowerCase();
+    if (!q) return;
+    const res = document.getElementById("srchResults");
+    res.innerHTML='<div style="text-align:center;padding:16px;color:rgba(232,232,240,0.3);font-size:12px;">Searching…</div>';
+    try {
+      const [usSnap, frSnap, fsSnap] = await Promise.all([
+        fbDb.collection('users').where('username','==',q).limit(5).get(),
+        fbDb.collection('friend_requests').where('from','==',currentUser.uid).where('status','==','pending').get(),
+        fbDb.collection('friendships').where('players','array-contains',currentUser.uid).get(),
+      ]);
+      const pendingTo = new Set(frSnap.docs.map(d=>d.data().to));
+      const friendUids = new Set();
+      fsSnap.docs.forEach(d=>d.data().players.forEach(p=>{if(p!==currentUser.uid)friendUids.add(p);}));
+      const results = usSnap.docs.filter(d=>d.id!==currentUser.uid);
+      if (!results.length) { res.innerHTML='<div class="social-empty">No player found with that username.</div>'; return; }
+      res.innerHTML = results.map(doc => {
+        const d=doc.data(), uid=doc.id;
+        const btn = friendUids.has(uid)
+          ? `<button class="fr-btn friends">✓ Friends</button>`
+          : pendingTo.has(uid)
+          ? `<button class="fr-btn sent">Sent ✓</button>`
+          : `<button class="fr-btn add" onclick="event.stopPropagation();Social._sendReq('${uid}','${esc(d.username||'')}',this)">+ Add</button>`;
+        return `<div class="friend-row" onclick="Profile.view('${uid}')">
+          <div class="fr-avatar" style="background:${uidColor(uid)}">${(d.displayName||d.username||'?')[0].toUpperCase()}</div>
+          <div class="fr-info">
+            <div class="fr-name">${esc(d.displayName||d.username||'Unknown')}</div>
+            <div class="fr-sub">@${esc(d.username||'—')} · Best: ${d.best||0}</div>
+          </div>
+          ${btn}
+        </div>`;
+      }).join('');
+    } catch(e) { res.innerHTML=`<div class="social-empty" style="color:#f87171;">Error: ${esc(e.message)}</div>`; }
+  },
+
+  async _sendReq(toUid, toUsername, btn) {
+    if (!fbDb||!currentUser) return;
+    btn.disabled=true; btn.textContent='…';
+    try {
+      await fbDb.collection('friend_requests').add({
+        from: currentUser.uid, fromUsername: S.get("rg-username",""),
+        fromDisplayName: getDisplayName(), fromBest: best,
+        to: toUid, toUsername, status:'pending',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      btn.className='fr-btn sent'; btn.textContent='Sent ✓'; btn.disabled=false;
+      showToast(`Friend request sent to @${toUsername}!`);
+    } catch(e) { btn.disabled=false; btn.textContent='+ Add'; showToast("Error: "+e.message); }
+  },
+
+  async _renderRequests(body) {
+    if (!fbDb||!currentUser) return;
+    try {
+      const uid = currentUser.uid;
+      const [inSnap, outSnap] = await Promise.all([
+        fbDb.collection('friend_requests').where('to','==',uid).where('status','==','pending').get(),
+        fbDb.collection('friend_requests').where('from','==',uid).orderBy('createdAt','desc').limit(15).get(),
+      ]);
+      let html='';
+      if (!inSnap.empty) {
+        html += '<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:0 0 8px;">Incoming</div>';
+        inSnap.docs.forEach(doc => {
+          const d=doc.data();
+          html+=`<div class="friend-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;width:100%;">
+              <div class="fr-avatar" style="background:${uidColor(d.from)}">${(d.fromDisplayName||'?')[0]}</div>
+              <div class="fr-info"><div class="fr-name">${esc(d.fromDisplayName||'Unknown')}</div>
+                <div class="fr-sub">@${esc(d.fromUsername||'—')} · Best: ${d.fromBest||0}</div></div>
+            </div>
+            <div style="display:flex;gap:6px;width:100%;">
+              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:#34d399;color:#021021;font-size:12px;font-weight:800;cursor:pointer;" onclick="Social._acceptReq('${doc.id}','${d.from}','${esc(d.fromDisplayName||'')}','${esc(d.fromUsername||'')}');this.closest('.friend-row').remove();">✓ Accept</button>
+              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:rgba(232,232,240,0.6);font-size:12px;font-weight:800;cursor:pointer;" onclick="Social._rejectReq('${doc.id}');this.closest('.friend-row').remove();">✗ Decline</button>
+            </div></div>`;
+        });
+      }
+      if (!outSnap.empty) {
+        html+=`<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:${inSnap.empty?0:10}px 0 8px;">Sent Requests</div>`;
+        outSnap.docs.forEach(doc => {
+          const d=doc.data();
+          const sc = d.status==='accepted'?'#34d399':d.status==='rejected'?'#f87171':'rgba(232,232,240,0.35)';
+          const st = d.status==='accepted'?'✓ Accepted':d.status==='rejected'?'✗ Declined':'⏳ Pending';
+          html+=`<div class="friend-row">
+            <div class="fr-avatar" style="background:${uidColor(d.to||'')}">${(d.toUsername||'?')[0].toUpperCase()}</div>
+            <div class="fr-info"><div class="fr-name">@${esc(d.toUsername||'Unknown')}</div>
+              <div class="fr-sub" style="color:${sc}">${st}</div></div>
+          </div>`;
+        });
+      }
+      body.innerHTML = html || '<div class="social-empty">No friend requests.</div>';
+    } catch(e) { body.innerHTML=`<div class="social-empty" style="color:#f87171;">Error: ${esc(e.message)}</div>`; }
+  },
+
+  async _acceptReq(reqId, fromUid, fromDisplayName, fromUsername) {
+    if (!fbDb||!currentUser) return;
+    try {
+      const myUid = currentUser.uid;
+      const myUsername = S.get("rg-username","");
+      await fbDb.collection('friend_requests').doc(reqId).update({status:'accepted'});
+      const fid = [myUid,fromUid].sort().join('_');
+      await fbDb.collection('friendships').doc(fid).set({
+        players:[myUid,fromUid],
+        info:{
+          [myUid]:{username:myUsername,displayName:getDisplayName(),best,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},
+          [fromUid]:{username:fromUsername,displayName:fromDisplayName,best:0,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},
+        },
+        createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      showToast(`🤝 You're now friends with ${fromDisplayName}!`);
+      Notif.refresh();
+      if (this._tab==='requests') this._render('requests');
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+
+  async _rejectReq(reqId) {
+    if (!fbDb||!currentUser) return;
+    try {
+      await fbDb.collection('friend_requests').doc(reqId).update({status:'rejected'});
+      showToast("Request declined."); Notif.refresh();
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+};
+
+// ── PLAYER PROFILE ───────────────────────────────────────────────────────────
+const Profile = {
+  async view(uid) {
+    if (!fbDb) return;
+    const modal = document.getElementById("profileModal");
+    modal.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(232,232,240,0.3);font-size:13px;">Loading…</div>';
+    modal.style.display = "flex";
+    try {
+      const snap = await fbDb.collection('users').doc(uid).get();
+      if (!snap.exists) throw new Error("Player not found");
+      this._render(uid, snap.data(), modal);
+    } catch(e) {
+      modal.innerHTML = `<div style="text-align:center;padding:40px;color:#f87171;font-size:13px;">${esc(e.message)}<br><br><button class="btn secondary" onclick="document.getElementById('profileModal').style.display='none'">Close</button></div>`;
+    }
+  },
+
+  async _render(uid, data, modal) {
+    const isSelf = currentUser && currentUser.uid === uid;
+    const myUid = currentUser?.uid;
+
+    // Friendship status
+    let isFriend=false, isPending=false;
+    if (!isSelf && fbDb && myUid) {
+      const fid = [myUid,uid].sort().join('_');
+      const [fSnap, rSnap] = await Promise.all([
+        fbDb.collection('friendships').doc(fid).get(),
+        fbDb.collection('friend_requests').where('from','==',myUid).where('to','==',uid).where('status','==','pending').get(),
+      ]);
+      isFriend = fSnap.exists;
+      isPending = !rSnap.empty;
+    }
+
+    const dn = data.displayName || data.username || 'Unknown';
+    const uname = data.username || uid.slice(0,8);
+    const owned = data.ownedSkins||{player:[],background:[],obstacle:[]};
+    const totalOwned = (owned.player?.length||0)+(owned.background?.length||0)+(owned.obstacle?.length||0);
+    const achieveCount = Object.values(data.achievements||{}).filter(v=>v==='claimed').length;
+    const skins = data.selectedSkins||{};
+    const ps = SKINS.find(s=>s.name===skins.player);
+    const modeColors = {Easy:'#34d399',Hard:'#f87171',Extreme:'#a78bfa'};
+    const RC = {commun:'#94a3b8',rare:'#38bdf8',epic:'#a855f7',legendaire:'#ffb86b',mythique:'#ff6b94'};
+    const bannerBg = ps?.rarity==='mythique' ? 'linear-gradient(160deg,#3d0a1f,#1a0a2e,#080810)'
+                   : ps?.rarity==='legendaire' ? 'linear-gradient(160deg,#2a1000,#1a0a00,#080810)'
+                   : 'linear-gradient(160deg,#12103a,#080810)';
+
+    // Action buttons
+    let actions = '';
+    if (isSelf) actions = '<span style="font-size:12px;color:rgba(232,232,240,0.4);padding:8px 14px;background:rgba(255,255,255,0.06);border-radius:12px;">👤 Your Profile</span>';
+    else if (!myUid) actions = '';
+    else if (isFriend) actions = `
+      <button class="prf-btn fr">✓ Friends</button>
+      <button class="prf-btn duel" onclick="document.getElementById('profileModal').style.display='none';_Duel.challenge('${uid}','${esc(dn)}')">⚔️ Duel</button>`;
+    else if (isPending) actions = `<button class="prf-btn pending">Request Sent</button>`;
+    else actions = `<button class="prf-btn add" onclick="Social._sendReq('${uid}','${esc(uname)}',this)">+ Add Friend</button>`;
+
+    // Loadout
+    const typeIcons = {player:'🏃',background:'🌄',obstacle:'🧱'};
+    const loadout = ['player','background','obstacle'].map(type => {
+      const nm = skins[type]||'None';
+      const sd = SKINS.find(s=>s.name===nm);
+      const rar = sd?.rarity||'commun'; const rc = RC[rar]||'#94a3b8';
+      const rarLabel = rar==='legendaire'?'Legendary':rar==='mythique'?'Mythic':rar[0].toUpperCase()+rar.slice(1);
+      return `<div class="prf-skin-card" style="border-color:${rc}33;">
+        <div class="prf-skin-ico" style="background:${rc}18;border-radius:10px;">${typeIcons[type]}</div>
+        <div class="prf-skin-nm">${esc(nm)}</div>
+        <div class="prf-skin-rar" style="color:${rc}">${rarLabel}</div>
+      </div>`;
+    }).join('');
+
+    // Active perks
+    const activePerks = getActivePerks(skins);
+    const perksHtml = activePerks.length
+      ? activePerks.map(k=>{const d=PERK_DEFS[k];return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;background:rgba(255,255,255,0.06);border-radius:999px;font-size:10px;font-weight:700;">${d.icon} ${d.name}</span>`;}).join('')
+      : '<span style="font-size:11px;color:rgba(232,232,240,0.3);">No special perks</span>';
+
+    // Best by mode
+    const modeScores = {};
+    (data.scores||[]).forEach(s=>{if(!modeScores[s.mode]||s.score>modeScores[s.mode])modeScores[s.mode]=s.score;});
+
+    // Recent runs
+    const recentRuns = [...(data.scores||[])].sort((a,b)=>b.ts-a.ts).slice(0,5);
+    const runsHtml = recentRuns.length
+      ? recentRuns.map(r=>{const mc=modeColors[r.mode]||'#e8e8f0';return `<div class="prf-run-row">
+          <span class="prf-run-sc">${(r.score||0).toLocaleString()}</span>
+          <span class="prf-run-mode" style="background:${mc}22;color:${mc};border:1px solid ${mc}55">${r.mode}</span>
+          <span class="prf-run-ts">${fmtAgoSocial(r.ts)}</span>
+        </div>`;}).join('')
+      : '<div style="color:rgba(232,232,240,0.3);font-size:12px;text-align:center;padding:8px;">No runs recorded</div>';
+
+    // Achievements
+    const doneAchs = ACH_DEFS.filter(a=>data.achievements?.[a.id]);
+    const achsHtml = doneAchs.length
+      ? doneAchs.map(a=>`<div class="prf-ach ${data.achievements[a.id]}" title="${a.name}: ${a.desc}">${a.icon}</div>`).join('')
+      : '<div style="font-size:12px;color:rgba(232,232,240,0.3);">No achievements yet</div>';
+
+    modal.innerHTML = `
+      <div class="prf-banner" style="background:${bannerBg}">
+        <button class="prf-close" onclick="document.getElementById('profileModal').style.display='none'">✕</button>
+        <div class="prf-avatar" style="background:${uidColor(uid)}">${dn[0].toUpperCase()}</div>
+        <div class="prf-name">${esc(dn)}</div>
+        <div class="prf-tag">#${esc(uname)}</div>
+        ${data.hasPass?'<div class="prf-pass-badge">⭐ PASS HOLDER</div>':''}
+        <div class="prf-actions">${actions}</div>
+      </div>
+
+      <div class="prf-section">
+        <div class="prf-sec-title">Performance</div>
+        <div class="prf-grid">
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#facc15">${(data.best||0).toLocaleString()}</div><div class="prf-stat-lbl">All-Time Best</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#a78bfa">${(modeScores['Extreme']||0).toLocaleString()}</div><div class="prf-stat-lbl">Extreme Best</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#38bdf8">${(data.scores||[]).length}</div><div class="prf-stat-lbl">Total Runs</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#ffb86b">${data.streak||0}🔥</div><div class="prf-stat-lbl">Day Streak</div></div>
+        </div>
+      </div>
+
+      <div class="prf-section">
+        <div class="prf-sec-title">Collection Stats</div>
+        <div class="prf-grid">
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#facc15">${(data.totalCoins||0).toLocaleString()}</div><div class="prf-stat-lbl">Total Coins</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#7c4dff">${data.totalSpins||0}</div><div class="prf-stat-lbl">Total Spins</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#a855f7">${totalOwned}<span style="font-size:11px;color:rgba(232,232,240,0.3)">/${SKINS.length}</span></div><div class="prf-stat-lbl">Skins Owned</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#34d399">${achieveCount}<span style="font-size:11px;color:rgba(232,232,240,0.3)">/${ACH_DEFS.length}</span></div><div class="prf-stat-lbl">Achievements</div></div>
+        </div>
+      </div>
+
+      <div class="prf-section">
+        <div class="prf-sec-title">Battle Loadout</div>
+        <div class="prf-loadout">${loadout}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">${perksHtml}</div>
+      </div>
+
+      <div class="prf-section">
+        <div class="prf-sec-title">Recent Runs</div>
+        ${runsHtml}
+      </div>
+
+      <div class="prf-section" style="border-bottom:none;">
+        <div class="prf-sec-title">Achievements (${doneAchs.length}/${ACH_DEFS.length})</div>
+        <div class="prf-ach-grid">${achsHtml}</div>
+      </div>`;
+  },
+};
+
+// ── DUEL SYSTEM ──────────────────────────────────────────────────────────────
+const _Duel = {
+  id: null, data: null, _unsub: null, myBan: null, _submitted: false,
+
+  async challenge(friendUid, friendName) {
+    if (!fbDb||!currentUser) { showToast("Sign in to duel!"); return; }
+    if (running) { showToast("Finish your current run first!"); return; }
+    if (this.id) { showToast("You already have a duel in progress!"); return; }
+    const diff = currentDiff?.name||'Easy';
+    try {
+      const uid = currentUser.uid;
+      const ref = await fbDb.collection('duels').add({
+        players:[uid,friendUid],
+        challenger:uid, challengerName:getDisplayName(),
+        challenged:friendUid, challengedName:friendName,
+        status:'pending', bans:{},
+        r0:{[uid]:null,[friendUid]:null},
+        r1:{[uid]:null,[friendUid]:null},
+        r2:{[uid]:null,[friendUid]:null},
+        wins:{[uid]:0,[friendUid]:0},
+        currentRound:0, difficulty:diff.toLowerCase(),
+        winner:null, createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      this.id = ref.id; currentDuelId = ref.id;
+      showToast(`⚔️ Duel invite sent to ${friendName}!`);
+      this._listen(ref.id);
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+
+  async accept(duelId) {
+    if (!fbDb||!currentUser) return;
+    if (running) { showToast("Finish your current run first!"); return; }
+    if (this.id && this.id!==duelId) { showToast("Already in a duel!"); return; }
+    try {
+      await fbDb.collection('duels').doc(duelId).update({status:'ban_phase'});
+      this.id = duelId; currentDuelId = duelId;
+      const snap = await fbDb.collection('duels').doc(duelId).get();
+      this.data = snap.data();
+      this._listen(duelId);
+      this._showBanPhase();
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+
+  async decline(duelId) {
+    if (!fbDb) return;
+    try { await fbDb.collection('duels').doc(duelId).update({status:'declined'}); Notif.refresh(); }
+    catch(e) { showToast("Error: "+e.message); }
+  },
+
+  _listen(duelId) {
+    this._unsub?.(); this._unsub=null;
+    if (!fbDb) return;
+    this._unsub = fbDb.collection('duels').doc(duelId).onSnapshot(snap => {
+      if (!snap.exists) return;
+      this.onUpdate(duelId, snap.data());
+    }, ()=>{});
+  },
+
+  onUpdate(duelId, data) {
+    if (duelId !== this.id) return;
+    this.data = data;
+    const myUid = currentUser?.uid; if (!myUid) return;
+    const oppUid = data.players.find(p=>p!==myUid);
+
+    if (data.status==='ban_phase') {
+      const myBanDone = data.bans?.[myUid];
+      const oppBanDone = data.bans?.[oppUid];
+      if (!myBanDone) { this._showBanPhase(); return; }
+      if (myBanDone && !oppBanDone) {
+        document.getElementById("banWaiting").style.display='block';
+        document.getElementById("banConfirmBtn").style.display='none';
+        document.getElementById("banGrid").style.opacity='0.45';
+        document.getElementById("banGrid").style.pointerEvents='none';
+        return;
+      }
+      if (myBanDone && oppBanDone) { this._startRound(0); return; }
+    }
+    if (data.status==='playing') {
+      const rKey = `r${data.currentRound}`;
+      const rd = data[rKey]||{};
+      if (rd[myUid]!==null&&rd[myUid]!==undefined && rd[oppUid]!==null&&rd[oppUid]!==undefined) {
+        this._showRoundResult(data.currentRound, data);
+      }
+    }
+    if (data.status==='done') { this._showFinalResult(data); }
+    // Challenger: detect opponent accepted (status changed to ban_phase)
+    if (data.status==='ban_phase' && data.challenger===myUid) {
+      const banScr = document.getElementById("duelBanScreen");
+      if (banScr.style.display!=='flex' && !data.bans?.[myUid]) this._showBanPhase();
+    }
+  },
+
+  async _showBanPhase() {
+    if (!this.data||!currentUser) return;
+    const myUid=currentUser.uid;
+    const oppUid=this.data.players.find(p=>p!==myUid);
+    const oppName=myUid===this.data.challenger?this.data.challengedName:this.data.challengerName;
+    // Hide everything else
+    ['menu','socialModal','profileModal','gameOverModal'].forEach(id=>document.getElementById(id).style.display='none');
+    document.getElementById("duelBanScreen").style.display='flex'; menuOpen=true;
+    // Render vs row
+    document.getElementById("banVsRow").innerHTML = `
+      <div class="duel-player"><div class="duel-player-name">${esc(getDisplayName())}</div><div class="duel-player-label">You</div></div>
+      <div class="duel-vs">VS</div>
+      <div class="duel-player"><div class="duel-player-name">${esc(oppName)}</div><div class="duel-player-label">Opponent</div></div>`;
+    // Load opponent perks
+    let perks=[];
+    try { const s=await fbDb.collection('users').doc(oppUid).get(); perks=getActivePerks(s.data()?.selectedSkins||{}); } catch(e){}
+    const btn=document.getElementById("banConfirmBtn");
+    document.getElementById("banWaiting").style.display='none';
+    btn.style.display='block'; btn.style.opacity='0.35'; btn.style.pointerEvents='none';
+    btn.textContent='Select an ability to ban';
+    document.getElementById("banGrid").style.opacity='1';
+    document.getElementById("banGrid").style.pointerEvents='';
+    this.myBan=null;
+    if (!perks.length) {
+      document.getElementById("banGrid").innerHTML='<div style="text-align:center;color:rgba(232,232,240,0.4);font-size:12px;padding:16px;">Opponent has no special abilities.<br>You cannot ban anything this duel.</div>';
+      setTimeout(()=>this.confirmBan(),1500); return;
+    }
+    document.getElementById("banGrid").innerHTML = perks.map(k=>{
+      const d=PERK_DEFS[k]||{icon:'❓',name:k,desc:''};
+      return `<div class="ban-opt" data-key="${k}" onclick="_Duel._selectBan('${k}',this)">
+        <span class="ban-ico">${d.icon}</span>
+        <div><div class="ban-name">${d.name}</div><div class="ban-desc">${d.desc}</div></div>
+      </div>`;
+    }).join('');
+  },
+
+  _selectBan(key,el) {
+    this.myBan=key;
+    document.querySelectorAll('.ban-opt').forEach(e=>e.classList.remove('chosen'));
+    el.classList.add('chosen');
+    const def=PERK_DEFS[key]||{name:key};
+    const btn=document.getElementById("banConfirmBtn");
+    btn.style.opacity='1'; btn.style.pointerEvents='';
+    btn.textContent=`🚫 Ban "${def.name}"`;
+  },
+
+  async confirmBan() {
+    if (!fbDb||!currentUser||!this.id) return;
+    const myUid=currentUser.uid;
+    const ban=this.myBan||'__none__';
+    try {
+      await fbDb.collection('duels').doc(this.id).update({[`bans.${myUid}`]:ban});
+      document.getElementById("banWaiting").style.display='block';
+      document.getElementById("banConfirmBtn").style.display='none';
+      document.getElementById("banGrid").style.opacity='0.45';
+      document.getElementById("banGrid").style.pointerEvents='none';
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+
+  async _startRound(roundNum) {
+    if (!this.data||!currentUser) return;
+    const myUid=currentUser.uid;
+    const oppUid=this.data.players.find(p=>p!==myUid);
+    const oppName=myUid===this.data.challenger?this.data.challengedName:this.data.challengerName;
+    // Apply what OPPONENT banned on MY perks
+    const oppBan=this.data.bans?.[oppUid]||'__none__';
+    duelBannedPerks=oppBan==='__none__'?[]:[oppBan];
+    // Update status for round 0
+    if (roundNum===0 && this.data.status==='ban_phase') {
+      await fbDb.collection('duels').doc(this.id).update({status:'playing',currentRound:0}).catch(()=>{});
+    }
+    // Show duel HUD
+    const hud=document.getElementById("duelHUD");
+    hud.style.display='flex';
+    document.getElementById("duelRndLbl").textContent=roundNum+1;
+    document.getElementById("duelOppLbl").textContent=oppName;
+    this._updateDots(roundNum, this.data);
+    // Close overlays and start
+    ['duelBanScreen','duelRoundResult','duelFinalResult'].forEach(id=>document.getElementById(id).style.display='none');
+    this._submitted=false;
+    selectDifficulty(this.data.difficulty||'easy');
+  },
+
+  async onRoundEnd(finalScore) {
+    if (!this.id||!currentUser||this._submitted) return;
+    this._submitted=true;
+    const roundNum=this.data?.currentRound??0;
+    try { await fbDb.collection('duels').doc(this.id).update({[`r${roundNum}.${currentUser.uid}`]:finalScore}); }
+    catch(e) { showToast("Duel sync error: "+e.message); }
+  },
+
+  _showRoundResult(roundNum, data) {
+    if (!currentUser) return;
+    const myUid=currentUser.uid;
+    const oppUid=data.players.find(p=>p!==myUid);
+    const oppName=myUid===data.challenger?data.challengedName:data.challengerName;
+    const rd=data[`r${roundNum}`]||{};
+    const myS=rd[myUid]??0, oppS=rd[oppUid]??0;
+    const iWon=myS>oppS, tied=myS===oppS;
+    const updWins={...data.wins};
+    if (iWon) updWins[myUid]=(updWins[myUid]||0)+1;
+    else if (!tied) updWins[oppUid]=(updWins[oppUid]||0)+1;
+    const myW=updWins[myUid]||0, oppW=updWins[oppUid]||0;
+    // Update Firestore wins (challenger writes to avoid double-write)
+    if (data.challenger===myUid) {
+      const nextR=roundNum+1;
+      const winner=myW>=2?myUid:oppW>=2?oppUid:null;
+      fbDb.collection('duels').doc(this.id).update({
+        wins:updWins, currentRound:nextR<3?nextR:roundNum,
+        status:winner?'done':'playing', winner:winner||null,
+      }).catch(()=>{});
+    }
+    // Render
+    document.getElementById("drTag").textContent=`Round ${roundNum+1} Result`;
+    document.getElementById("drIcon").textContent=iWon?'🏆':tied?'🤝':'💀';
+    document.getElementById("drText").innerHTML=iWon
+      ?'<span style="color:#34d399;font-size:16px;">You won this round!</span>'
+      :tied?'<span style="color:#facc15;font-size:16px;">Tied!</span>'
+      :`<span style="color:#f87171;font-size:16px;">${esc(oppName)} wins this round</span>`;
+    ['My','Opp'].forEach((who,idx)=>{
+      const isMe=who==='My';
+      const sc=isMe?myS:oppS, w=isMe?myW:oppW, nm=isMe?'You':esc(oppName);
+      document.getElementById(`dr${who}Lbl`).textContent=nm;
+      document.getElementById(`dr${who}Score`).textContent=sc.toLocaleString();
+      document.getElementById(`dr${who}Wins`).textContent=`${w} win${w!==1?'s':''}`;
+      const box=document.getElementById(`dr${who}Box`);
+      box.className=`duel-score-box${(isMe&&iWon||!isMe&&!iWon&&!tied)?' winner':''}`;
+    });
+    this._updateDots(roundNum, {...data, wins:updWins});
+    // Next button
+    const winner=myW>=2?myUid:oppW>=2?oppUid:null;
+    const nextR=roundNum+1;
+    document.getElementById("drNextArea").innerHTML = (winner||nextR>=3)
+      ? `<button class="btn go-play-btn" onclick="_Duel._showFinalResult(null)" style="width:220px;">🏆 Final Results</button>`
+      : `<button class="btn go-play-btn" onclick="_Duel._startRound(${nextR})" style="width:220px;">▶ Round ${nextR+1}</button>`;
+    document.getElementById("duelHUD").style.display='none';
+    document.getElementById("duelRoundResult").style.display='flex';
+    document.getElementById("gameOverModal").style.display='none';
+    menuOpen=true;
+  },
+
+  _showFinalResult(data) {
+    const d=data||this.data; if (!d||!currentUser) return;
+    const myUid=currentUser.uid;
+    const oppUid=d.players.find(p=>p!==myUid);
+    const oppName=myUid===d.challenger?d.challengedName:d.challengerName;
+    const wins=d.wins||{};
+    const myW=wins[myUid]||0, oppW=wins[oppUid]||0;
+    const iWon=d.winner?d.winner===myUid:myW>oppW;
+    const tied=myW===oppW;
+    document.getElementById("dfrIcon").textContent=iWon?'🏆':tied?'🤝':'😢';
+    document.getElementById("dfrTitle").textContent=iWon?'Victory!':tied?'Draw!':'Defeated';
+    document.getElementById("dfrName").textContent=iWon?getDisplayName():tied?'Both Players':oppName;
+    ['My','Opp'].forEach((who)=>{
+      const isMe=who==='My';
+      const uid=isMe?myUid:oppUid;
+      const nm=isMe?'You':esc(oppName), w=isMe?myW:oppW, ow=isMe?oppW:myW;
+      document.getElementById(`dfr${who}Lbl`).textContent=nm;
+      document.getElementById(`dfr${who}Wins`).textContent=`${w}–${ow}`;
+      const sc=[0,1,2].map(i=>(d[`r${i}`]?.[uid]??'–')).join(' / ');
+      document.getElementById(`dfr${who}Scores`).textContent=sc;
+      const box=document.getElementById(`dfr${who}Box`);
+      box.className=`duel-score-box${(isMe&&iWon||!isMe&&!iWon&&!tied)?' winner':''}`;
+    });
+    ['duelRoundResult','duelHUD','duelBanScreen','gameOverModal'].forEach(id=>document.getElementById(id).style.display='none');
+    document.getElementById("duelFinalResult").style.display='flex'; menuOpen=true;
+  },
+
+  _updateDots(currentRound, data) {
+    const myUid=currentUser?.uid; if (!myUid) return;
+    const oppUid=data?.players?.find(p=>p!==myUid);
+    for (let i=0;i<3;i++) {
+      ['duelDot','drDot'].forEach(prefix=>{
+        const dot=document.getElementById(`${prefix}${i}`); if (!dot) return;
+        if (i<currentRound) {
+          const rd=data?.[`r${i}`]||{};
+          const myS=rd[myUid]??0, oppS=rd[oppUid]??0;
+          dot.className=`duel-dot ${myS>oppS?'won':myS<oppS?'lost':''}`;
+        } else { dot.className='duel-dot'; }
+      });
+    }
+  },
+
+  exitToMenu() {
+    this._unsub?.(); this._unsub=null;
+    this.id=null; this.data=null; this.myBan=null; this._submitted=false;
+    currentDuelId=null; duelBannedPerks=[];
+    ['duelFinalResult','duelRoundResult','duelBanScreen','duelHUD','gameOverModal'].forEach(id=>document.getElementById(id).style.display='none');
+    document.getElementById("menu").style.display='flex'; menuOpen=true; Music.playMenu();
+  },
+};
+
+// expose Duel.onRoundEnd globally for gameOver() to call
+Object.assign(Duel, { onRoundEnd:(s)=>_Duel.onRoundEnd(s) });
+
 // ── LIVE SESSION TRACKING ───────────────────────────────────────────────────
 function startLiveSession() {
   if (!fbReady || !fbDb) return;
@@ -2460,7 +3566,16 @@ function startGame() {
   runStartTime = Date.now();
   revivesUsedThisRun = 0;
   abilityUsedThisRun = false;
-  const hasMythicSink = obsSkinData?.ability === "sink";
+  // Apply duel bans — strip perks the opponent banned
+  if (duelBannedPerks.length) {
+    if (duelBannedPerks.some(k => k==='revival_1'||k==='revival_2')) { legendaryReviveCount=0; legendaryReviveAvailable=false; }
+    if (duelBannedPerks.some(k => k==='coin_mult_leg'||k==='coin_mult_myt')) coinMultiplier=1;
+    if (duelBannedPerks.some(k => k==='magnet_leg'||k==='magnet_myt'))       magnetRadius=0;
+    if (duelBannedPerks.includes('coin_boost'))   bgCoinSpawnBoost=false;
+    if (duelBannedPerks.includes('auto_shatter')) { passiveShatterAvailable=false; passiveShatterUsed=true; }
+  }
+
+  const hasMythicSink = obsSkinData?.ability === "sink" && !duelBannedPerks.includes('sink_ability');
   const abilityBtn = document.getElementById("mythicAbilityBtn");
   abilityBtn.style.display = hasMythicSink ? "flex" : "none";
   abilityBtn.disabled = false;
@@ -2474,6 +3589,11 @@ function startGame() {
   running = true; paused = false; menuOpen = false;
   document.getElementById("menu").style.display = "none";
   document.getElementById("gameOverModal").style.display = "none";
+  document.getElementById("socialModal").style.display = "none";
+  document.getElementById("profileModal").style.display = "none";
+  document.getElementById("duelBanScreen").style.display = "none";
+  document.getElementById("duelRoundResult").style.display = "none";
+  document.getElementById("duelFinalResult").style.display = "none";
   document.getElementById("gachaModal").style.display = "none";
   document.getElementById("collectionModal").style.display = "none";
   document.getElementById("shopModal").style.display = "none";
@@ -2515,10 +3635,16 @@ function gameOver() {
   saveAll();
   checkAchievements();
 
-  setTimeout(() => showGameOver(isNewBest), 700);
+  // Duel round end — submit score, show duel waiting screen
+  if (currentDuelId) {
+    Duel.onRoundEnd(score);
+    setTimeout(() => showGameOver(isNewBest, true), 700);
+  } else {
+    setTimeout(() => showGameOver(isNewBest, false), 700);
+  }
 }
 
-function showGameOver(isNewBest) {
+function showGameOver(isNewBest, inDuel = false) {
   const el = document.getElementById("gameOverModal");
   const runSecs = Math.round((Date.now() - runStartTime) / 1000);
   const modeName = currentDiff ? currentDiff.name : "Easy";
@@ -2574,6 +3700,12 @@ function showGameOver(isNewBest) {
     </div>`;
   }).join("") || '<div class="go-history-empty">No runs yet</div>';
 
+  // In a duel: show "waiting for opponent" section
+  if (inDuel) {
+    document.getElementById("goHistory").insertAdjacentHTML("beforebegin",
+      `<div id="goDuelWait" style="width:100%;max-width:340px;text-align:center;padding:12px;background:rgba(255,107,148,0.08);border:1px solid rgba(255,107,148,0.25);border-radius:14px;font-size:12px;color:#ff6b94;font-weight:700;">⚔️ Round submitted — waiting for opponent…</div>`);
+  }
+
   el.style.display = "flex";
   menuOpen = true;
   Music.playMenu();
@@ -2581,7 +3713,10 @@ function showGameOver(isNewBest) {
 
 function quickRestart() {
   document.getElementById("gameOverModal").style.display = "none";
+  document.getElementById("goDuelWait")?.remove();
   menuOpen = false;
+  duelBannedPerks = [];
+  currentDuelId = null;
   startGame();
 }
 
@@ -3693,10 +4828,14 @@ try {
           AuthUI.showProfile();
           updateAccountBtn(true);
           showToast(`👋 Welcome back, ${getDisplayName()}!`);
+          Notif.init(user.uid);
         });
       }).catch(e => console.error("DB load error", e));
     } else {
       updateAccountBtn(false);
+      Notif.destroy();
+      Notif._items = [];
+      Notif._updateBadge?.();
     }
   });
 } catch (e) {
