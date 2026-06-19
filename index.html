@@ -2923,7 +2923,7 @@ const Social = {
 
   async _doSearch() {
     if (!fbDb||!currentUser) return;
-    const q = document.getElementById("srchInput")?.value.trim().toLowerCase();
+    const q = document.getElementById("srchInput")?.value.trim().toLowerCase().replace(/^@/,'');
     if (!q) return;
     const res = document.getElementById("srchResults");
     res.innerHTML='<div style="text-align:center;padding:16px;color:rgba(232,232,240,0.3);font-size:12px;">Searching…</div>';
