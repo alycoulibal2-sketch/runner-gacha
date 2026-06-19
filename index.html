@@ -651,7 +651,8 @@
 
     <div class="menu-actions">
       <button class="btn secondary" id="menuMusicBtn" onclick="cycleMenuMusic()" style="font-size:12px;">🎵 Music: —</button>
-      <button class="btn secondary" id="menuMuteBtn" onclick="toggleSound()" style="font-size:12px;">🔊 Sound On</button>
+      <button class="btn secondary" id="menuMusicToggle" onclick="toggleMusic()" style="font-size:12px;">🎵 Music: On</button>
+      <button class="btn secondary" id="menuSfxToggle"   onclick="toggleSfx()"   style="font-size:12px;">🔔 SFX: On</button>
     </div>
 
     <div class="menu-actions">
@@ -967,7 +968,8 @@ let adWatchCount   = S.get("rg-adCount", 0);
 let totalSpins     = S.get("rg-totalSpins", 0);
 let totalCoins     = S.get("rg-totalCoins", 0);
 
-let audioEnabled = S.get("rg-sound", true);
+let musicEnabled = S.get("rg-music", true);
+let sfxEnabled   = S.get("rg-sfx",   true);
 let audioCtx;
 let score = 0, gameSpeed = 3, running = false, paused = false, menuOpen = true;
 let obstacles = [], fieldCoins = [], particles = [];
@@ -1155,7 +1157,7 @@ function ensureAudio() {
   if (audioCtx.state === "suspended") audioCtx.resume();
 }
 function beep(freq = 440, dur = 0.06, type = "sine", vol = 0.05) {
-  if (!audioEnabled) return;
+  if (!sfxEnabled) return;
   ensureAudio();
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
@@ -1166,7 +1168,7 @@ function beep(freq = 440, dur = 0.06, type = "sine", vol = 0.05) {
   o.start(); o.stop(audioCtx.currentTime + dur);
 }
 function playGachaJingle(rarity) {
-  if (!audioEnabled) return;
+  if (!sfxEnabled) return;
   ensureAudio();
   const ctx = audioCtx;
   const now = ctx.currentTime;
@@ -1213,14 +1215,33 @@ function playGachaJingle(rarity) {
     n(130,  0.60, 0.30, 0.14, 'sine');
   }
 }
+function updateSoundUI() {
+  const allOff = !musicEnabled && !sfxEnabled;
+  document.getElementById("soundBtn").textContent = allOff ? "🔇" : (musicEnabled && sfxEnabled) ? "🔊" : "🔉";
+  const mt = document.getElementById("menuMusicToggle");
+  if (mt) mt.textContent = musicEnabled ? "🎵 Music: On" : "🔕 Music: Off";
+  const st = document.getElementById("menuSfxToggle");
+  if (st) st.textContent = sfxEnabled ? "🔔 SFX: On" : "🔕 SFX: Off";
+}
+function toggleMusic() {
+  musicEnabled = !musicEnabled;
+  S.set("rg-music", musicEnabled);
+  updateSoundUI();
+  if (musicEnabled) Music.resume(); else Music.stop();
+}
+function toggleSfx() {
+  sfxEnabled = !sfxEnabled;
+  S.set("rg-sfx", sfxEnabled);
+  updateSoundUI();
+  if (sfxEnabled) beep(880, 0.06);
+}
 function toggleSound() {
-  audioEnabled = !audioEnabled;
-  S.set("rg-sound", audioEnabled);
-  document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
-  const muteBtn = document.getElementById("menuMuteBtn");
-  if (muteBtn) muteBtn.textContent = audioEnabled ? "🔊 Sound On" : "🔇 Muted";
-  if (audioEnabled) { beep(880, 0.06); Music.resume(); }
-  else Music.stop();
+  const allOff = !musicEnabled && !sfxEnabled;
+  musicEnabled = sfxEnabled = allOff;
+  S.set("rg-music", musicEnabled);
+  S.set("rg-sfx", sfxEnabled);
+  updateSoundUI();
+  if (musicEnabled) Music.resume(); else Music.stop();
 }
 
 // ─────────────────────────────────────────────
@@ -1451,7 +1472,7 @@ const Music = (() => {
       S.set("rg-menuTrack", menuIndex);
       const name = TRACKS[MENU_TRACKS[menuIndex]].name;
       current = null; segStep = 0; arrPos = 0;
-      if (audioEnabled && master && audioCtx) {
+      if (musicEnabled && master && audioCtx) {
         const tr = TRACKS[MENU_TRACKS[menuIndex]];
         master.gain.cancelScheduledValues(audioCtx.currentTime);
         master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
@@ -1530,7 +1551,7 @@ const Music = (() => {
   }
 
   function play(trackKey) {
-    if (!audioEnabled) { current = trackKey; return; }
+    if (!musicEnabled) { current = trackKey; return; }
     ensureAudio();
     if (!master) buildMaster();
     if (current === trackKey && timer) return;
@@ -1554,7 +1575,7 @@ const Music = (() => {
       S.set("rg-menuTrack", menuIndex);
       const t = TRACKS[MENU_TRACKS[menuIndex]];
       current = null; segStep = 0; arrPos = 0;
-      if (audioEnabled) this.playMenu(); else scheduleMenuAuto();
+      if (musicEnabled) this.playMenu(); else scheduleMenuAuto();
       const btn = document.getElementById("menuMusicBtn");
       if (btn) btn.textContent = "🎵 Music: " + t.name;
       showToast("🎵 " + t.name);
@@ -3154,7 +3175,7 @@ canvas.addEventListener("click", () => {
 window.addEventListener("click", function once() {
   ensureAudio();
   // Kick off menu music on the first interaction (browsers block autoplay before a gesture)
-  if (!running && audioEnabled) Music.playMenu();
+  if (!running && musicEnabled) Music.playMenu();
   window.removeEventListener("click", once);
 });
 
@@ -3774,6 +3795,8 @@ window.selectDifficulty = selectDifficulty;
 window.claimDaily       = claimDaily;
 window.togglePause      = togglePause;
 window.toggleSound      = toggleSound;
+window.toggleMusic      = toggleMusic;
+window.toggleSfx        = toggleSfx;
 window.UI               = UI;
 window.Gacha            = Gacha;
 window.Collection       = Collection;
@@ -3842,8 +3865,7 @@ ResetPage.init();
 giveStarterSkins();
 updateStreak();
 refreshHUD();
-document.getElementById("soundBtn").textContent = audioEnabled ? "🔊" : "🔇";
-document.getElementById("menuMuteBtn").textContent = audioEnabled ? "🔊 Sound On" : "🔇 Muted";
+updateSoundUI();
 document.getElementById("menuMusicBtn").textContent = "🎵 Music: " + Music.menuTrackName();
 document.getElementById("streakCount").textContent = streak;
 document.getElementById("streakBonus").textContent =
