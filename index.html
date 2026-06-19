@@ -3153,6 +3153,8 @@ function togglePause() {
 }
 
 document.addEventListener("keydown", e => {
+  const tag = e.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
   if (e.code === "Space") { e.preventDefault(); jump(); }
   if (e.key.toLowerCase() === "p") togglePause();
   if (e.key.toLowerCase() === "g") UI.openGacha();
@@ -3215,6 +3217,56 @@ function resetToBaseSkins() {
 }
 
 // ─────────────────────────────────────────────
+//  LOCAL SAVE BACKUP (pre-login snapshot)
+// ─────────────────────────────────────────────
+const LOCAL_SAVE_KEYS = [
+  "rg-coins","rg-best","rg-streak","rg-lastLogin","rg-lastDaily",
+  "rg-skins","rg-selected","rg-pity","rg-ach","rg-scores","rg-pass",
+  "rg-totalSpins","rg-totalCoins","rg-adDay","rg-adCount",
+];
+function backupLocalState() {
+  const bk = {};
+  LOCAL_SAVE_KEYS.forEach(k => { bk[k] = S.get(k, null); });
+  S.set("rg-local-backup", bk);
+}
+function restoreLocalState() {
+  const bk = S.get("rg-local-backup", null);
+  try { localStorage.removeItem("rg-local-backup"); } catch {}
+  if (!bk) {
+    // Never backed up — just reset to a clean local state
+    coins = 0; best = 0; streak = 0; lastLogin = 0; lastDaily = 0;
+    ownedSkins = { player: [], background: [], obstacle: [] };
+    selectedSkins = { player: "default", background: "default", obstacle: "default" };
+    pity = { player: 0, background: 0, obstacle: 0 };
+    achievements = {}; scores = []; hasPass = false;
+    adWatchedToday = 0; adWatchCount = 0; totalSpins = 0; totalCoins = 0;
+    LOCAL_SAVE_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+    giveStarterSkins();
+  } else {
+    // Restore snapshot to localStorage then re-read into memory
+    LOCAL_SAVE_KEYS.forEach(k => {
+      if (bk[k] !== null) S.set(k, bk[k]);
+      else try { localStorage.removeItem(k); } catch {}
+    });
+    coins        = S.get("rg-coins",      0);
+    best         = S.get("rg-best",       0);
+    streak       = S.get("rg-streak",     0);
+    lastLogin    = S.get("rg-lastLogin",  0);
+    lastDaily    = S.get("rg-lastDaily",  0);
+    ownedSkins   = S.get("rg-skins",     { player: [], background: [], obstacle: [] });
+    selectedSkins= S.get("rg-selected",  { player: "default", background: "default", obstacle: "default" });
+    pity         = S.get("rg-pity",      { player: 0, background: 0, obstacle: 0 });
+    achievements = S.get("rg-ach",       {});
+    scores       = S.get("rg-scores",    []);
+    hasPass      = S.get("rg-pass",      false);
+    adWatchedToday= S.get("rg-adDay",   0);
+    adWatchCount = S.get("rg-adCount",   0);
+    totalSpins   = S.get("rg-totalSpins",0);
+    totalCoins   = S.get("rg-totalCoins",0);
+  }
+}
+
+// ─────────────────────────────────────────────
 //  FIREBASE / ACCOUNTS
 // ─────────────────────────────────────────────
 
@@ -3251,6 +3303,8 @@ try {
   fbAuth.onAuthStateChanged(user => {
     currentUser = user;
     if (user) {
+      // Back up local state the first time we sign in (not on page-reload while already logged in)
+      if (!S.get("rg-local-backup", null)) backupLocalState();
       DB.load(user.uid).then(existed => {
         if (!existed) {
           // Brand-new account → start with ONLY the base skins.
@@ -3617,25 +3671,16 @@ const AuthUI = {
     await fbAuth.signOut();
     currentUser = null;
     if (uid) removeRecentAccount(uid);
-    // Clear local game data so the next sign-in loads fresh from that user's Firestore
-    ["rg-coins","rg-best","rg-streak","rg-lastLogin","rg-lastDaily",
-     "rg-skins","rg-selected","rg-pity","rg-ach","rg-scores","rg-pass",
-     "rg-adDay","rg-adCount","rg-totalSpins","rg-totalCoins","rg-username",
-     "rg-displayName","rg-lastDNChange","rg-statRuns","rg-statExtreme"].forEach(k => {
-       try { localStorage.removeItem(k); } catch {}
-     });
-    coins = 0; best = 0; streak = 0; lastLogin = 0; lastDaily = 0;
-    ownedSkins = { player: [], background: [], obstacle: [] };
-    selectedSkins = { player: "default", background: "default", obstacle: "default" };
-    pity = { player: 0, background: 0, obstacle: 0 };
-    achievements = {}; scores = []; hasPass = false;
-    adWatchCount = 0; totalSpins = 0; totalCoins = 0;
+    // Clear account-specific fields not covered by restoreLocalState
+    ["rg-username","rg-displayName","rg-lastDNChange","rg-statRuns","rg-statExtreme"].forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
     lastDisplayNameChange = 0;
-    giveStarterSkins();
+    restoreLocalState();
     refreshHUD();
     updateAccountBtn(false);
     this.showWelcome();
-    showToast("👋 Signed out.");
+    showToast("👋 Signed out — local save restored.");
   },
 
   // ── Password reset ──
