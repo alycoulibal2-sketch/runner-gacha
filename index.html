@@ -2914,7 +2914,7 @@ const Social = {
   _renderSearch(body) {
     body.innerHTML = `
       <div class="search-row">
-        <input class="search-input" id="srchInput" placeholder="@username (exact match)" onkeydown="if(event.key==='Enter')Social._doSearch()"/>
+        <input class="search-input" id="srchInput" placeholder="Search username…" onkeydown="if(event.key==='Enter')Social._doSearch()"/>
         <button class="search-go" onclick="Social._doSearch()">Go</button>
       </div>
       <div id="srchResults"></div>`;
@@ -2929,7 +2929,7 @@ const Social = {
     res.innerHTML='<div style="text-align:center;padding:16px;color:rgba(232,232,240,0.3);font-size:12px;">Searching…</div>';
     try {
       const [usSnap, frSnap, fsSnap] = await Promise.all([
-        fbDb.collection('users').where('username','==',q).limit(5).get(),
+        fbDb.collection('users').where('username','>=',q).where('username','<=',q+'').limit(8).get(),
         fbDb.collection('friend_requests').where('from','==',currentUser.uid).where('status','==','pending').get(),
         fbDb.collection('friendships').where('players','array-contains',currentUser.uid).get(),
       ]);
