@@ -2648,7 +2648,6 @@ const Gacha = (() => {
     const eased = 1 - Math.pow(1 - t, 4);
     rot = startRot + (targetRot - startRot) * eased;
     draw(rot);
-    if (t > 0.82 && t < 0.88) beep(1200, 0.03, "square", 0.03);
     if (t >= 1) { spinning = false; finish(); return; }
     requestAnimationFrame(animate);
   }
