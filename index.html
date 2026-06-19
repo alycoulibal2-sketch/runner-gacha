@@ -2996,16 +2996,42 @@ const Social = {
     if (!fbDb||!currentUser) return;
     try {
       const uid = currentUser.uid;
-      const [inSnap, outSnap] = await Promise.all([
+      const [inSnap, outSnap, duelSnap] = await Promise.all([
         fbDb.collection('friend_requests').where('to','==',uid).get(),
         fbDb.collection('friend_requests').where('from','==',uid).limit(20).get(),
+        fbDb.collection('duels').where('challenged','==',uid).get(),
       ]);
-      // Filter client-side to avoid composite index requirement
+      // Filter client-side — no composite indexes needed
       const inDocs = inSnap.docs.filter(d=>d.data().status==='pending');
       const outDocs = outSnap.docs.sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0));
+      const duelDocs = duelSnap.docs.filter(d=>d.data().status==='pending');
       let html='';
+
+      // ── Incoming duel challenges ──────────────────────────────────────────
+      if (duelDocs.length) {
+        html += '<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:0 0 8px;">⚔️ Duel Challenges</div>';
+        duelDocs.forEach(doc => {
+          const d=doc.data();
+          html+=`<div class="friend-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;width:100%;">
+              <div class="fr-avatar" style="background:${uidColor(d.challenger)};font-size:16px;">⚔️</div>
+              <div class="fr-info">
+                <div class="fr-name">${esc(d.challengerName||'Someone')}</div>
+                <div class="fr-sub" style="color:#ff9f43;">challenged you to a duel!</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;width:100%;">
+              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:linear-gradient(90deg,#ff7a59,#ff6b94);color:#fff;font-size:12px;font-weight:800;cursor:pointer;"
+                onclick="_Duel.accept('${doc.id}');document.getElementById('socialModal').style.display='none';">⚔️ Accept Duel</button>
+              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:rgba(232,232,240,0.6);font-size:12px;font-weight:800;cursor:pointer;"
+                onclick="_Duel.decline('${doc.id}');this.closest('.friend-row').remove();">✗ Decline</button>
+            </div></div>`;
+        });
+      }
+
+      // ── Incoming friend requests ──────────────────────────────────────────
       if (inDocs.length) {
-        html += '<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:0 0 8px;">Incoming</div>';
+        html += `<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:${duelDocs.length?10:0}px 0 8px;">👋 Friend Requests</div>`;
         inDocs.forEach(doc => {
           const d=doc.data();
           html+=`<div class="friend-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
@@ -3015,13 +3041,17 @@ const Social = {
                 <div class="fr-sub">@${esc(d.fromUsername||'—')} · Best: ${d.fromBest||0}</div></div>
             </div>
             <div style="display:flex;gap:6px;width:100%;">
-              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:#34d399;color:#021021;font-size:12px;font-weight:800;cursor:pointer;" onclick="Social._acceptReq('${doc.id}','${d.from}','${esc(d.fromDisplayName||'')}','${esc(d.fromUsername||'')}');this.closest('.friend-row').remove();">✓ Accept</button>
-              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:rgba(232,232,240,0.6);font-size:12px;font-weight:800;cursor:pointer;" onclick="Social._rejectReq('${doc.id}');this.closest('.friend-row').remove();">✗ Decline</button>
+              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:#34d399;color:#021021;font-size:12px;font-weight:800;cursor:pointer;"
+                onclick="Social._acceptReq('${doc.id}','${d.from}','${esc(d.fromDisplayName||'')}','${esc(d.fromUsername||'')}');this.closest('.friend-row').remove();">✓ Accept</button>
+              <button style="flex:1;padding:7px;border-radius:8px;border:none;background:rgba(255,255,255,0.07);color:rgba(232,232,240,0.6);font-size:12px;font-weight:800;cursor:pointer;"
+                onclick="Social._rejectReq('${doc.id}');this.closest('.friend-row').remove();">✗ Decline</button>
             </div></div>`;
         });
       }
+
+      // ── Sent friend requests ──────────────────────────────────────────────
       if (outDocs.length) {
-        html+=`<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:${inDocs.length?10:0}px 0 8px;">Sent Requests</div>`;
+        html+=`<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:${(duelDocs.length||inDocs.length)?10:0}px 0 8px;">Sent Requests</div>`;
         outDocs.forEach(doc => {
           const d=doc.data();
           const sc = d.status==='accepted'?'#34d399':d.status==='rejected'?'#f87171':'rgba(232,232,240,0.35)';
@@ -3033,7 +3063,8 @@ const Social = {
           </div>`;
         });
       }
-      body.innerHTML = html || '<div class="social-empty">No friend requests.</div>';
+
+      body.innerHTML = html || '<div class="social-empty">No requests yet.</div>';
     } catch(e) { body.innerHTML=`<div class="social-empty" style="color:#f87171;">Error: ${esc(e.message)}</div>`; }
   },
 
