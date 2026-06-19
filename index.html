@@ -2927,34 +2927,48 @@ const Social = {
     if (!q) return;
     const res = document.getElementById("srchResults");
     res.innerHTML='<div style="text-align:center;padding:16px;color:rgba(232,232,240,0.3);font-size:12px;">Searching…</div>';
+
+    // 1. Search public_profiles — only blocking query
+    let usSnap;
     try {
-      const [usSnap, frSnap, fsSnap] = await Promise.all([
-        fbDb.collection('public_profiles').where('username','>=',q).where('username','<=',q+'').limit(8).get(),
-        fbDb.collection('friend_requests').where('from','==',currentUser.uid).where('status','==','pending').get(),
+      usSnap = await fbDb.collection('public_profiles')
+        .where('username','>=',q).where('username','<=',q+'').limit(8).get();
+    } catch(e) {
+      res.innerHTML=`<div class="social-empty" style="color:#f87171;">Search error: ${esc(e.message)}</div>`;
+      return;
+    }
+
+    const results = usSnap.docs.filter(d=>d.id!==currentUser.uid);
+    if (!results.length) { res.innerHTML='<div class="social-empty">No player found with that username.</div>'; return; }
+
+    // 2. Load friend status separately — don't block results on index errors
+    let pendingTo = new Set(), friendUids = new Set();
+    try {
+      const toUids = results.map(d=>d.id);
+      const [frSnap, fsSnap] = await Promise.all([
+        fbDb.collection('friend_requests').where('from','==',currentUser.uid).where('to','in',toUids).get(),
         fbDb.collection('friendships').where('players','array-contains',currentUser.uid).get(),
       ]);
-      const pendingTo = new Set(frSnap.docs.map(d=>d.data().to));
-      const friendUids = new Set();
+      frSnap.docs.forEach(d=>{ if(d.data().status==='pending') pendingTo.add(d.data().to); });
       fsSnap.docs.forEach(d=>d.data().players.forEach(p=>{if(p!==currentUser.uid)friendUids.add(p);}));
-      const results = usSnap.docs.filter(d=>d.id!==currentUser.uid);
-      if (!results.length) { res.innerHTML='<div class="social-empty">No player found with that username.</div>'; return; }
-      res.innerHTML = results.map(doc => {
-        const d=doc.data(), uid=doc.id;
-        const btn = friendUids.has(uid)
-          ? `<button class="fr-btn friends">✓ Friends</button>`
-          : pendingTo.has(uid)
-          ? `<button class="fr-btn sent">Sent ✓</button>`
-          : `<button class="fr-btn add" onclick="event.stopPropagation();Social._sendReq('${uid}','${esc(d.username||'')}',this)">+ Add</button>`;
-        return `<div class="friend-row" onclick="Profile.view('${uid}')">
-          <div class="fr-avatar" style="background:${uidColor(uid)}">${(d.displayName||d.username||'?')[0].toUpperCase()}</div>
-          <div class="fr-info">
-            <div class="fr-name">${esc(d.displayName||d.username||'Unknown')}</div>
-            <div class="fr-sub">@${esc(d.username||'—')} · Best: ${d.best||0}</div>
-          </div>
-          ${btn}
-        </div>`;
-      }).join('');
-    } catch(e) { res.innerHTML=`<div class="social-empty" style="color:#f87171;">Error: ${esc(e.message)}</div>`; }
+    } catch(_) { /* no index yet — show results without friend status */ }
+
+    res.innerHTML = results.map(doc => {
+      const d=doc.data(), uid=doc.id;
+      const btn = friendUids.has(uid)
+        ? `<button class="fr-btn friends">✓ Friends</button>`
+        : pendingTo.has(uid)
+        ? `<button class="fr-btn sent">Sent ✓</button>`
+        : `<button class="fr-btn add" onclick="event.stopPropagation();Social._sendReq('${uid}','${esc(d.username||"")}',this)">+ Add</button>`;
+      return `<div class="friend-row" onclick="Profile.view('${uid}')">
+        <div class="fr-avatar" style="background:${uidColor(uid)}">${(d.displayName||d.username||'?')[0].toUpperCase()}</div>
+        <div class="fr-info">
+          <div class="fr-name">${esc(d.displayName||d.username||'Unknown')}</div>
+          <div class="fr-sub">@${esc(d.username||'—')} · Best: ${d.best||0}</div>
+        </div>
+        ${btn}
+      </div>`;
+    }).join('');
   },
 
   async _sendReq(toUid, toUsername, btn) {
