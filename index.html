@@ -115,6 +115,83 @@
       backdrop-filter: blur(12px);
     }
 
+    /* ── Game Over Modal ── */
+    #gameOverModal {
+      justify-content: flex-start;
+      gap: 12px;
+      z-index: 35;
+      padding: 16px 14px 14px;
+    }
+    .go-header { text-align: center; width: 100%; }
+    .go-skull { font-size: 34px; line-height: 1; animation: goPopIn .4s cubic-bezier(.34,1.56,.64,1) both; }
+    .go-label { font-size: 10px; font-weight: 900; letter-spacing: 4px; text-transform: uppercase; color: rgba(232,232,240,0.35); margin: 2px 0; display: block; }
+    .go-new-best {
+      font-size: 13px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+      background: linear-gradient(90deg, #facc15, #ffb86b, #facc15);
+      background-size: 200% 100%;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: shimmer 1.5s linear infinite, goPopIn .5s cubic-bezier(.34,1.56,.64,1) .1s both;
+      margin-top: 2px;
+    }
+    @keyframes shimmer { 0%{background-position:0%}100%{background-position:200%} }
+    @keyframes goPopIn { from{transform:scale(.6);opacity:0} to{transform:scale(1);opacity:1} }
+
+    .go-score-wrap { text-align: center; }
+    .go-score-num {
+      font-size: 72px; font-weight: 900; line-height: 1;
+      background: linear-gradient(135deg, #ff7a59, #ffb86b, #7c4dff, #ff6b94);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      animation: goPopIn .45s cubic-bezier(.34,1.56,.64,1) .05s both;
+    }
+    .go-mode-badge {
+      display: inline-block; padding: 3px 12px; border-radius: 999px;
+      font-size: 11px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    .go-stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 7px;
+      width: 100%; max-width: 340px;
+    }
+    .go-stat {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px; padding: 10px 8px; text-align: center;
+      animation: goPopIn .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .go-stat-val { font-size: 22px; font-weight: 900; }
+    .go-stat-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: rgba(232,232,240,0.4); margin-top: 2px; }
+
+    .go-perks { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 340px; }
+    .go-perk-tag {
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 700;
+    }
+
+    .go-history-section { width: 100%; max-width: 340px; }
+    .go-history-title {
+      font-size: 10px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(232,232,240,0.35); margin-bottom: 7px; text-align: center;
+    }
+    .go-history-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 12px; margin-bottom: 5px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+      font-size: 13px;
+    }
+    .go-history-row:first-child { background: rgba(250,204,21,0.06); border-color: rgba(250,204,21,0.15); }
+    .go-rank { font-size: 14px; width: 22px; text-align: center; }
+    .go-hs-score { font-size: 17px; font-weight: 900; flex: 1; }
+    .go-hs-mode { font-size: 9px; padding: 2px 8px; border-radius: 999px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; }
+    .go-hs-time { font-size: 10px; color: rgba(232,232,240,0.35); }
+    .go-history-empty { text-align: center; color: rgba(232,232,240,0.3); font-size: 12px; padding: 8px; }
+
+    .go-actions { display: flex; gap: 8px; width: 100%; max-width: 340px; }
+    .go-play-btn {
+      background: linear-gradient(90deg, #34d399, #0891b2) !important;
+      color: #021021 !important; flex: 1; font-size: 14px; padding: 12px 14px;
+    }
+    .go-menu-btn { color: var(--text) !important; }
+
     /* ── Menu ── */
     #menu {
       justify-content: center;
@@ -680,6 +757,59 @@
     <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
   </div>
 
+  <!-- Game Over Modal -->
+  <div id="gameOverModal" class="modal-overlay modal-bg" style="display:none;">
+
+    <!-- Header -->
+    <div class="go-header">
+      <div class="go-skull">💀</div>
+      <span class="go-label">Game Over</span>
+      <div id="goNewBest" class="go-new-best" style="display:none;">★ New Personal Best ★</div>
+    </div>
+
+    <!-- Score -->
+    <div class="go-score-wrap">
+      <div id="goScoreNum" class="go-score-num">0</div>
+      <div id="goModeBadge" class="go-mode-badge">Easy</div>
+    </div>
+
+    <!-- 4-stat grid -->
+    <div class="go-stats-grid">
+      <div class="go-stat" style="animation-delay:.05s">
+        <div id="goStatBest" class="go-stat-val" style="color:#facc15">0</div>
+        <div class="go-stat-lbl">Personal Best</div>
+      </div>
+      <div class="go-stat" style="animation-delay:.1s">
+        <div id="goStatCoins" class="go-stat-val" style="color:#facc15">+0</div>
+        <div class="go-stat-lbl">Coins Earned</div>
+      </div>
+      <div class="go-stat" style="animation-delay:.15s">
+        <div id="goStatTime" class="go-stat-val" style="color:#38bdf8">0s</div>
+        <div class="go-stat-lbl">Time Survived</div>
+      </div>
+      <div class="go-stat" style="animation-delay:.2s">
+        <div id="goStatAvoided" class="go-stat-val" style="color:#34d399">0</div>
+        <div class="go-stat-lbl">Obstacles Avoided</div>
+      </div>
+    </div>
+
+    <!-- Perks used this run -->
+    <div id="goPerks" class="go-perks"></div>
+
+    <!-- Run history -->
+    <div class="go-history-section">
+      <div class="go-history-title">Your Last Runs</div>
+      <div id="goHistory"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="go-actions">
+      <button class="btn go-play-btn" onclick="quickRestart()">▶ Play Again</button>
+      <button class="btn secondary go-menu-btn" onclick="closeGameOver()">🏠 Menu</button>
+    </div>
+
+  </div>
+
   <!-- Gacha Modal -->
   <div id="gachaModal" class="modal-overlay modal-bg">
     <h2 style="font-size:16px;">🎰 Gacha Wheel</h2>
@@ -1014,6 +1144,13 @@ let bgCoinSpawnBoost = false;
 let passiveShatterAvailable = false;
 let passiveShatterUsed = false;
 let sinksRemaining = 0;
+
+// Run-specific stats (reset each game)
+let runCoins = 0;
+let obstaclesAvoided = 0;
+let runStartTime = 0;
+let revivesUsedThisRun = 0;
+let abilityUsedThisRun = false;
 
 // player object
 const player = { x: 70, y: H - 140, w: 48, h: 48, vy: 0, onGround: true };
@@ -2318,6 +2455,11 @@ function startGame() {
   mythicAbilityCooldown = 0;
   MYTHIC_ABILITY_MAX_CD = 2700;
   sinksRemaining = 0;
+  runCoins = 0;
+  obstaclesAvoided = 0;
+  runStartTime = Date.now();
+  revivesUsedThisRun = 0;
+  abilityUsedThisRun = false;
   const hasMythicSink = obsSkinData?.ability === "sink";
   const abilityBtn = document.getElementById("mythicAbilityBtn");
   abilityBtn.style.display = hasMythicSink ? "flex" : "none";
@@ -2331,6 +2473,7 @@ function startGame() {
   document.getElementById("score").textContent = 0;
   running = true; paused = false; menuOpen = false;
   document.getElementById("menu").style.display = "none";
+  document.getElementById("gameOverModal").style.display = "none";
   document.getElementById("gachaModal").style.display = "none";
   document.getElementById("collectionModal").style.display = "none";
   document.getElementById("shopModal").style.display = "none";
@@ -2355,10 +2498,10 @@ function gameOver() {
   }
 
   const modeName = currentDiff ? currentDiff.name : "Easy";
-  if (score > best) {
+  const isNewBest = score > best;
+  if (isNewBest) {
     best = score;
     beep(1400, 0.2, "sine", 0.07);
-    showToast(`🏆 New best: ${best}!`);
     submitWorldScore(score, modeName);
   } else {
     beep(220, 0.1);
@@ -2372,11 +2515,80 @@ function gameOver() {
   saveAll();
   checkAchievements();
 
-  setTimeout(() => {
-    document.getElementById("menu").style.display = "flex";
-    menuOpen = true;
-    Music.playMenu();
-  }, 600);
+  setTimeout(() => showGameOver(isNewBest), 700);
+}
+
+function showGameOver(isNewBest) {
+  const el = document.getElementById("gameOverModal");
+  const runSecs = Math.round((Date.now() - runStartTime) / 1000);
+  const modeName = currentDiff ? currentDiff.name : "Easy";
+  const modeColor = currentDiff?.color || "#34d399";
+
+  // Header
+  document.getElementById("goNewBest").style.display = isNewBest ? "block" : "none";
+  document.getElementById("goScoreNum").textContent = score.toLocaleString();
+
+  const modeBadge = document.getElementById("goModeBadge");
+  modeBadge.textContent = modeName;
+  modeBadge.style.background = modeColor + "22";
+  modeBadge.style.color = modeColor;
+  modeBadge.style.border = `1px solid ${modeColor}55`;
+
+  // Stats
+  document.getElementById("goStatBest").textContent  = best.toLocaleString();
+  document.getElementById("goStatCoins").textContent = "+" + runCoins;
+  const m = Math.floor(runSecs / 60), s = runSecs % 60;
+  document.getElementById("goStatTime").textContent  = m > 0 ? `${m}m ${s}s` : `${s}s`;
+  document.getElementById("goStatAvoided").textContent = obstaclesAvoided;
+
+  // Perks used
+  const perks = [];
+  if (revivesUsedThisRun > 0) perks.push(`💛 ${revivesUsedThisRun}× Revival`);
+  if (passiveShatterUsed)      perks.push("💥 Auto-Shatter");
+  if (abilityUsedThisRun)      perks.push("🌊 Sink Used");
+  const perksEl = document.getElementById("goPerks");
+  perksEl.innerHTML = perks.length
+    ? perks.map(p => `<span class="go-perk-tag">${p}</span>`).join("")
+    : "";
+
+  // Run history
+  const hist = [...scores].slice(0, 5);
+  const modeColors = { Easy:"#34d399", Hard:"#f87171", Extreme:"#a78bfa" };
+  const now = Date.now();
+  function fmtAgo(ts) {
+    const d = now - ts;
+    if (d < 5000) return "just now";
+    if (d < 60000) return `${Math.round(d/1000)}s ago`;
+    if (d < 3600000) return `${Math.round(d/60000)}m ago`;
+    if (d < 86400000) return `${Math.round(d/3600000)}h ago`;
+    return `${Math.round(d/86400000)}d ago`;
+  }
+  document.getElementById("goHistory").innerHTML = hist.map((r, i) => {
+    const mc = modeColors[r.mode] || "#e8e8f0";
+    const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i+1}.`;
+    return `<div class="go-history-row">
+      <span class="go-rank">${medal}</span>
+      <span class="go-hs-score">${(r.score||0).toLocaleString()}</span>
+      <span class="go-hs-mode" style="background:${mc}22;color:${mc};border:1px solid ${mc}55">${r.mode}</span>
+      <span class="go-hs-time">${fmtAgo(r.ts)}</span>
+    </div>`;
+  }).join("") || '<div class="go-history-empty">No runs yet</div>';
+
+  el.style.display = "flex";
+  menuOpen = true;
+  Music.playMenu();
+}
+
+function quickRestart() {
+  document.getElementById("gameOverModal").style.display = "none";
+  menuOpen = false;
+  startGame();
+}
+
+function closeGameOver() {
+  document.getElementById("gameOverModal").style.display = "none";
+  document.getElementById("menu").style.display = "flex";
+  menuOpen = true;
 }
 
 function jump() {
@@ -2437,6 +2649,7 @@ function useMythicAbility() {
   if (!skinData) return;
 
   sinksRemaining = 10;
+  abilityUsedThisRun = true;
   mythicAbilityCooldown = MYTHIC_ABILITY_MAX_CD;
   const btn = document.getElementById("mythicAbilityBtn");
   btn.disabled = true;
@@ -2595,6 +2808,7 @@ function gameLoop(timestamp) {
       } else if (legendaryReviveCount > 0) {
         legendaryReviveCount--;
         legendaryReviveAvailable = legendaryReviveCount > 0;
+        revivesUsedThisRun++;
         ob.passed = true;
         reviveFlashTimer = 60;
         const reviveBadge = document.getElementById("reviveBadge");
@@ -2619,6 +2833,7 @@ function gameLoop(timestamp) {
     if (!ob.passed && ob.x + ob.w < player.x) {
       ob.passed = true;
       score++;
+      obstaclesAvoided++;
       document.getElementById("score").textContent = score;
       gameSpeed += currentDiff.accel;
       if (score % 10 === 0) { beep(1200, 0.08, "sine", 0.05); floatText(`🔥 ${score}!`, W / 2, H / 2, "#facc15"); }
@@ -2662,6 +2877,7 @@ function gameLoop(timestamp) {
       const gain = Math.ceil((currentDiff?.coinValue || 1) * coinMultiplier * (hasPass ? 3 : 1));
       coins += gain;
       totalCoins += gain;
+      runCoins += gain;
       floatText(`+${gain}`, c.x, c.y, "#facc15");
       spawnParticles(c.x, c.y, "#facc15", 4);
       refreshHUD();
