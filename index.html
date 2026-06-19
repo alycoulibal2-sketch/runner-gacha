@@ -4833,6 +4833,19 @@ try {
           updateAccountBtn(true);
           showToast(`👋 Welcome back, ${getDisplayName()}!`);
           Notif.init(user.uid);
+          // Always refresh public profile on login so the player is searchable
+          const uname = (S.get("rg-username","") || "").toLowerCase();
+          if (uname && fbDb) {
+            fbDb.collection("public_profiles").doc(user.uid).set({
+              username:      uname,
+              displayName:   getDisplayName(),
+              best,
+              streak,
+              hasPass,
+              selectedSkins,
+              updatedAt:     firebase.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true }).catch(() => {});
+          }
         });
       }).catch(e => console.error("DB load error", e));
     } else {
