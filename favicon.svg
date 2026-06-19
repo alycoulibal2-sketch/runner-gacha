@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <radialGradient id="bg" cx="40%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#1a2a5e"/>
+      <stop offset="100%" stop-color="#050c1a"/>
+    </radialGradient>
+    <linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ff7a59"/>
+      <stop offset="50%"  stop-color="#ffb86b"/>
+      <stop offset="100%" stop-color="#7c4dff"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Mini runner block -->
+  <rect x="5" y="15" width="9" height="9" rx="2" fill="#38bdf8"/>
+  <!-- Mini obstacle -->
+  <rect x="21" y="18" width="6" height="6" rx="1" fill="#f43f5e"/>
+  <!-- "RG" label -->
+  <text x="16" y="12" text-anchor="middle"
+        font-family="system-ui,sans-serif"
+        font-size="8" font-weight="900" letter-spacing="0.5"
+        fill="url(#tg)">RG</text>
+  <!-- Ground line -->
+  <rect x="3" y="25" width="26" height="1.5" rx="0.75" fill="rgba(255,255,255,0.15)"/>
+</svg>
