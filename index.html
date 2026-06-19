@@ -801,7 +801,7 @@
 
   <!-- Quick buttons in-game -->
   <div id="quickButtons">
-    <button id="mythicAbilityBtn" class="quick" style="display:none;" onclick="useMythicAbility()">⚡ Ability</button>
+    <button id="mythicAbilityBtn" class="quick" style="display:none;" onclick="useMythicAbility()">⚡ Ability (E)</button>
     <button class="quick" onclick="UI.openGacha()">🎰 Wheel</button>
     <button class="quick" onclick="UI.openShop()">🛒 Shop</button>
   </div>
@@ -979,6 +979,7 @@ let shieldActive = false, shieldTimer = 0;
 let doubleJumpUsed = false;
 let frameCount = 0;
 let powerups = [];
+let lastTime = 0, dt = 1, powerupTimer = 380;
 
 // Ability state
 let legendaryReviveAvailable = false;
@@ -2029,9 +2030,9 @@ function spawnParticles(x, y, color, count = 6) {
 function updateParticles() {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
-    p.x += p.vx; p.y += p.vy;
-    p.vy += 0.1;
-    p.life -= p.decay;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 0.1 * dt;
+    p.life -= p.decay * dt;
     if (p.life <= 0) { particles.splice(i, 1); continue; }
     ctx.save();
     ctx.globalAlpha = p.life;
@@ -2053,8 +2054,8 @@ function floatText(text, x, y, color = "#fff") {
 function updateFloaters() {
   for (let i = floaters.length - 1; i >= 0; i--) {
     const f = floaters[i];
-    f.life -= f.decay;
-    f.y -= 0.7;
+    f.life -= f.decay * dt;
+    f.y -= 0.7 * dt;
     if (f.life <= 0) { floaters.splice(i, 1); continue; }
     ctx.save();
     ctx.globalAlpha = f.life;
@@ -2141,6 +2142,7 @@ function startGame() {
   gameSpeed = currentDiff.startSpeed;
   score = 0;
   frameCount = 0;
+  lastTime = 0; powerupTimer = 380;
   player.y = GROUND_Y - player.h;
   player.vy = 0;
   player.onGround = true;
@@ -2159,7 +2161,7 @@ function startGame() {
   const abilityBtn = document.getElementById("mythicAbilityBtn");
   abilityBtn.style.display = hasMythicSink ? "flex" : "none";
   abilityBtn.disabled = false;
-  abilityBtn.textContent = "⚡ Ability";
+  abilityBtn.textContent = "⚡ Ability (E)";
   document.getElementById("reviveBadge").style.display = legendaryReviveAvailable ? "flex" : "none";
   coinSpawnTimer = 110;
   document.getElementById("score").textContent = 0;
@@ -2288,10 +2290,12 @@ function useMythicAbility() {
 
 let bgStars = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * GROUND_Y, r: Math.random() * 1.5, speed: 0.2 + Math.random() * 0.5 }));
 
-function gameLoop() {
+function gameLoop(timestamp) {
   if (!running) return;
-  if (paused) { requestAnimationFrame(gameLoop); return; }
-  frameCount++;
+  if (paused) { lastTime = 0; requestAnimationFrame(gameLoop); return; }
+  dt = lastTime ? Math.min((timestamp - lastTime) / (1000 / 60), 3) : 1;
+  lastTime = timestamp;
+  frameCount += dt;
   const t = frameCount * 0.05;
 
   // ── Background ──
@@ -2302,7 +2306,7 @@ function gameLoop() {
   // Starfield
   if (!bgPat) {
     bgStars.forEach(s => {
-      s.x -= s.speed * (gameSpeed / 3);
+      s.x -= s.speed * (gameSpeed / 3) * dt;
       if (s.x < 0) s.x = W;
       ctx.fillStyle = `rgba(255,255,255,${0.3 + s.r * 0.2})`;
       ctx.beginPath();
@@ -2319,8 +2323,8 @@ function gameLoop() {
 
   // ── Physics — gravity scales with speed for snappier jumps at high velocity ──
   const gravity = 0.38 + gameSpeed * 0.04;
-  player.vy = Math.min(player.vy + gravity, 14);
-  player.y += player.vy;
+  player.vy = Math.min(player.vy + gravity * dt, 14);
+  player.y += player.vy * dt;
   if (player.y + player.h >= GROUND_Y) {
     player.y = GROUND_Y - player.h;
     player.vy = 0;
@@ -2339,7 +2343,7 @@ function gameLoop() {
     ctx.ellipse(player.x + player.w / 2, player.y + player.h / 2, player.w / 2 + 8, player.h / 2 + 8, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    shieldTimer--;
+    shieldTimer -= dt;
     if (shieldTimer <= 0) { shieldActive = false; showToast("🛡 Shield faded"); }
   }
   ctx.fillStyle = playerPat || (currentDiff ? currentDiff.color : "#38bdf8");
@@ -2353,37 +2357,38 @@ function gameLoop() {
     ctx.fillStyle = "#ffb86b";
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
-    reviveFlashTimer--;
+    reviveFlashTimer -= dt;
   }
 
   // Ability cooldown UI
   if (mythicAbilityCooldown > 0) {
-    mythicAbilityCooldown--;
+    mythicAbilityCooldown -= dt;
     const btn = document.getElementById("mythicAbilityBtn");
     const pct = Math.round((MYTHIC_ABILITY_MAX_CD - mythicAbilityCooldown) / MYTHIC_ABILITY_MAX_CD * 100);
     btn.textContent = `⚡ ${pct}%`;
     btn.disabled = true;
-    if (mythicAbilityCooldown <= 0) { btn.textContent = "⚡ Ability"; btn.disabled = false; }
+    if (mythicAbilityCooldown <= 0) { btn.textContent = "⚡ Ability (E)"; btn.disabled = false; }
   }
 
   // ── Spawn ──
-  spawnTimer--;
+  spawnTimer -= dt;
   if (spawnTimer <= 0) {
     spawnObstacle();
     const variance = Math.max(55, Math.floor(190 - gameSpeed * 18));
     spawnTimer = variance + Math.floor(Math.random() * 60);
   }
-  coinSpawnTimer--;
+  coinSpawnTimer -= dt;
   if (coinSpawnTimer <= 0) {
     spawnCoin();
     coinSpawnTimer = 90 + Math.floor(Math.random() * 70);
   }
-  if (frameCount % 380 === 0) spawnPowerup();
+  powerupTimer -= dt;
+  if (powerupTimer <= 0) { spawnPowerup(); powerupTimer = 380; }
 
   // ── Obstacles ──
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const ob = obstacles[i];
-    ob.x -= gameSpeed;
+    ob.x -= gameSpeed * dt;
     const obPat = getSkinColor(selectedSkins.obstacle);
     ctx.fillStyle = obPat || "#f43f5e";
     ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
@@ -2432,7 +2437,7 @@ function gameLoop() {
   // ── Field Coins ──
   for (let i = fieldCoins.length - 1; i >= 0; i--) {
     const c = fieldCoins[i];
-    c.x -= gameSpeed;
+    c.x -= gameSpeed * dt;
     if (!c.taken) {
       const bob = Math.sin((Date.now() + i * 60) / 200) * 2;
       ctx.beginPath();
@@ -2462,7 +2467,7 @@ function gameLoop() {
   // ── Powerups ──
   for (let i = powerups.length - 1; i >= 0; i--) {
     const pu = powerups[i];
-    pu.x -= gameSpeed;
+    pu.x -= gameSpeed * dt;
     if (!pu.taken) {
       const emoji = pu.type === "shield" ? "🛡" : "🐢";
       const bob = Math.sin((Date.now() + i * 80) / 180) * 3;
