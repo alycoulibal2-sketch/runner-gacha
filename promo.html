@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Runner Gacha — Run. Spin. Dominate.</title>
+<meta name="description" content="The free infinite runner with a gacha twist. Unlock legendary skins, climb the global leaderboard, and prove you're the fastest." />
+<meta property="og:title" content="Runner Gacha — Run. Spin. Dominate." />
+<meta property="og:description" content="100% free. Legendary rewards. Infinite thrills." />
+<meta property="og:type" content="website" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --pink:   #ff6b94;
+    --blue:   #38bdf8;
+    --purple: #a855f7;
+    --gold:   #ffb86b;
+    --dark:   #020617;
+    --card:   rgba(255,255,255,0.04);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--dark);
+    color: #fff;
+    overflow-x: hidden;
+  }
+
+  /* ── STARFIELD ── */
+  #stars {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute; border-radius: 50%;
+    background: #fff; opacity: 0;
+    animation: twinkle var(--d) ease-in-out var(--delay) infinite;
+  }
+  @keyframes twinkle {
+    0%,100% { opacity: 0; transform: scale(0.6); }
+    50%      { opacity: var(--op); transform: scale(1); }
+  }
+
+  section { position: relative; z-index: 1; }
+
+  /* ── HERO ── */
+  #hero {
+    min-height: 100svh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 40px 24px 60px;
+    background: radial-gradient(ellipse 120% 80% at 50% -10%, rgba(168,85,247,0.18) 0%, transparent 70%),
+                radial-gradient(ellipse 80% 60% at 80% 80%, rgba(56,189,248,0.10) 0%, transparent 60%);
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--pink);
+    border: 1px solid rgba(255,107,148,0.35);
+    border-radius: 999px; padding: 5px 14px;
+    margin-bottom: 28px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .badge::before { content: "★"; }
+
+  .hero-title {
+    font-size: clamp(48px, 12vw, 96px);
+    font-weight: 900; line-height: 1.0;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #fff 0%, var(--blue) 40%, var(--pink) 80%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: fadeUp 0.7s 0.1s ease both;
+  }
+
+  .hero-sub {
+    font-size: clamp(16px, 4vw, 22px);
+    font-weight: 300; opacity: 0.65; margin-top: 18px; max-width: 520px;
+    line-height: 1.55;
+    animation: fadeUp 0.7s 0.2s ease both;
+  }
+
+  .hero-cta {
+    margin-top: 38px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    animation: fadeUp 0.7s 0.3s ease both;
+  }
+
+  .btn-main {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 15px 34px; border-radius: 14px; border: none; cursor: pointer;
+    font-size: 16px; font-weight: 800; text-decoration: none;
+    background: linear-gradient(135deg, var(--pink), var(--purple));
+    color: #fff;
+    box-shadow: 0 0 40px rgba(255,107,148,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .btn-main:hover { transform: translateY(-2px); box-shadow: 0 0 60px rgba(255,107,148,0.55); }
+
+  .btn-sec {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 15px 28px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
+    font-size: 15px; font-weight: 600; text-decoration: none; color: #fff;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(10px);
+    transition: background 0.15s, transform 0.15s;
+  }
+  .btn-sec:hover { background: rgba(255,255,255,0.10); transform: translateY(-2px); }
+
+  /* ── RUNNER CANVAS MOCKUP ── */
+  .mockup-wrap {
+    margin: 56px auto 0; width: min(380px, 90vw);
+    position: relative;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+  .mockup-frame {
+    width: 100%; aspect-ratio: 420/640;
+    border-radius: 20px;
+    border: 1.5px solid rgba(255,255,255,0.10);
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    background: #020617;
+    position: relative;
+  }
+  #demoCanvas { width: 100%; height: 100%; display: block; }
+
+  .mockup-glow {
+    position: absolute; inset: -30px;
+    background: radial-gradient(ellipse at 50% 50%, rgba(168,85,247,0.20), transparent 70%);
+    pointer-events: none; z-index: -1;
+  }
+
+  /* ── STATS BAR ── */
+  #stats {
+    padding: 48px 24px;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;
+  }
+  .stat {
+    flex: 1; min-width: 130px; max-width: 200px;
+    padding: 28px 20px; text-align: center;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: var(--card);
+    transition: background 0.2s;
+  }
+  .stat:first-child { border-radius: 14px 0 0 14px; }
+  .stat:last-child  { border-radius: 0 14px 14px 0; }
+  .stat:hover { background: rgba(255,255,255,0.07); }
+  .stat-val { font-size: 36px; font-weight: 900; background: linear-gradient(135deg, #fff, var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .stat-lbl { font-size: 11px; opacity: 0.5; letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
+
+  /* ── FEATURES ── */
+  #features {
+    padding: 80px 24px;
+    max-width: 900px; margin: 0 auto;
+  }
+  .section-title {
+    text-align: center; font-size: clamp(26px, 6vw, 44px); font-weight: 900;
+    margin-bottom: 12px;
+  }
+  .section-sub { text-align: center; opacity: 0.5; margin-bottom: 52px; font-size: 15px; }
+
+  .features-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+  }
+  .feat {
+    background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 18px; padding: 28px 24px;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .feat:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.15); box-shadow: 0 16px 40px rgba(0,0,0,0.4); }
+  .feat-icon { font-size: 32px; margin-bottom: 14px; }
+  .feat-title { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+  .feat-desc  { font-size: 13px; opacity: 0.55; line-height: 1.6; }
+
+  /* ── RARITY SHOWCASE ── */
+  #rarities {
+    padding: 80px 24px;
+    background: radial-gradient(ellipse 100% 80% at 50% 100%, rgba(56,189,248,0.06) 0%, transparent 70%);
+  }
+  .rarities-grid {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
+    max-width: 700px; margin: 0 auto;
+  }
+  .rarity-card {
+    flex: 1; min-width: 100px; max-width: 140px;
+    border-radius: 16px; padding: 20px 16px; text-align: center;
+    border: 1px solid; position: relative; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+  }
+  .rarity-card:hover { transform: translateY(-6px) scale(1.03); }
+  .rarity-card .r-shine {
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.10) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .r-icon  { font-size: 28px; margin-bottom: 8px; }
+  .r-name  { font-size: 12px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+  .r-pct   { font-size: 10px; opacity: 0.5; margin-top: 4px; }
+
+  .r-common   { background: rgba(148,163,184,0.10); border-color: #94a3b8; }
+  .r-rare     { background: rgba(56,189,248,0.10);  border-color: #38bdf8; box-shadow: 0 0 20px rgba(56,189,248,0.12); }
+  .r-epic     { background: rgba(168,85,247,0.12);  border-color: #a855f7; box-shadow: 0 0 24px rgba(168,85,247,0.16); }
+  .r-legend   { background: rgba(255,184,107,0.12); border-color: #ffb86b; box-shadow: 0 0 30px rgba(255,184,107,0.20); }
+  .r-mythic   { background: rgba(255,107,148,0.12); border-color: #ff6b94; box-shadow: 0 0 36px rgba(255,107,148,0.25); animation: mythicPulse 2.5s ease-in-out infinite; }
+
+  @keyframes mythicPulse {
+    0%,100% { box-shadow: 0 0 30px rgba(255,107,148,0.2); }
+    50%      { box-shadow: 0 0 60px rgba(255,107,148,0.45), 0 0 20px rgba(168,85,247,0.3); }
+  }
+
+  /* ── DIFFICULTIES ── */
+  #difficulties { padding: 80px 24px; max-width: 780px; margin: 0 auto; }
+  .diff-list { display: flex; flex-direction: column; gap: 12px; }
+  .diff-row {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 18px 22px;
+    transition: transform 0.18s;
+  }
+  .diff-row:hover { transform: translateX(6px); }
+  .diff-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .diff-name { font-weight: 800; font-size: 15px; flex: 1; }
+  .diff-desc { font-size: 13px; opacity: 0.5; }
+  .diff-label { font-size: 11px; font-weight: 800; letter-spacing: 1px; padding: 4px 10px; border-radius: 999px; }
+
+  /* ── QUOTE ── */
+  #quote {
+    padding: 100px 24px; text-align: center;
+    background: radial-gradient(ellipse 100% 60% at 50% 50%, rgba(168,85,247,0.10) 0%, transparent 70%);
+  }
+  .quote-text {
+    font-size: clamp(22px, 5vw, 40px); font-weight: 900; line-height: 1.25;
+    max-width: 700px; margin: 0 auto;
+    background: linear-gradient(135deg, #fff 0%, var(--blue) 50%, var(--pink) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .quote-sub { margin-top: 20px; opacity: 0.4; font-size: 14px; }
+
+  /* ── FINAL CTA ── */
+  #cta-final {
+    padding: 100px 24px; text-align: center;
+  }
+  .cta-title { font-size: clamp(30px, 7vw, 58px); font-weight: 900; line-height: 1.1; margin-bottom: 20px; }
+  .cta-title em { font-style: normal; background: linear-gradient(135deg, var(--gold), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cta-sub { opacity: 0.5; font-size: 15px; margin-bottom: 36px; }
+  .cta-note { margin-top: 18px; font-size: 12px; opacity: 0.3; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 28px 24px; text-align: center;
+    font-size: 12px; opacity: 0.3;
+  }
+
+  /* ── SCROLL ANIMATIONS ── */
+  .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.visible { opacity: 1; transform: none; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 500px) {
+    .stat:first-child { border-radius: 14px 14px 0 0; }
+    .stat:last-child  { border-radius: 0 0 14px 14px; }
+    .stat { min-width: 48%; max-width: 50%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Starfield -->
+<div id="stars"></div>
+
+<!-- ═══════════════════════════════════════════
+     HERO
+════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="badge">Free to Play · No Download Needed</div>
+  <h1 class="hero-title">Runner<br>Gacha</h1>
+  <p class="hero-sub">Jump. Dodge. Spin the wheel.<br>Collect legendary skins. Climb the global leaderboard.</p>
+  <div class="hero-cta">
+    <a href="https://runnergacha.com" class="btn-main">▶ Play Now — It's Free</a>
+    <a href="#features" class="btn-sec">See what's inside ↓</a>
+  </div>
+
+  <div class="mockup-wrap">
+    <div class="mockup-glow"></div>
+    <div class="mockup-frame">
+      <canvas id="demoCanvas"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     STATS
+════════════════════════════════════════════ -->
+<section id="stats">
+  <div class="stat reveal">
+    <div class="stat-val" id="s1">0</div>
+    <div class="stat-lbl">Unique Skins</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-val" id="s2">0</div>
+    <div class="stat-lbl">Rarity Tiers</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-val" id="s3">0</div>
+    <div class="stat-lbl">Difficulty Modes</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-val" id="s4">∞</div>
+    <div class="stat-lbl">Replayability</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     FEATURES
+════════════════════════════════════════════ -->
+<section id="features">
+  <h2 class="section-title reveal">Everything you need.<br>Nothing you don't.</h2>
+  <p class="section-sub reveal">Pure skill. Real rewards. Zero pay-to-win.</p>
+  <div class="features-grid">
+    <div class="feat reveal">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-title">Instant Action</div>
+      <div class="feat-desc">No downloads, no installs. Open your browser and you're running in under 3 seconds. Works on every device.</div>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-icon">🎰</div>
+      <div class="feat-title">Gacha Wheel</div>
+      <div class="feat-desc">Spin to unlock over 70 skins across 5 rarity tiers. Pity system guarantees a Legendary every 50 spins.</div>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-icon">🌍</div>
+      <div class="feat-title">Global Leaderboard</div>
+      <div class="feat-desc">Your best score is ranked against players worldwide. Free account sync — your progress follows you everywhere.</div>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-icon">🎵</div>
+      <div class="feat-title">Original Soundtrack</div>
+      <div class="feat-desc">Five hand-crafted music tracks, each 5 minutes long. Synthwave, chiptune, dark electronic — pick your vibe.</div>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-icon">🛡</div>
+      <div class="feat-title">Mythic Abilities</div>
+      <div class="feat-desc">Equip mythic and legendary skins to unlock special powers — a second life, or the ability to erase obstacles.</div>
+    </div>
+    <div class="feat reveal">
+      <div class="feat-icon">🔥</div>
+      <div class="feat-title">Daily Streaks</div>
+      <div class="feat-desc">Log in every day to build your streak and earn bonus coins. The longer the streak, the bigger the rewards.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     RARITY SHOWCASE
+════════════════════════════════════════════ -->
+<section id="rarities">
+  <h2 class="section-title reveal">Five Tiers of Glory</h2>
+  <p class="section-sub reveal">Every spin is a shot at something legendary.</p>
+  <div class="rarities-grid">
+    <div class="rarity-card r-common reveal">
+      <div class="r-shine"></div>
+      <div class="r-icon">🟫</div>
+      <div class="r-name" style="color:#94a3b8;">Common</div>
+      <div class="r-pct">75% chance</div>
+    </div>
+    <div class="rarity-card r-rare reveal">
+      <div class="r-shine"></div>
+      <div class="r-icon">💎</div>
+      <div class="r-name" style="color:#38bdf8;">Rare</div>
+      <div class="r-pct">20% chance</div>
+    </div>
+    <div class="rarity-card r-epic reveal">
+      <div class="r-shine"></div>
+      <div class="r-icon">🔮</div>
+      <div class="r-name" style="color:#a855f7;">Epic</div>
+      <div class="r-pct">4% chance</div>
+    </div>
+    <div class="rarity-card r-legend reveal">
+      <div class="r-shine"></div>
+      <div class="r-icon">👑</div>
+      <div class="r-name" style="color:#ffb86b;">Legendary</div>
+      <div class="r-pct">0.7% chance</div>
+    </div>
+    <div class="rarity-card r-mythic reveal">
+      <div class="r-shine"></div>
+      <div class="r-icon">✨</div>
+      <div class="r-name" style="color:#ff6b94;">Mythic</div>
+      <div class="r-pct">0.3% chance</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     DIFFICULTIES
+════════════════════════════════════════════ -->
+<section id="difficulties">
+  <h2 class="section-title reveal">Your Pace. Your Rules.</h2>
+  <p class="section-sub reveal">Start chill. Go insane.</p>
+  <div class="diff-list">
+    <div class="diff-row reveal">
+      <div class="diff-dot" style="background:#34d399;box-shadow:0 0 10px #34d399;"></div>
+      <div class="diff-name">Easy</div>
+      <div class="diff-desc">Learn the ropes. Relaxed speed, gentle ramp-up.</div>
+      <div class="diff-label" style="background:rgba(52,211,153,0.15);color:#34d399;">Chill</div>
+    </div>
+    <div class="diff-row reveal">
+      <div class="diff-dot" style="background:#f59e0b;box-shadow:0 0 10px #f59e0b;"></div>
+      <div class="diff-name">Hard</div>
+      <div class="diff-desc">For veterans. Obstacles come fast and furious.</div>
+      <div class="diff-label" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Challenge</div>
+    </div>
+    <div class="diff-row reveal">
+      <div class="diff-dot" style="background:#ff6b94;box-shadow:0 0 12px #ff6b94;"></div>
+      <div class="diff-name">Extreme</div>
+      <div class="diff-desc">Inhuman. Survive 10 seconds and you're a legend.</div>
+      <div class="diff-label" style="background:rgba(255,107,148,0.15);color:#ff6b94;">Insane</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     PULL QUOTE
+════════════════════════════════════════════ -->
+<section id="quote">
+  <p class="quote-text reveal">
+    "One more run.<br>One more spin.<br>One more chance at Mythic."
+  </p>
+  <p class="quote-sub reveal">— Every Runner Gacha player, ever</p>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     FINAL CTA
+════════════════════════════════════════════ -->
+<section id="cta-final">
+  <h2 class="cta-title reveal">The world is running.<br>Are you <em>ready?</em></h2>
+  <p class="cta-sub reveal">Free forever. No account required to start.</p>
+  <div class="reveal">
+    <a href="https://runnergacha.com" class="btn-main" style="font-size:18px;padding:18px 44px;">
+      ▶ Play Runner Gacha — Free
+    </a>
+  </div>
+  <p class="cta-note reveal">Works on mobile, tablet & desktop · No download · No ads during gameplay</p>
+</section>
+
+<footer>
+  © 2025 Runner Gacha · <a href="https://runnergacha.com" style="color:inherit;">runnergacha.com</a>
+</footer>
+
+<script>
+// ── STARFIELD ──────────────────────────────────────────
+const starsEl = document.getElementById("stars");
+for (let i = 0; i < 120; i++) {
+  const s = document.createElement("div");
+  s.className = "star";
+  const size = 0.8 + Math.random() * 2;
+  s.style.cssText = `
+    width:${size}px;height:${size}px;
+    left:${Math.random()*100}%;top:${Math.random()*100}%;
+    --d:${3+Math.random()*5}s;
+    --delay:${Math.random()*6}s;
+    --op:${0.3+Math.random()*0.6};
+  `;
+  starsEl.appendChild(s);
+}
+
+// ── SCROLL REVEAL ─────────────────────────────────────
+const reveals = document.querySelectorAll(".reveal");
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
+}, { threshold: 0.12 });
+reveals.forEach(el => io.observe(el));
+
+// ── COUNT-UP STATS ─────────────────────────────────────
+function countUp(id, target, suffix = "") {
+  const el = document.getElementById(id);
+  if (!el || target === "∞") return;
+  let current = 0;
+  const step = target / 50;
+  const iv = setInterval(() => {
+    current = Math.min(current + step, target);
+    el.textContent = Math.round(current) + suffix;
+    if (current >= target) clearInterval(iv);
+  }, 28);
+}
+const statsIo = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    countUp("s1", 70, "+");
+    countUp("s2", 5);
+    countUp("s3", 3);
+    statsIo.disconnect();
+  }
+}, { threshold: 0.3 });
+statsIo.observe(document.getElementById("stats"));
+
+// ── LIVE GAME DEMO ─────────────────────────────────────
+(function() {
+  const canvas = document.getElementById("demoCanvas");
+  const ctx    = canvas.getContext("2d");
+  const W = 420, H = 640, GY = H - 80;
+  canvas.width = W; canvas.height = H;
+
+  let frame = 0;
+  const COLORS = ["#38bdf8","#a855f7","#ff6b94","#ffb86b","#34d399"];
+  const stars = Array.from({length:40}, () => ({
+    x: Math.random()*W, y: Math.random()*(GY-20),
+    r: 0.5+Math.random()*1.5, sp: 0.15+Math.random()*0.4
+  }));
+
+  const player = { x: 70, y: GY - 52, w: 48, h: 48, vy: 0, onGround: true, color: "#38bdf8" };
+  const obstacles = [];
+  let spawnT = 120, colorT = 0;
+  let score = 0, speed = 4;
+
+  function spawnOb() {
+    const h = 28 + Math.random() * 70;
+    obstacles.push({ x: W + 20, y: GY - h, w: 22 + Math.random()*16, h, color: COLORS[Math.floor(Math.random()*COLORS.length)] });
+  }
+
+  function loop() {
+    frame++;
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, W, H);
+
+    // Stars
+    stars.forEach(s => {
+      s.x -= s.sp * (speed / 3);
+      if (s.x < 0) s.x = W;
+      ctx.fillStyle = `rgba(255,255,255,${0.2+s.r*0.15})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+    });
+
+    // Ground
+    ctx.fillStyle = "rgba(15,23,42,0.7)";
+    ctx.fillRect(0, GY, W, H - GY);
+    ctx.fillStyle = "rgba(56,189,248,0.15)";
+    ctx.fillRect(0, GY, W, 2);
+
+    // Gravity
+    player.vy = Math.min(player.vy + 0.55, 14);
+    player.y += player.vy;
+    if (player.y + player.h >= GY) { player.y = GY - player.h; player.vy = 0; player.onGround = true; }
+
+    // Auto-jump
+    if (player.onGround) {
+      const near = obstacles.find(o => o.x - (player.x + player.w) < 160 && o.x > player.x);
+      if (near) { player.vy = -14; player.onGround = false; }
+    }
+
+    // Spawn
+    spawnT--;
+    if (spawnT <= 0) { spawnOb(); spawnT = 80 + Math.random()*60; }
+
+    // Obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      o.x -= speed;
+      const grd = ctx.createLinearGradient(o.x, o.y, o.x+o.w, o.y+o.h);
+      grd.addColorStop(0, o.color);
+      grd.addColorStop(1, o.color+"88");
+      ctx.fillStyle = grd;
+      ctx.fillRect(o.x, o.y, o.w, o.h);
+      if (o.x + o.w < -50) { obstacles.splice(i, 1); score++; speed = 4 + score * 0.04; }
+    }
+
+    // Player glow
+    colorT += 0.02;
+    const hue = (colorT * 80) % 360;
+    ctx.save();
+    ctx.shadowBlur = 18; ctx.shadowColor = `hsl(${hue},80%,65%)`;
+    ctx.fillStyle = `hsl(${hue},80%,65%)`;
+    ctx.fillRect(player.x, Math.round(player.y), player.w, player.h);
+    ctx.restore();
+
+    // HUD
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "bold 18px system-ui";
+    ctx.textAlign = "left";
+    ctx.fillText(`Score: ${score}`, 14, 32);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.font = "11px system-ui";
+    ctx.fillText("runnergacha.com", W/2, H - 18);
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script>
+</body>
+</html>
