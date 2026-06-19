@@ -999,9 +999,17 @@ let lastTime = 0, dt = 1, powerupTimer = 380;
 // Ability state
 let legendaryReviveAvailable = false;
 let legendaryReviveUsed = false;
+let legendaryReviveCount = 0;
 let reviveFlashTimer = 0;
 let mythicAbilityCooldown = 0;
-const MYTHIC_ABILITY_MAX_CD = 300;
+let MYTHIC_ABILITY_MAX_CD = 300;
+
+// Rarity perk state
+let coinMultiplier = 1;
+let magnetRadius = 0;
+let bgCoinSpawnBoost = false;
+let passiveShatterAvailable = false;
+let passiveShatterUsed = false;
 
 // player object
 const player = { x: 70, y: H - 140, w: 48, h: 48, vy: 0, onGround: true };
@@ -2232,19 +2240,45 @@ function startGame() {
   doubleJumpUsed = false;
   spawnTimer = currentDiff.spawnBase;
 
-  // Ability init
-  const activeSkinNames = [selectedSkins.player, selectedSkins.obstacle];
-  const activeSkinData = SKINS.filter(s => activeSkinNames.includes(s.name));
-  legendaryReviveAvailable = activeSkinData.some(s => s.ability === "revival");
+  // Ability + perk init
+  const playerSkinData = SKINS.find(s => s.name === selectedSkins.player);
+  const bgSkinData     = SKINS.find(s => s.name === selectedSkins.background);
+  const obsSkinData    = SKINS.find(s => s.name === selectedSkins.obstacle);
+
+  // Coin multiplier from player skin rarity
+  coinMultiplier = playerSkinData?.rarity === 'mythique' ? 1.5
+                 : playerSkinData?.rarity === 'legendaire' ? 1.25 : 1;
+
+  // Revival count: mythic=2, legendary=1
+  legendaryReviveCount = playerSkinData?.rarity === 'mythique' ? 2
+                       : playerSkinData?.rarity === 'legendaire' ? 1 : 0;
+  legendaryReviveAvailable = legendaryReviveCount > 0;
   legendaryReviveUsed = false;
   reviveFlashTimer = 0;
+
+  // Coin magnet from bg skin rarity
+  magnetRadius = bgSkinData?.rarity === 'mythique' ? 150
+               : bgSkinData?.rarity === 'legendaire' ? 90 : 0;
+
+  // Extra coin spawn frequency from mythic bg
+  bgCoinSpawnBoost = bgSkinData?.rarity === 'mythique';
+
+  // Passive shatter from legendary or mythic obstacle skin
+  passiveShatterAvailable = obsSkinData?.rarity === 'legendaire' || obsSkinData?.rarity === 'mythique';
+  passiveShatterUsed = false;
+
+  // Active sink ability + cooldown (shorter for mythic)
   mythicAbilityCooldown = 0;
-  const hasMythicSink = activeSkinData.some(s => s.ability === "sink");
+  MYTHIC_ABILITY_MAX_CD = obsSkinData?.rarity === 'mythique' ? 150 : 300;
+  const hasMythicSink = obsSkinData?.ability === "sink";
   const abilityBtn = document.getElementById("mythicAbilityBtn");
   abilityBtn.style.display = hasMythicSink ? "flex" : "none";
   abilityBtn.disabled = false;
   abilityBtn.textContent = "⚡ Ability (E)";
-  document.getElementById("reviveBadge").style.display = legendaryReviveAvailable ? "flex" : "none";
+
+  const reviveBadge = document.getElementById("reviveBadge");
+  reviveBadge.style.display = legendaryReviveAvailable ? "flex" : "none";
+  reviveBadge.textContent = legendaryReviveCount === 2 ? "💛 2× Revival" : "💛 Revival Ready";
   coinSpawnTimer = 110;
   document.getElementById("score").textContent = 0;
   running = true; paused = false; menuOpen = false;
@@ -2462,7 +2496,8 @@ function gameLoop(timestamp) {
   coinSpawnTimer -= dt;
   if (coinSpawnTimer <= 0) {
     spawnCoin();
-    coinSpawnTimer = 90 + Math.floor(Math.random() * 70);
+    const coinBase = bgCoinSpawnBoost ? 63 : 90;
+    coinSpawnTimer = coinBase + Math.floor(Math.random() * 70);
   }
   powerupTimer -= dt;
   if (powerupTimer <= 0) { spawnPowerup(); powerupTimer = 380; }
@@ -2488,15 +2523,29 @@ function gameLoop(timestamp) {
         spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#38bdf8", 10);
         showToast("🛡 Shield absorbed a hit!");
         beep(880, 0.1, "square", 0.06);
-      } else if (legendaryReviveAvailable && !legendaryReviveUsed) {
-        legendaryReviveUsed = true;
-        legendaryReviveAvailable = false;
+      } else if (passiveShatterAvailable && !passiveShatterUsed) {
+        passiveShatterUsed = true;
+        ob.passed = true;
+        spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#facc15", 22);
+        floatText("💥 SHATTERED!", ob.x + ob.w / 2, ob.y - 10, "#facc15");
+        showToast("💥 Auto-shatter blocked the hit!");
+        beep(800, 0.12, "square", 0.07);
+        beep(1300, 0.08, "sine", 0.05);
+      } else if (legendaryReviveCount > 0) {
+        legendaryReviveCount--;
+        legendaryReviveAvailable = legendaryReviveCount > 0;
         ob.passed = true;
         reviveFlashTimer = 60;
-        document.getElementById("reviveBadge").style.display = "none";
+        const reviveBadge = document.getElementById("reviveBadge");
+        if (legendaryReviveCount > 0) {
+          reviveBadge.textContent = legendaryReviveCount === 1 ? "💛 Revival Ready" : `💛 ${legendaryReviveCount}× Revival`;
+        } else {
+          reviveBadge.style.display = "none";
+        }
         spawnParticles(player.x + player.w / 2, player.y + player.h / 2, "#ffb86b", 20);
-        floatText("💛 Second Chance!", W / 2, H / 2 - 20, "#ffb86b");
-        showToast("💛 Legendary revival saved you!");
+        const reviveMsg = legendaryReviveCount > 0 ? `💛 Revival! (${legendaryReviveCount} left)` : "💛 Last revival used!";
+        floatText(reviveMsg, W / 2, H / 2 - 20, "#ffb86b");
+        showToast(reviveMsg);
         beep(1320, 0.18, "sine", 0.09);
         beep(880, 0.12, "sine", 0.06);
       } else {
@@ -2516,6 +2565,22 @@ function gameLoop(timestamp) {
     if (ob.x + ob.w < -80) obstacles.splice(i, 1);
   }
 
+  // ── Coin Magnet (legendary/mythic background) ──
+  if (magnetRadius > 0) {
+    const px = player.x + player.w / 2, py = player.y + player.h / 2;
+    fieldCoins.forEach(c => {
+      if (!c.taken) {
+        const dx = px - c.x, dy = py - c.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < magnetRadius && dist > 1) {
+          const pull = ((magnetRadius - dist) / magnetRadius) * 7 + 1;
+          c.x += (dx / dist) * pull * dt;
+          c.y += (dy / dist) * pull * dt;
+        }
+      }
+    });
+  }
+
   // ── Field Coins ──
   for (let i = fieldCoins.length - 1; i >= 0; i--) {
     const c = fieldCoins[i];
@@ -2533,7 +2598,7 @@ function gameLoop(timestamp) {
         player.x < c.x + c.r && player.x + player.w > c.x - c.r &&
         player.y < c.y + c.r && player.y + player.h > c.y - c.r) {
       c.taken = true;
-      const gain = (currentDiff?.coinValue || 1) * (hasPass ? 3 : 1);
+      const gain = Math.ceil((currentDiff?.coinValue || 1) * coinMultiplier * (hasPass ? 3 : 1));
       coins += gain;
       totalCoins += gain;
       floatText(`+${gain}`, c.x, c.y, "#facc15");
@@ -2798,7 +2863,20 @@ const Collection = (() => {
     type.className = "skin-type";
     type.textContent = skin.type;
 
+    // Perk badge for legendary / mythic
+    const PERKS = {
+      legendaire: { player: "+25% coins · Revival", background: "Coin Magnet", obstacle: "Auto-Shatter" },
+      mythique:   { player: "+50% coins · 2× Revival", background: "Super Magnet · +30% coins", obstacle: "Auto-Shatter · Sink ability" },
+    };
+    const perkText = PERKS[skin.rarity]?.[skin.type];
+
     card.appendChild(box); card.appendChild(name); card.appendChild(type);
+    if (perkText) {
+      const perk = document.createElement("div");
+      perk.style.cssText = `font-size:9px;font-weight:800;text-align:center;line-height:1.3;color:${skin.rarity === 'mythique' ? '#ff6b94' : '#ffb86b'};`;
+      perk.textContent = perkText;
+      card.appendChild(perk);
+    }
 
     if (owned) {
       if (selectedSkins[skin.type] === skin.name) {
