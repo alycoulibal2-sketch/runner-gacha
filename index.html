@@ -1013,6 +1013,7 @@ let magnetRadius = 0;
 let bgCoinSpawnBoost = false;
 let passiveShatterAvailable = false;
 let passiveShatterUsed = false;
+let sinksRemaining = 0;
 
 // player object
 const player = { x: 70, y: H - 140, w: 48, h: 48, vy: 0, onGround: true };
@@ -2273,6 +2274,7 @@ function startGame() {
   // Active sink ability + cooldown (shorter for mythic)
   mythicAbilityCooldown = 0;
   MYTHIC_ABILITY_MAX_CD = 1800;
+  sinksRemaining = 0;
   const hasMythicSink = obsSkinData?.ability === "sink";
   const abilityBtn = document.getElementById("mythicAbilityBtn");
   abilityBtn.style.display = hasMythicSink ? "flex" : "none";
@@ -2349,7 +2351,14 @@ function jump() {
 
 function spawnObstacle() {
   const h = 38 + Math.random() * 58;
-  obstacles.push({ x: W + 50 + Math.random() * 60, y: GROUND_Y - h, w: 48 + Math.random() * 22, h, passed: false });
+  const ob = { x: W + 50 + Math.random() * 60, y: GROUND_Y - h, w: 48 + Math.random() * 22, h, passed: false };
+  if (sinksRemaining > 0) {
+    sinksRemaining--;
+    ob.sinkTimer = 40;
+    const label = sinksRemaining > 0 ? `🌊 ${sinksRemaining} left` : "🌊 Done!";
+    floatText(label, W / 2, H / 2 - 20, "#ff6b94");
+  }
+  obstacles.push(ob);
 }
 
 function spawnCoin() {
@@ -2382,29 +2391,16 @@ function useMythicAbility() {
   const skinData = SKINS.find(s => s.name === selectedSkins.obstacle && s.ability === "sink");
   if (!skinData) return;
 
-  const toSink = obstacles.filter(ob => !ob.passed && ob.x + ob.w > player.x)
-                          .sort((a, b) => a.x - b.x)
-                          .slice(0, 10);
-
-  if (toSink.length === 0) { showToast("No obstacles in range!"); return; }
-
-  toSink.forEach((ob, i) => {
-    setTimeout(() => {
-      spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#ff6b94", 14);
-      if (i === 0) floatText(`🌊 ${toSink.length} Obstacles Sunk!`, W / 2, H / 2 - 20, "#ff6b94");
-    }, i * 60);
-    ob.passed = true;
-  });
-  obstacles = obstacles.filter(ob => !toSink.includes(ob));
-
+  sinksRemaining = 10;
   mythicAbilityCooldown = MYTHIC_ABILITY_MAX_CD;
   const btn = document.getElementById("mythicAbilityBtn");
   btn.disabled = true;
   btn.textContent = "⚡ 30s";
+  floatText("🌊 Next 10 obstacles sunk!", W / 2, H / 2 - 20, "#ff6b94");
   beep(200, 0.18, "sine", 0.1);
   beep(350, 0.14, "sine", 0.08);
   beep(500, 0.10, "sine", 0.06);
-  showToast(`🌊 ${toSink.length} obstacle${toSink.length > 1 ? "s" : ""} sunk!`);
+  showToast("🌊 Next 10 obstacles will be sunk!");
 }
 
 let bgStars = Array.from({ length: 40 }, () => ({ x: Math.random() * W, y: Math.random() * GROUND_Y, r: Math.random() * 1.5, speed: 0.2 + Math.random() * 0.5 }));
@@ -2509,6 +2505,23 @@ function gameLoop(timestamp) {
   for (let i = obstacles.length - 1; i >= 0; i--) {
     const ob = obstacles[i];
     ob.x -= gameSpeed * dt;
+
+    // Auto-sink animation
+    if (ob.sinkTimer !== undefined) {
+      ob.sinkTimer -= dt;
+      ob.y += 5 * dt;
+      ctx.globalAlpha = Math.max(0, ob.sinkTimer / 40);
+      const obPat = getSkinColor(selectedSkins.obstacle);
+      ctx.fillStyle = obPat || "#f43f5e";
+      ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+      ctx.globalAlpha = 1;
+      if (ob.sinkTimer <= 0) {
+        spawnParticles(ob.x + ob.w / 2, ob.y + ob.h / 2, "#ff6b94", 8);
+        obstacles.splice(i, 1);
+      }
+      continue;
+    }
+
     const obPat = getSkinColor(selectedSkins.obstacle);
     ctx.fillStyle = obPat || "#f43f5e";
     ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
