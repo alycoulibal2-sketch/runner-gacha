@@ -4606,6 +4606,7 @@ async function renderWorldLeaderboard() {
 function escHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
+const esc = escHtml;
 
 async function submitWorldScore(score, modeName) {
   if (!currentUser || !fbDb) return;
