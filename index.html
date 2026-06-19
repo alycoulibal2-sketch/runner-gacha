@@ -2231,6 +2231,49 @@ function selectDifficulty(mode) {
   startGame();
 }
 
+// ── LIVE SESSION TRACKING ───────────────────────────────────────────────────
+function startLiveSession() {
+  if (!fbReady || !fbDb) return;
+  const uid = currentUser ? currentUser.uid : null;
+  const sessionDoc = fbDb.collection("live_sessions").doc();
+  currentLiveSessionId = sessionDoc.id;
+  const data = {
+    uid,
+    username: getDisplayName(),
+    score: 0,
+    difficulty: currentDiff ? currentDiff.name : "Easy",
+    playerSkin: selectedSkins.player,
+    bgSkin: selectedSkins.background,
+    obsSkin: selectedSkins.obstacle,
+    startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    status: "playing",
+  };
+  sessionDoc.set(data).catch(() => {});
+  liveSessionInterval = setInterval(() => {
+    if (!currentLiveSessionId) return;
+    fbDb.collection("live_sessions").doc(currentLiveSessionId).update({
+      score,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(() => {});
+  }, 3000);
+}
+
+function endLiveSession() {
+  if (!fbReady || !fbDb || !currentLiveSessionId) return;
+  clearInterval(liveSessionInterval);
+  liveSessionInterval = null;
+  fbDb.collection("live_sessions").doc(currentLiveSessionId).update({
+    score,
+    status: "ended",
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  }).catch(() => {});
+  fbDb.collection("live_sessions").doc(currentLiveSessionId).delete().catch(() => {});
+  currentLiveSessionId = null;
+}
+
+window.addEventListener("beforeunload", () => { endLiveSession(); });
+
 function startGame() {
   obstacles = []; fieldCoins = []; particles = []; powerups = [];
   gameSpeed = currentDiff.startSpeed;
@@ -2294,11 +2337,13 @@ function startGame() {
   document.getElementById("achievementsModal").style.display = "none";
   document.getElementById("leaderboardModal").style.display = "none";
   beep(880, 0.06);
+  startLiveSession();
   requestAnimationFrame(gameLoop);
 }
 
 function gameOver() {
   running = false;
+  endLiveSession();
   spawnParticles(player.x + player.w / 2, player.y + player.h / 2, "#ef4444", 16);
 
   // save score
@@ -3396,6 +3441,8 @@ const FIREBASE_CONFIG = {
 
 let fbAuth, fbDb, currentUser = null;
 let fbReady = false;
+let currentLiveSessionId = null;
+let liveSessionInterval = null;
 
 // Display name is separate from the permanent username
 function getDisplayName() { return S.get("rg-displayName", "") || S.get("rg-username", "Player"); }
@@ -3412,19 +3459,25 @@ try {
   fbAuth.onAuthStateChanged(user => {
     currentUser = user;
     if (user) {
-      // Back up local state the first time we sign in (not on page-reload while already logged in)
-      if (!S.get("rg-local-backup", null)) backupLocalState();
-      DB.load(user.uid).then(existed => {
-        if (!existed) {
-          // Brand-new account → start with ONLY the base skins.
-          resetToBaseSkins();
-          DB.save();
+      // Check if account is banned before loading anything
+      fbDb.collection("users").doc(user.uid).get().then(snap => {
+        if (snap.exists && snap.data().banned === true) {
+          fbAuth.signOut();
+          showToast("🚫 Your account has been banned. Contact support.");
+          return;
         }
-        // Special accounts get every skin unlocked, saved to their account.
-        if (GRANT_ALL_SKINS_UIDS.includes(user.uid)) grantAllSkins();
-        AuthUI.showProfile();
-        updateAccountBtn(true);
-        showToast(`👋 Welcome back, ${getDisplayName()}!`);
+        // Back up local state the first time we sign in (not on page-reload while already logged in)
+        if (!S.get("rg-local-backup", null)) backupLocalState();
+        return DB.load(user.uid).then(existed => {
+          if (!existed) {
+            resetToBaseSkins();
+            DB.save();
+          }
+          if (GRANT_ALL_SKINS_UIDS.includes(user.uid)) grantAllSkins();
+          AuthUI.showProfile();
+          updateAccountBtn(true);
+          showToast(`👋 Welcome back, ${getDisplayName()}!`);
+        });
       }).catch(e => console.error("DB load error", e));
     } else {
       updateAccountBtn(false);

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Runner Gacha · Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0a0a0f;--bg2:#13131f;--bg3:#1c1c2e;
+      --accent:#7c4dff;--accent2:#ff6b94;
+      --text:#e8e8f0;--dim:rgba(232,232,240,0.45);
+      --border:rgba(255,255,255,0.07);
+      --gold:#facc15;--green:#34d399;--red:#f87171;
+    }
+    html,body{height:100%;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+    /* ── LOGIN ── */
+    #loginScreen{display:flex;align-items:center;justify-content:center;height:100vh;background:radial-gradient(ellipse at top,#1a1035 0%,var(--bg) 100%)}
+    .login-card{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:40px 36px;width:360px;box-shadow:0 32px 80px rgba(0,0,0,0.6)}
+    .login-tag{font-size:11px;font-weight:900;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+    .login-title{font-size:24px;font-weight:900;margin-bottom:4px}
+    .login-sub{font-size:12px;color:var(--dim);margin-bottom:24px}
+    .input{width:100%;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;margin-bottom:12px;outline:none;transition:border-color .2s}
+    .input:focus{border-color:var(--accent)}
+    .login-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;transition:filter .15s}
+    .login-btn:hover{filter:brightness(1.1)}
+    .login-err{color:var(--red);font-size:12px;text-align:center;margin-top:10px;min-height:18px}
+
+    /* ── LAYOUT ── */
+    #dashboard{display:flex;height:100vh}
+
+    /* ── SIDEBAR ── */
+    #sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+    .sb-logo{padding:20px 20px 14px;border-bottom:1px solid var(--border)}
+    .sb-tag{font-size:10px;font-weight:900;letter-spacing:3px;color:var(--accent)}
+    .sb-title{font-size:17px;font-weight:900}
+    .nav-section{padding:12px 10px 4px}
+    .nav-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);padding:0 8px 6px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--dim);transition:background .15s,color .15s;user-select:none}
+    .nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+    .nav-item.active{background:rgba(124,77,255,0.15);color:var(--accent)}
+    .nav-icon{font-size:15px;width:20px;text-align:center}
+    .badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;font-weight:900;padding:2px 7px;border-radius:999px}
+    .badge.red{background:var(--red)}.badge.green{background:var(--green)}
+    .sb-bottom{margin-top:auto;padding:14px;border-top:1px solid var(--border)}
+    .admin-user{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .admin-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0}
+    .admin-email{font-size:11px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .signout-btn{width:100%;padding:8px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.2);border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;transition:background .15s}
+    .signout-btn:hover{background:rgba(248,113,113,0.2)}
+
+    /* ── MAIN ── */
+    #content{flex:1;overflow-y:auto;padding:28px 30px;display:flex;flex-direction:column;gap:18px}
+    .page-hdr{display:flex;align-items:center;justify-content:space-between}
+    .page-title{font-size:22px;font-weight:900}
+    .page-sub{font-size:12px;color:var(--dim);margin-top:2px}
+
+    /* ── STATS ── */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+    .stat-label{font-size:10px;color:var(--dim);letter-spacing:1px;text-transform:uppercase}
+    .stat-val{font-size:28px;font-weight:900;margin:4px 0 2px}
+    .stat-sub{font-size:11px;color:var(--dim)}
+    .stat-card.live .stat-val{color:var(--green)}.stat-card.ban .stat-val{color:var(--red)}
+
+    /* ── TABLE ── */
+    .tbl-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+    .tbl-head{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);gap:10px}
+    .tbl-title{font-size:14px;font-weight:800;flex:1}
+    .tbl-btn{padding:6px 14px;background:rgba(124,77,255,0.1);border:1px solid rgba(124,77,255,0.25);color:var(--accent);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s}
+    .tbl-btn:hover{background:rgba(124,77,255,0.2)}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    thead th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border)}
+    tbody tr{border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:background .1s}
+    tbody tr:last-child{border-bottom:none}
+    tbody tr:hover{background:rgba(255,255,255,0.03)}
+    tbody td{padding:10px 14px}
+
+    /* ── STATUS BADGE ── */
+    .sb{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700}
+    .sb::before{content:'';width:6px;height:6px;border-radius:50%}
+    .s-playing{background:rgba(52,211,153,0.12);color:var(--green)}.s-playing::before{background:var(--green)}
+    .s-online{background:rgba(96,165,250,0.12);color:#60a5fa}.s-online::before{background:#60a5fa}
+    .s-offline{background:rgba(255,255,255,0.05);color:var(--dim)}.s-offline::before{background:rgba(255,255,255,0.2)}
+    .s-banned{background:rgba(248,113,113,0.12);color:var(--red)}.s-banned::before{background:var(--red)}
+
+    /* ── LIVE ── */
+    .live-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+    .live-card{background:var(--bg2);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:16px;cursor:pointer;transition:border-color .2s}
+    .live-card:hover{border-color:rgba(52,211,153,0.5)}
+    .lc-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .lc-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#7c4dff,#ff6b94);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900}
+    .lc-name{font-size:13px;font-weight:800}
+    .lc-anon{font-size:10px;color:var(--dim)}
+    .lc-ping{margin-left:auto;font-size:10px;color:var(--green);font-weight:700}
+    .lc-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .lc-stat{background:var(--bg3);border-radius:8px;padding:8px 10px}
+    .lc-stat-l{font-size:10px;color:var(--dim)}
+    .lc-stat-v{font-size:16px;font-weight:900;margin-top:2px}
+    .live-empty{text-align:center;color:var(--dim);padding:40px;font-size:13px}
+
+    /* ── SEARCH ── */
+    .search-row{display:flex;gap:10px}
+    .search-input{flex:1;padding:11px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:border-color .2s}
+    .search-input:focus{border-color:var(--accent)}
+    .search-btn{padding:11px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer}
+
+    /* ── PLAYER PANEL ── */
+    #playerPanel{position:fixed;right:-440px;top:0;height:100vh;width:440px;background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;z-index:100;transition:right .3s ease;box-shadow:-20px 0 60px rgba(0,0,0,0.5)}
+    #playerPanel.open{right:0}
+    .panel-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--dim);transition:background .15s}
+    .panel-close:hover{background:rgba(255,255,255,0.12);color:var(--text)}
+    .p-hdr{padding:24px 20px 16px;border-bottom:1px solid var(--border)}
+    .p-av{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#7c4dff,#ff6b94);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;margin-bottom:12px}
+    .p-name{font-size:20px;font-weight:900}
+    .p-email{font-size:12px;color:var(--dim);margin:2px 0}
+    .p-uid{font-size:10px;color:rgba(255,255,255,0.2);font-family:monospace;word-break:break-all;margin-top:4px}
+    .p-status-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .p-sec{padding:16px 20px;border-bottom:1px solid var(--border)}
+    .p-sec-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+    .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .data-item{background:var(--bg3);border-radius:8px;padding:10px 12px}
+    .data-lbl{font-size:10px;color:var(--dim)}
+    .data-val{font-size:15px;font-weight:800;margin-top:2px}
+    .data-val.g{color:var(--gold)}.data-val.gr{color:var(--green)}
+    .ef{margin-bottom:10px}
+    .ef-lbl{font-size:11px;color:var(--dim);margin-bottom:4px}
+    .ef-input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .2s}
+    .ef-input:focus{border-color:var(--accent)}
+    .save-btn{padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer}
+    .action-row{display:flex;gap:8px;flex-wrap:wrap}
+    .ab{padding:9px 16px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;transition:filter .15s;border:none}
+    .ab:hover{filter:brightness(1.1)}
+    .ab-ban{background:rgba(248,113,113,0.15);color:var(--red);border:1px solid rgba(248,113,113,0.3)}
+    .ab-unban{background:rgba(52,211,153,0.15);color:var(--green);border:1px solid rgba(52,211,153,0.3)}
+    .ab-coins{background:rgba(250,204,21,0.15);color:var(--gold);border:1px solid rgba(250,204,21,0.3)}
+    .ab-reset{background:rgba(248,113,113,0.08);color:var(--red);border:1px solid rgba(248,113,113,0.2)}
+    .ab-pass{background:rgba(124,77,255,0.15);color:#a78bfa;border:1px solid rgba(124,77,255,0.3)}
+    .ab-skins{background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.25)}
+    .skins-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .skin-tc{background:var(--bg3);border-radius:8px;padding:8px 10px;text-align:center}
+    .skin-tn{font-size:10px;color:var(--dim)}
+    .skin-tv{font-size:18px;font-weight:900}
+    .scores-list{display:flex;flex-direction:column;gap:6px}
+    .sc-item{background:var(--bg3);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12px}
+    .sc-rank{font-size:14px;font-weight:900;width:20px}
+    .sc-val{font-weight:800;color:var(--gold)}
+    .sc-mode{font-size:10px;color:var(--dim);margin-left:auto}
+
+    /* ── NOTICE ── */
+    .notice{background:rgba(124,77,255,0.08);border:1px solid rgba(124,77,255,0.2);border-radius:12px;padding:14px 16px;font-size:12px;line-height:1.7;color:var(--dim)}
+    .notice strong{color:var(--text)}
+
+    /* ── RULES ── */
+    .rules-code{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;font-family:monospace;font-size:11px;color:#a78bfa;white-space:pre;overflow-x:auto;line-height:1.7;user-select:all}
+
+    /* ── TOAST ── */
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:13px;font-weight:700;z-index:999;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    .empty{text-align:center;padding:40px;color:var(--dim);font-size:13px}
+
+    @media(max-width:880px){
+      #sidebar{display:none}
+      #content{padding:16px}
+      .stats-grid{grid-template-columns:1fr 1fr}
+      #playerPanel{width:100%;right:-100%}
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-tag">Runner Gacha</div>
+    <div class="login-title">Developer Portal</div>
+    <div class="login-sub">Admin access only. Sign in with your developer Firebase account.</div>
+    <input id="loginEmail" class="input" type="email" placeholder="Email" autocomplete="email"/>
+    <input id="loginPwd"   class="input" type="password" placeholder="Password"/>
+    <button class="login-btn" onclick="doLogin()">Sign In as Developer</button>
+    <div id="loginErr" class="login-err"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none">
+  <nav id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-tag">Admin Panel</div>
+      <div class="sb-title">Runner Gacha</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Navigation</div>
+      <div class="nav-item active" onclick="tab('overview')" data-tab="overview"><span class="nav-icon">📊</span>Overview</div>
+      <div class="nav-item" onclick="tab('players')"  data-tab="players"><span class="nav-icon">👥</span>All Players<span class="badge" id="nbPlayers">…</span></div>
+      <div class="nav-item" onclick="tab('live')"     data-tab="live"><span class="nav-icon">🔴</span>Live Now<span class="badge green" id="nbLive">0</span></div>
+      <div class="nav-item" onclick="tab('search')"   data-tab="search"><span class="nav-icon">🔍</span>Search</div>
+      <div class="nav-item" onclick="tab('banned')"   data-tab="banned"><span class="nav-icon">⛔</span>Banned<span class="badge red" id="nbBanned">0</span></div>
+      <div class="nav-item" onclick="tab('setup')"    data-tab="setup"><span class="nav-icon">⚙️</span>Setup</div>
+    </div>
+    <div class="sb-bottom">
+      <div class="admin-user">
+        <div class="admin-av" id="adminAv">A</div>
+        <div><div style="font-size:10px;color:var(--accent);font-weight:700">Developer</div><div class="admin-email" id="adminEmail">—</div></div>
+      </div>
+      <button class="signout-btn" onclick="doSignout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <main id="content">
+
+    <!-- OVERVIEW -->
+    <div id="tab-overview" class="t">
+      <div class="page-hdr">
+        <div><div class="page-title">Overview</div><div class="page-sub">Real-time snapshot of Runner Gacha</div></div>
+        <button class="tbl-btn" onclick="loadOverview()">↻ Refresh</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Players</div><div class="stat-val" id="ov-total">—</div><div class="stat-sub">Registered accounts</div></div>
+        <div class="stat-card live"><div class="stat-label">Live Now</div><div class="stat-val" id="ov-live">0</div><div class="stat-sub">Currently in game</div></div>
+        <div class="stat-card"><div class="stat-label">Active Today</div><div class="stat-val" id="ov-today">—</div><div class="stat-sub">Updated last 24h</div></div>
+        <div class="stat-card ban"><div class="stat-label">Banned</div><div class="stat-val" id="ov-banned">—</div><div class="stat-sub">Restricted accounts</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head"><div class="tbl-title">Most Recent Players</div></div>
+        <table><thead><tr><th>Player</th><th>Best</th><th>Coins</th><th>Last Seen</th><th>Status</th></tr></thead>
+        <tbody id="recentTbl"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- ALL PLAYERS -->
+    <div id="tab-players" class="t" style="display:none">
+      <div class="page-hdr">
+        <div><div class="page-title">All Players</div><div class="page-sub">Every registered account</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="tbl-btn" onclick="loadMore()">Load More</button>
+          <button class="tbl-btn" onclick="loadPlayers(true)">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>Player</th><th>Best</th><th>Coins</th><th>Spins</th><th>Pass</th><th>Last Seen</th><th>Status</th></tr></thead>
+        <tbody id="playersTbl"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- LIVE NOW -->
+    <div id="tab-live" class="t" style="display:none">
+      <div class="page-hdr">
+        <div><div class="page-title">Live Now</div><div class="page-sub">Real-time — players currently in a game</div></div>
+      </div>
+      <div class="notice"><strong>Local (no account) players</strong> appear here while actively playing. Their data is device-local and invisible when offline.</div>
+      <div id="liveGrid" class="live-grid"><div class="live-empty">No one is playing right now.</div></div>
+    </div>
+
+    <!-- SEARCH -->
+    <div id="tab-search" class="t" style="display:none">
+      <div class="page-hdr"><div><div class="page-title">Search Players</div><div class="page-sub">By username, display name, or UID</div></div></div>
+      <div class="search-row">
+        <input id="searchQ" class="search-input" placeholder="Username, display name, or UID…" onkeydown="if(event.key==='Enter')doSearch()"/>
+        <button class="search-btn" onclick="doSearch()">Search</button>
+      </div>
+      <div class="tbl-wrap" id="searchBox" style="display:none">
+        <table><thead><tr><th>Player</th><th>Best</th><th>Coins</th><th>Last Seen</th><th>Status</th></tr></thead>
+        <tbody id="searchTbl"></tbody></table>
+      </div>
+    </div>
+
+    <!-- BANNED -->
+    <div id="tab-banned" class="t" style="display:none">
+      <div class="page-hdr">
+        <div><div class="page-title">Banned Players</div><div class="page-sub">Accounts with restricted access</div></div>
+        <button class="tbl-btn" onclick="loadBanned()">↻ Refresh</button>
+      </div>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>Player</th><th>Best</th><th>Banned At</th><th>Action</th></tr></thead>
+        <tbody id="bannedTbl"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- SETUP -->
+    <div id="tab-setup" class="t" style="display:none">
+      <div class="page-hdr"><div><div class="page-title">Setup</div><div class="page-sub">Required Firestore configuration</div></div></div>
+      <div class="notice">
+        <strong>Step 1 — Update Firestore Security Rules</strong><br/>
+        Copy the rules below and paste them in <strong>Firebase Console → Firestore → Rules</strong>. Without this, the admin panel cannot read all player data.
+      </div>
+      <div class="tbl-wrap" style="padding:16px">
+        <div class="tbl-title" style="margin-bottom:12px">Firestore Security Rules</div>
+        <div class="rules-code" id="rulesCode"></div>
+        <button class="tbl-btn" style="margin-top:12px" onclick="copyRules()">📋 Copy Rules</button>
+      </div>
+      <div class="tbl-wrap" style="padding:16px">
+        <div class="tbl-title" style="margin-bottom:8px">Your Admin UID</div>
+        <div style="font-family:monospace;font-size:13px;color:#a78bfa;word-break:break-all" id="myUid">—</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:8px">Add this to <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;color:#a78bfa">ADMIN_UIDS</code> in both <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;color:#a78bfa">index.html</code> and <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;color:#a78bfa">admin.html</code>.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- PLAYER PANEL -->
+<div id="playerPanel">
+  <div class="panel-close" onclick="closePanel()">✕</div>
+  <div id="panelContent"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBeKaxJLpYxf0dg_YiamJmbYrRYd_Xymfo",
+  authDomain:        "runnergacha.firebaseapp.com",
+  projectId:         "runnergacha",
+  storageBucket:     "runnergacha.firebasestorage.app",
+  messagingSenderId: "348255300422",
+  appId:             "1:348255300422:web:980101ef761775cea09347",
+};
+
+// UIDs allowed to use this panel — add yours after signing in (see Setup tab)
+const ADMIN_UIDS = [
+  "OEhFtyqvCHewIDLZMWVBEWb2UYp2",
+  "xLq1948wlxVidYjomsWshgrdaVh1",
+  "ETMRBRssR3UgnC7ZeTSpBdzAjcd2",
+  "u8cTshDOgrVLVI1QNdzqBk90lD33",
+];
+
+// ─── INIT ──────────────────────────────────────────────────────
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+let adminUser = null;
+let allPlayers = [];
+let lastDoc = null;
+let liveUnsub = null;
+
+auth.onAuthStateChanged(u => {
+  if (!u) return;
+  if (!ADMIN_UIDS.includes(u.uid)) {
+    auth.signOut();
+    setErr("⛔ Access denied — your UID is not in ADMIN_UIDS. Check the Setup tab after adding your UID.");
+    return;
+  }
+  adminUser = u;
+  boot();
+});
+
+// ─── AUTH ──────────────────────────────────────────────────────
+async function doLogin() {
+  const e = document.getElementById('loginEmail').value.trim();
+  const p = document.getElementById('loginPwd').value;
+  if (!e || !p) { setErr("Enter email and password."); return; }
+  try { await auth.signInWithEmailAndPassword(e, p); }
+  catch(ex) { setErr(ex.message.replace('Firebase: ', '')); }
+}
+function setErr(m) { document.getElementById('loginErr').textContent = m; }
+function doSignout() { if (liveUnsub) liveUnsub(); auth.signOut().then(() => location.reload()); }
+
+// ─── BOOT ──────────────────────────────────────────────────────
+function boot() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display  = 'flex';
+  document.getElementById('adminAv').textContent    = (adminUser.email||'A')[0].toUpperCase();
+  document.getElementById('adminEmail').textContent = adminUser.email;
+  document.getElementById('myUid').textContent      = adminUser.uid;
+  document.getElementById('rulesCode').textContent  = buildRules();
+  startLive();
+  loadOverview();
+  loadPlayers(true);
+  loadBanned();
+}
+
+// ─── TABS ──────────────────────────────────────────────────────
+function tab(name) {
+  document.querySelectorAll('.t').forEach(el => el.style.display = 'none');
+  const el = document.getElementById('tab-' + name);
+  el.style.display = 'flex';
+  el.style.flexDirection = 'column';
+  el.style.gap = '16px';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === name));
+}
+
+// ─── OVERVIEW ──────────────────────────────────────────────────
+async function loadOverview() {
+  try {
+    const snap = await db.collection('users').get();
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const now  = Date.now();
+    const today   = docs.filter(d => (d.updatedAt?.toMillis?.() || 0) > now - 86400000).length;
+    const banned  = docs.filter(d => d.banned).length;
+    set('ov-total',  docs.length);
+    set('ov-today',  today);
+    set('ov-banned', banned);
+    set('nbPlayers', docs.length);
+    set('nbBanned',  banned);
+    const recent = [...docs].sort((a,b) => (b.updatedAt?.toMillis?.() || 0) - (a.updatedAt?.toMillis?.() || 0)).slice(0,25);
+    renderRows('recentTbl', recent, ['name','best','coins','lastSeen','status'], 5);
+  } catch {
+    document.getElementById('recentTbl').innerHTML = `<tr><td colspan="5" style="padding:14px;color:var(--red)">⚠️ Permission denied — copy Firestore rules in the Setup tab first.</td></tr>`;
+  }
+}
+
+// ─── PLAYERS ───────────────────────────────────────────────────
+async function loadPlayers(reset = false) {
+  if (reset) { allPlayers = []; lastDoc = null; }
+  try {
+    let q = db.collection('users').orderBy('updatedAt', 'desc').limit(50);
+    if (lastDoc) q = q.startAfter(lastDoc);
+    const snap = await q.get();
+    if (snap.empty) { toast('No more players.'); return; }
+    lastDoc = snap.docs[snap.docs.length - 1];
+    const batch = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allPlayers = reset ? batch : [...allPlayers, ...batch];
+    renderRows('playersTbl', allPlayers, ['name','best','coins','spins','pass','lastSeen','status'], 7);
+  } catch {
+    document.getElementById('playersTbl').innerHTML = `<tr><td colspan="7" style="padding:14px;color:var(--red)">⚠️ Permission denied — see Setup tab.</td></tr>`;
+  }
+}
+function loadMore() { loadPlayers(false); }
+
+// ─── BANNED ────────────────────────────────────────────────────
+async function loadBanned() {
+  try {
+    const snap = await db.collection('users').where('banned', '==', true).get();
+    const docs  = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    set('nbBanned', docs.length);
+    set('ov-banned', docs.length);
+    const tbody = document.getElementById('bannedTbl');
+    if (!docs.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">No banned players.</td></tr>'; return; }
+    tbody.innerHTML = docs.map(p => `
+      <tr onclick="openPlayer('${p.id}')">
+        <td><b>${esc(p.displayName||p.username||'Unknown')}</b><br/><span style="font-size:10px;color:var(--dim)">${esc(p.id)}</span></td>
+        <td>${p.best||0}</td>
+        <td style="color:var(--dim)">${fmtTime(p.bannedAt)}</td>
+        <td><button class="ab ab-unban" onclick="event.stopPropagation();unban('${p.id}')">Unban</button></td>
+      </tr>`).join('');
+  } catch {
+    document.getElementById('bannedTbl').innerHTML = '<tr><td colspan="4" style="padding:14px;color:var(--red)">⚠️ Permission denied.</td></tr>';
+  }
+}
+
+// ─── SEARCH ────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('searchQ').value.trim();
+  if (!q) return;
+  try {
+    let results = [];
+    // Direct UID lookup
+    try { const d = await db.collection('users').doc(q).get(); if (d.exists) results.push({ id: d.id, ...d.data() }); } catch {}
+    // displayName prefix
+    const s1 = await db.collection('users').where('displayName','>=',q).where('displayName','<=',q+'').limit(20).get();
+    s1.docs.forEach(d => { if (!results.find(r=>r.id===d.id)) results.push({id:d.id,...d.data()}); });
+    // username prefix
+    const s2 = await db.collection('users').where('username','>=',q).where('username','<=',q+'').limit(20).get();
+    s2.docs.forEach(d => { if (!results.find(r=>r.id===d.id)) results.push({id:d.id,...d.data()}); });
+
+    const box = document.getElementById('searchBox');
+    box.style.display = results.length ? 'block' : 'none';
+    if (!results.length) { toast('No players found.'); return; }
+    renderRows('searchTbl', results, ['name','best','coins','lastSeen','status'], 5);
+  } catch(ex) { toast('Search failed: ' + ex.message); }
+}
+
+// ─── LIVE ──────────────────────────────────────────────────────
+function startLive() {
+  if (liveUnsub) liveUnsub();
+  liveUnsub = db.collection('live_sessions').where('status','==','playing')
+    .onSnapshot(snap => {
+      const now  = Date.now();
+      const live = snap.docs.map(d => ({id:d.id,...d.data()}))
+                            .filter(s => now - (s.lastSeen?.toMillis?.() || 0) < 30000);
+      set('nbLive', live.length);
+      set('ov-live', live.length);
+      renderLive(live);
+    }, () => {
+      document.getElementById('liveGrid').innerHTML = '<div class="live-empty">⚠️ Update Firestore rules to see live sessions.</div>';
+    });
+}
+
+function renderLive(sessions) {
+  const grid = document.getElementById('liveGrid');
+  if (!sessions.length) { grid.innerHTML = '<div class="live-empty">🎮 Nobody is playing right now.</div>'; return; }
+  const now = Date.now();
+  grid.innerHTML = sessions.map(s => {
+    const initials = (s.displayName||'?')[0].toUpperCase();
+    const ping = now - (s.lastSeen?.toMillis?.() || now);
+    const pingStr = ping < 5000 ? '● LIVE' : `${Math.round(ping/1000)}s ago`;
+    const click = s.uid ? `openPlayer('${s.uid}')` : `toast('Local player — no account, data is device-only')`;
+    return `<div class="live-card" onclick="${click}">
+      <div class="lc-head">
+        <div class="lc-av">${initials}</div>
+        <div><div class="lc-name">${esc(s.displayName||'Anonymous')}</div>
+          <div class="lc-anon">${s.isAnonymous ? '👤 No account' : '🔐 Registered'}</div></div>
+        <div class="lc-ping">${pingStr}</div>
+      </div>
+      <div class="lc-stats">
+        <div class="lc-stat"><div class="lc-stat-l">Score</div><div class="lc-stat-v" style="color:var(--gold)">${s.score||0}</div></div>
+        <div class="lc-stat"><div class="lc-stat-l">Difficulty</div><div class="lc-stat-v">${esc(s.difficulty||'—')}</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── PLAYER PANEL ──────────────────────────────────────────────
+async function openPlayer(uid) {
+  try {
+    const snap = await db.collection('users').doc(uid).get();
+    if (!snap.exists) { toast('Player not found.'); return; }
+    renderPanel({ id: uid, ...snap.data() });
+    document.getElementById('playerPanel').classList.add('open');
+  } catch(ex) { toast('Load failed: ' + ex.message); }
+}
+function closePanel() { document.getElementById('playerPanel').classList.remove('open'); }
+
+function renderPanel(p) {
+  const now       = Date.now();
+  const updMs     = p.updatedAt?.toMillis?.() || 0;
+  const sLabel    = p.banned ? 'banned' : updMs > now-120000 ? 'online' : 'offline';
+  const sCls      = p.banned ? 's-banned' : updMs > now-120000 ? 's-online' : 's-offline';
+  const initials  = (p.displayName||p.username||'?')[0].toUpperCase();
+  const totSkins  = (p.ownedSkins?.player?.length||0)+(p.ownedSkins?.background?.length||0)+(p.ownedSkins?.obstacle?.length||0);
+  const scores    = (p.scores||[]).slice(0,5);
+
+  document.getElementById('panelContent').innerHTML = `
+  <div class="p-hdr">
+    <div class="p-av">${initials}</div>
+    <div class="p-name">${esc(p.displayName||p.username||'Unknown')}</div>
+    <div class="p-email">@${esc(p.username||'—')}</div>
+    <div class="p-uid">${p.id}</div>
+    <div class="p-status-row">
+      <span class="sb ${sCls}">${sLabel}</span>
+      ${p.hasPass?'<span style="background:rgba(124,77,255,.15);color:#a78bfa;padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700">⭐ Pass</span>':''}
+      ${p.banned?`<span style="background:rgba(248,113,113,.1);color:var(--red);padding:3px 9px;border-radius:999px;font-size:10px;font-weight:700">Banned ${fmtTime(p.bannedAt)}</span>`:''}
+    </div>
+  </div>
+
+  <div class="p-sec">
+    <div class="p-sec-title">Stats</div>
+    <div class="data-grid">
+      <div class="data-item"><div class="data-lbl">Coins</div><div class="data-val g">${(p.coins||0).toLocaleString()}</div></div>
+      <div class="data-item"><div class="data-lbl">Best Score</div><div class="data-val">${p.best||0}</div></div>
+      <div class="data-item"><div class="data-lbl">Day Streak</div><div class="data-val">${p.streak||0}</div></div>
+      <div class="data-item"><div class="data-lbl">Total Coins</div><div class="data-val">${(p.totalCoins||0).toLocaleString()}</div></div>
+      <div class="data-item"><div class="data-lbl">Total Spins</div><div class="data-val">${p.totalSpins||0}</div></div>
+      <div class="data-item"><div class="data-lbl">Ads Watched</div><div class="data-val">${p.adWatchCount||0}</div></div>
+    </div>
+  </div>
+
+  <div class="p-sec">
+    <div class="p-sec-title">Skins — ${totSkins} owned</div>
+    <div class="skins-row">
+      <div class="skin-tc"><div class="skin-tn">Player</div><div class="skin-tv">${p.ownedSkins?.player?.length||0}</div></div>
+      <div class="skin-tc"><div class="skin-tn">Background</div><div class="skin-tv">${p.ownedSkins?.background?.length||0}</div></div>
+      <div class="skin-tc"><div class="skin-tn">Obstacle</div><div class="skin-tv">${p.ownedSkins?.obstacle?.length||0}</div></div>
+    </div>
+  </div>
+
+  <div class="p-sec">
+    <div class="p-sec-title">Top Scores</div>
+    <div class="scores-list">
+      ${scores.length ? scores.map((s,i)=>`<div class="sc-item">
+        <div class="sc-rank">${['🥇','🥈','🥉','4','5'][i]}</div>
+        <div class="sc-val">${s.score??s}</div>
+        <div class="sc-mode">${s.mode||''}</div>
+      </div>`).join('') : '<div style="color:var(--dim);font-size:12px">No scores yet</div>'}
+    </div>
+  </div>
+
+  <div class="p-sec">
+    <div class="p-sec-title">Edit Data</div>
+    <div class="ef"><div class="ef-lbl">Display Name</div><input id="e-dn"     class="ef-input" value="${esc(p.displayName||'')}"/></div>
+    <div class="ef"><div class="ef-lbl">Username</div>    <input id="e-un"     class="ef-input" value="${esc(p.username||'')}"/></div>
+    <div class="ef"><div class="ef-lbl">Coins</div>       <input id="e-coins"  class="ef-input" type="number" value="${p.coins||0}"/></div>
+    <div class="ef"><div class="ef-lbl">Best Score</div>  <input id="e-best"   class="ef-input" type="number" value="${p.best||0}"/></div>
+    <div class="ef"><div class="ef-lbl">Streak</div>      <input id="e-streak" class="ef-input" type="number" value="${p.streak||0}"/></div>
+    <button class="save-btn" onclick="saveEdit('${p.id}')">Save Changes</button>
+  </div>
+
+  <div class="p-sec">
+    <div class="p-sec-title">Actions</div>
+    <div class="action-row">
+      ${p.banned
+        ? `<button class="ab ab-unban" onclick="unban('${p.id}')">✅ Unban</button>`
+        : `<button class="ab ab-ban"   onclick="ban('${p.id}')">⛔ Ban</button>`}
+      <button class="ab ab-coins" onclick="giveCoins('${p.id}')">💰 Give Coins</button>
+      <button class="ab ab-pass"  onclick="togglePass('${p.id}',${!!p.hasPass})">⭐ ${p.hasPass?'Remove Pass':'Give Pass'}</button>
+      <button class="ab ab-skins" onclick="grantAllSkins('${p.id}')">🎨 Grant All Skins</button>
+      <button class="ab ab-reset" onclick="if(confirm('Reset ALL data for this player?'))resetPlayer('${p.id}')">🗑 Reset All Data</button>
+    </div>
+  </div>
+
+  <div style="padding:16px 20px;font-size:11px;color:var(--dim)">
+    Last updated: ${fmtTime(p.updatedAt)}
+  </div>`;
+}
+
+// ─── PLAYER ACTIONS ────────────────────────────────────────────
+async function ban(uid) {
+  if (!confirm('Ban this player? They will be signed out immediately.')) return;
+  try {
+    await db.collection('users').doc(uid).update({ banned: true, bannedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    toast('Player banned.'); openPlayer(uid); loadBanned();
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+async function unban(uid) {
+  try {
+    await db.collection('users').doc(uid).update({ banned: false, bannedAt: firebase.firestore.FieldValue.deleteField() });
+    toast('Player unbanned.'); openPlayer(uid); loadBanned();
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+async function giveCoins(uid) {
+  const n = parseInt(prompt('How many coins to give?','500')||'0');
+  if (!n || isNaN(n)) return;
+  try {
+    await db.collection('users').doc(uid).update({ coins: firebase.firestore.FieldValue.increment(n), totalCoins: firebase.firestore.FieldValue.increment(n) });
+    toast(`+${n} coins given.`); openPlayer(uid);
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+async function togglePass(uid, has) {
+  try {
+    await db.collection('users').doc(uid).update({ hasPass: !has });
+    toast(has ? 'Pass removed.' : 'Pass granted.'); openPlayer(uid);
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+async function grantAllSkins(uid) {
+  const SKINS_BY_TYPE = {
+    player:     ["Dragon Flame","Golden God","Thunder King","Solar Phoenix","Cosmic God","Time Rift","Shadow Run","Neon Dash","Cyber Sprint","Flame Runner","Ice Walker","Storm Chaser","Ghost Rider","Dark Knight","Solar Wind","Pixel Warrior","Robot Racer","Ninja Jump","Speed Demon","Ancient Warrior"],
+    background: ["Dragon Realm","Sacred Temple","Inferno Sky","Void Realm","Dimension Break","Midnight City","Sunset Beach","Space Station","Ancient Ruins","Crystal Cave","Cyber Grid","Storm Clouds","Neon Jungle","Ice World","Lava Flow","Desert Dunes","Ocean Floor","Sky Kingdom"],
+    obstacle:   ["Dragon Scale","Royal Decree","Thunder Wall","Reality Wall","Dark Matter","Laser Grid","Plasma Wall","Energy Barrier","Crystal Spike","Shadow Block","Neon Wall","Storm Barrier"],
+  };
+  try {
+    await db.collection('users').doc(uid).update({ ownedSkins: SKINS_BY_TYPE });
+    toast('All skins granted.'); openPlayer(uid);
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+async function resetPlayer(uid) {
+  try {
+    await db.collection('users').doc(uid).update({
+      coins:0,best:0,streak:0,totalCoins:0,totalSpins:0,adWatchCount:0,hasPass:false,
+      ownedSkins:{player:[],background:[],obstacle:[]},
+      pity:{player:0,background:0,obstacle:0},
+      achievements:{},scores:[],
+    });
+    toast('Player data reset.'); openPlayer(uid);
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+async function saveEdit(uid) {
+  try {
+    const displayName = document.getElementById('e-dn').value.trim();
+    const username    = document.getElementById('e-un').value.trim();
+    const coins  = +document.getElementById('e-coins').value  || 0;
+    const best   = +document.getElementById('e-best').value   || 0;
+    const streak = +document.getElementById('e-streak').value || 0;
+    await db.collection('users').doc(uid).update({ displayName, username, coins, best, streak });
+    await db.collection('leaderboard').doc(uid).update({ name: displayName }).catch(()=>{});
+    toast('Saved.'); openPlayer(uid);
+  } catch(ex) { toast('Error: ' + ex.message); }
+}
+
+// ─── RENDER HELPERS ────────────────────────────────────────────
+function renderRows(id, players, cols, colCount) {
+  const tbody = document.getElementById(id);
+  if (!players.length) { tbody.innerHTML = `<tr><td colspan="${colCount}" class="empty">No players found.</td></tr>`; return; }
+  const now = Date.now();
+  tbody.innerHTML = players.map(p => {
+    const ms    = p.updatedAt?.toMillis?.() || 0;
+    const sl    = p.banned ? 'banned' : ms > now-120000 ? 'online' : 'offline';
+    const sc    = p.banned ? 's-banned' : ms > now-120000 ? 's-online' : 's-offline';
+    return `<tr onclick="openPlayer('${p.id}')">
+      <td><b>${esc(p.displayName||p.username||'Unknown')}</b> <span style="font-size:10px;color:var(--dim)">@${esc(p.username||'—')}</span></td>
+      ${cols.includes('best')    ? `<td>${p.best||0}</td>` : ''}
+      ${cols.includes('coins')   ? `<td style="color:var(--gold)">${(p.coins||0).toLocaleString()}</td>` : ''}
+      ${cols.includes('spins')   ? `<td>${p.totalSpins||0}</td>` : ''}
+      ${cols.includes('pass')    ? `<td>${p.hasPass?'⭐':'—'}</td>` : ''}
+      ${cols.includes('lastSeen')? `<td style="color:var(--dim)">${fmtTime(p.updatedAt)}</td>` : ''}
+      ${cols.includes('status')  ? `<td><span class="sb ${sc}">${sl}</span></td>` : ''}
+    </tr>`;
+  }).join('');
+}
+
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const ms = ts?.toMillis?.() || (ts instanceof Date ? ts.getTime() : 0);
+  if (!ms) return '—';
+  const d = Date.now() - ms;
+  if (d < 60000) return 'Just now';
+  if (d < 3600000) return `${Math.floor(d/60000)}m ago`;
+  if (d < 86400000) return `${Math.floor(d/3600000)}h ago`;
+  if (d < 604800000) return `${Math.floor(d/86400000)}d ago`;
+  return new Date(ms).toLocaleDateString();
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function set(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── FIRESTORE RULES ───────────────────────────────────────────
+function buildRules() {
+  const list = ADMIN_UIDS.map(u => `'${u}'`).join(', ');
+  return `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null &&
+             request.auth.uid in [${list}];
+    }
+
+    // Admin has full access to everything
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Players can read/write only their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null &&
+                            request.auth.uid == userId;
+    }
+
+    // Leaderboard — public read, auth write
+    match /leaderboard/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Live sessions — anyone can write (anon players), admin reads
+    match /live_sessions/{sessionId} {
+      allow write, delete: if true;
+      allow read: if isAdmin();
+    }
+  }
+}`;
+}
+function copyRules() {
+  navigator.clipboard?.writeText(document.getElementById('rulesCode').textContent)
+    .then(() => toast('Rules copied to clipboard!'))
+    .catch(() => toast('Select the text above and copy manually.'));
+}
+
+// init
+tab('overview');
+</script>
+</body>
+</html>
