@@ -2273,7 +2273,7 @@ function startGame() {
 
   // Active sink ability + cooldown (shorter for mythic)
   mythicAbilityCooldown = 0;
-  MYTHIC_ABILITY_MAX_CD = 1800;
+  MYTHIC_ABILITY_MAX_CD = 2700;
   sinksRemaining = 0;
   const hasMythicSink = obsSkinData?.ability === "sink";
   const abilityBtn = document.getElementById("mythicAbilityBtn");
@@ -2395,7 +2395,7 @@ function useMythicAbility() {
   mythicAbilityCooldown = MYTHIC_ABILITY_MAX_CD;
   const btn = document.getElementById("mythicAbilityBtn");
   btn.disabled = true;
-  btn.textContent = "⚡ 30s";
+  btn.textContent = "⚡ 45s";
   floatText("🌊 Next 10 obstacles sunk!", W / 2, H / 2 - 20, "#ff6b94");
   beep(200, 0.18, "sine", 0.1);
   beep(350, 0.14, "sine", 0.08);
