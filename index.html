@@ -2772,32 +2772,38 @@ const Notif = {
     if (!fbDb || !currentUser) return;
     try {
       const uid = currentUser.uid;
+      // Single-field queries only — no composite indexes required
       const [frSnap, duelSnap, respSnap] = await Promise.all([
-        fbDb.collection('friend_requests').where('to','==',uid).where('status','==','pending').get(),
-        fbDb.collection('duels').where('players','array-contains',uid).where('status','==','pending').get(),
-        fbDb.collection('friend_requests').where('from','==',uid).where('status','in',['accepted','rejected'])
-          .orderBy('createdAt','desc').limit(5).get(),
+        fbDb.collection('friend_requests').where('to','==',uid).get(),
+        fbDb.collection('duels').where('players','array-contains',uid).get(),
+        fbDb.collection('friend_requests').where('from','==',uid).limit(20).get(),
       ]);
       this._items = [];
       frSnap.docs.forEach(doc => {
         const d = doc.data();
+        if (d.status !== 'pending') return;
         this._items.push({ id:doc.id, type:'fr', icon:'👋',
           msg:`<b>${esc(d.fromDisplayName||'Someone')}</b> sent you a friend request`, d });
       });
       duelSnap.docs.forEach(doc => {
         const d = doc.data();
+        if (d.status !== 'pending') return;
         if (d.challenged === uid)
           this._items.push({ id:doc.id, type:'duel', icon:'⚔️',
             msg:`<b>${esc(d.challengerName||'Someone')}</b> challenged you to a duel!`, d });
       });
-      respSnap.docs.forEach(doc => {
-        const d = doc.data();
-        const ok = d.status==='accepted';
-        this._items.push({ id:doc.id, type:'fr_resp', icon: ok?'🤝':'✗',
-          msg: ok ? `<b>@${esc(d.toUsername)}</b> accepted your friend request!`
-                  : `<b>@${esc(d.toUsername)}</b> declined your request.`,
-          noAction:true });
-      });
+      respSnap.docs
+        .filter(doc => ['accepted','rejected'].includes(doc.data().status))
+        .sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0))
+        .slice(0,5)
+        .forEach(doc => {
+          const d = doc.data();
+          const ok = d.status==='accepted';
+          this._items.push({ id:doc.id, type:'fr_resp', icon: ok?'🤝':'✗',
+            msg: ok ? `<b>@${esc(d.toUsername)}</b> accepted your friend request!`
+                    : `<b>@${esc(d.toUsername)}</b> declined your request.`,
+            noAction:true });
+        });
       this._updateBadge();
       this._renderPanel();
     } catch(e) {}
@@ -2991,13 +2997,16 @@ const Social = {
     try {
       const uid = currentUser.uid;
       const [inSnap, outSnap] = await Promise.all([
-        fbDb.collection('friend_requests').where('to','==',uid).where('status','==','pending').get(),
-        fbDb.collection('friend_requests').where('from','==',uid).orderBy('createdAt','desc').limit(15).get(),
+        fbDb.collection('friend_requests').where('to','==',uid).get(),
+        fbDb.collection('friend_requests').where('from','==',uid).limit(20).get(),
       ]);
+      // Filter client-side to avoid composite index requirement
+      const inDocs = inSnap.docs.filter(d=>d.data().status==='pending');
+      const outDocs = outSnap.docs.sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0));
       let html='';
-      if (!inSnap.empty) {
+      if (inDocs.length) {
         html += '<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:0 0 8px;">Incoming</div>';
-        inSnap.docs.forEach(doc => {
+        inDocs.forEach(doc => {
           const d=doc.data();
           html+=`<div class="friend-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
             <div style="display:flex;align-items:center;gap:10px;width:100%;">
@@ -3011,9 +3020,9 @@ const Social = {
             </div></div>`;
         });
       }
-      if (!outSnap.empty) {
-        html+=`<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:${inSnap.empty?0:10}px 0 8px;">Sent Requests</div>`;
-        outSnap.docs.forEach(doc => {
+      if (outDocs.length) {
+        html+=`<div style="font-size:10px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:rgba(232,232,240,0.32);text-align:center;margin:${inDocs.length?10:0}px 0 8px;">Sent Requests</div>`;
+        outDocs.forEach(doc => {
           const d=doc.data();
           const sc = d.status==='accepted'?'#34d399':d.status==='rejected'?'#f87171':'rgba(232,232,240,0.35)';
           const st = d.status==='accepted'?'✓ Accepted':d.status==='rejected'?'✗ Declined':'⏳ Pending';
