@@ -1074,7 +1074,7 @@
       Choose <strong style="color:#f87171;">one ability</strong> to ban from your opponent for all 3 rounds.
     </p>
     <div class="ban-grid" id="banGrid"></div>
-    <button id="banConfirmBtn" class="btn" style="background:#ef4444;color:#fff;width:100%;max-width:310px;opacity:.35;pointer-events:none;" onclick="Duel.confirmBan()">Select an ability to ban</button>
+    <button id="banConfirmBtn" class="btn" style="background:#ef4444;color:#fff;width:100%;max-width:310px;opacity:.35;pointer-events:none;" onclick="_Duel.confirmBan()">Select an ability to ban</button>
     <div id="banWaiting" style="display:none;font-size:12px;color:rgba(232,232,240,0.4);text-align:center;">⏳ Waiting for opponent's ban choice…</div>
   </div>
 
@@ -3364,13 +3364,26 @@ const _Duel = {
       document.getElementById("banGrid").innerHTML='<div style="text-align:center;color:rgba(232,232,240,0.4);font-size:12px;padding:16px;">Opponent has no special abilities.<br>You cannot ban anything this duel.</div>';
       setTimeout(()=>this.confirmBan(),1500); return;
     }
-    document.getElementById("banGrid").innerHTML = perks.map(k=>{
+    const grid = document.getElementById("banGrid");
+    grid.innerHTML = perks.map(k=>{
       const d=PERK_DEFS[k]||{icon:'❓',name:k,desc:''};
-      return `<div class="ban-opt" data-key="${k}" onclick="_Duel._selectBan('${k}',this)">
+      return `<div class="ban-opt" data-key="${k}">
         <span class="ban-ico">${d.icon}</span>
         <div><div class="ban-name">${d.name}</div><div class="ban-desc">${d.desc}</div></div>
       </div>`;
     }).join('');
+    // Event delegation — avoids inline onclick + const scoping issues
+    grid.onclick = ev => {
+      const opt = ev.target.closest('.ban-opt');
+      if (!opt) return;
+      _Duel.myBan = opt.dataset.key;
+      grid.querySelectorAll('.ban-opt').forEach(e=>e.classList.remove('chosen'));
+      opt.classList.add('chosen');
+      const def = PERK_DEFS[_Duel.myBan]||{name:_Duel.myBan};
+      const btn = document.getElementById("banConfirmBtn");
+      btn.style.opacity='1'; btn.style.pointerEvents='';
+      btn.textContent=`🚫 Ban "${def.name}"`;
+    };
   },
 
   _selectBan(key,el) {
@@ -3530,7 +3543,7 @@ const _Duel = {
 };
 
 // expose Duel.onRoundEnd globally for gameOver() to call
-Object.assign(Duel, { onRoundEnd:(s)=>_Duel.onRoundEnd(s) });
+Object.assign(Duel, { onRoundEnd:(s)=>_Duel.onRoundEnd(s), confirmBan:()=>_Duel.confirmBan(), accept:(id)=>_Duel.accept(id), decline:(id)=>_Duel.decline(id), challenge:(uid,name)=>_Duel.challenge(uid,name), exitToMenu:()=>_Duel.exitToMenu() });
 
 // ── LIVE SESSION TRACKING ───────────────────────────────────────────────────
 function startLiveSession() {
