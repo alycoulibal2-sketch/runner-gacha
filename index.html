@@ -2929,7 +2929,7 @@ const Social = {
     res.innerHTML='<div style="text-align:center;padding:16px;color:rgba(232,232,240,0.3);font-size:12px;">Searching…</div>';
     try {
       const [usSnap, frSnap, fsSnap] = await Promise.all([
-        fbDb.collection('users').where('username','>=',q).where('username','<=',q+'').limit(8).get(),
+        fbDb.collection('public_profiles').where('username','>=',q).where('username','<=',q+'').limit(8).get(),
         fbDb.collection('friend_requests').where('from','==',currentUser.uid).where('status','==','pending').get(),
         fbDb.collection('friendships').where('players','array-contains',currentUser.uid).get(),
       ]);
@@ -3052,9 +3052,13 @@ const Profile = {
     modal.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(232,232,240,0.3);font-size:13px;">Loading…</div>';
     modal.style.display = "flex";
     try {
-      const snap = await fbDb.collection('users').doc(uid).get();
-      if (!snap.exists) throw new Error("Player not found");
-      this._render(uid, snap.data(), modal);
+      let data = null;
+      // Try full user doc (works for own profile or if rules allow auth reads)
+      try { const s = await fbDb.collection('users').doc(uid).get(); if (s.exists) data = s.data(); } catch(e) {}
+      // Fallback: public profile (always readable by authenticated users)
+      if (!data) { const s = await fbDb.collection('public_profiles').doc(uid).get(); if (s.exists) data = s.data(); }
+      if (!data) throw new Error("Player not found");
+      this._render(uid, data, modal);
     } catch(e) {
       modal.innerHTML = `<div style="text-align:center;padding:40px;color:#f87171;font-size:13px;">${esc(e.message)}<br><br><button class="btn secondary" onclick="document.getElementById('profileModal').style.display='none'">Close</button></div>`;
     }
@@ -4919,7 +4923,22 @@ const DB = {
   async save() {
     if (!fbReady || !currentUser) return;
     try {
-      await fbDb.collection("users").doc(currentUser.uid).set(this.gameDataToDoc(), { merge: true });
+      const uid = currentUser.uid;
+      const doc = this.gameDataToDoc();
+      await fbDb.collection("users").doc(uid).set(doc, { merge: true });
+      // Write slim public profile so other players can search and view us
+      const uname = (doc.username || "").toLowerCase();
+      if (uname) {
+        fbDb.collection("public_profiles").doc(uid).set({
+          username:    uname,
+          displayName: doc.displayName || uname,
+          best:        doc.best || 0,
+          streak:      doc.streak || 0,
+          hasPass:     doc.hasPass || false,
+          selectedSkins: doc.selectedSkins || {},
+          updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true }).catch(() => {});
+      }
     } catch(e) { console.warn("DB save failed", e); }
   },
 
