@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Runner Gacha — Ad</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#000; display:flex; align-items:center; justify-content:center; min-height:100vh; overflow:hidden; }
+  #wrap { position:relative; width:1280px; height:720px; overflow:hidden; }
+  canvas { display:block; width:1280px; height:720px; }
+  #overlay {
+    position:absolute; inset:0; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .scene { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:none; }
+  /* restart button */
+  #restart {
+    position:absolute; bottom:18px; right:18px; z-index:99;
+    background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);
+    color:#fff; font-size:13px; font-weight:700; padding:8px 16px; border-radius:8px; cursor:pointer;
+    pointer-events:all;
+  }
+  #restart:hover { background:rgba(255,255,255,0.22); }
+  #timer {
+    position:absolute; top:14px; right:18px; z-index:99;
+    color:rgba(255,255,255,0.35); font-size:12px; font-weight:600;
+    font-family: monospace; pointer-events:none;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="1280" height="720"></canvas>
+  <div id="overlay"></div>
+  <div id="timer">0:00</div>
+  <button id="restart" onclick="restart()">↺ Replay</button>
+</div>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx    = canvas.getContext("2d");
+const W = 1280, H = 720;
+const overlay = document.getElementById("overlay");
+
+// ── Timeline ──────────────────────────────────────────
+// Scene durations in seconds
+const SCENES = [
+  { id:"intro",    start:0,   end:4   },  // Logo reveal
+  { id:"run",      start:4,   end:12  },  // Gameplay
+  { id:"gacha",    start:12,  end:20  },  // Gacha spin
+  { id:"rarities", start:20,  end:26  },  // Rarity tiers
+  { id:"cta",      start:26,  end:32  },  // Call to action
+];
+const TOTAL = 32;
+
+let startTime = null;
+let raf = null;
+let t = 0; // seconds elapsed
+
+// ── Stars ─────────────────────────────────────────────
+const stars = Array.from({length:120}, () => ({
+  x: Math.random()*W, y: Math.random()*H,
+  r: 0.4+Math.random()*1.8,
+  sp: 0.05+Math.random()*0.25,
+  op: 0.15+Math.random()*0.6
+}));
+
+// ── Gameplay state ────────────────────────────────────
+const GY = H - 110;
+const player = { x:180, y:GY-72, w:72, h:72, vy:0, onGround:true };
+const obs = [];
+let obsTimer = 0, gameT = 0, gameScore = 0, gameSpeed = 6;
+let colorHue = 200;
+
+function resetGame() {
+  obs.length = 0; obsTimer = 60;
+  player.y = GY - player.h; player.vy = 0; player.onGround = true;
+  gameT = 0; gameScore = 0; gameSpeed = 6;
+}
+
+// ── Gacha state ───────────────────────────────────────
+let wheelAngle = 0, wheelSpin = 0, wheelDone = false;
+let rewardShown = false, rewardAlpha = 0;
+
+// ── Easing ────────────────────────────────────────────
+const ease = x => x < 0.5 ? 2*x*x : 1-Math.pow(-2*x+2,2)/2;
+const easeOut = x => 1-Math.pow(1-x,3);
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t) => a+(b-a)*t;
+
+// ── Draw helpers ──────────────────────────────────────
+function grad(x1,y1,x2,y2, ...stops) {
+  const g = ctx.createLinearGradient(x1,y1,x2,y2);
+  stops.forEach(([pos,col]) => g.addColorStop(pos,col));
+  return g;
+}
+function radGrad(x,y,r, ...stops) {
+  const g = ctx.createRadialGradient(x,y,0,x,y,r);
+  stops.forEach(([pos,col]) => g.addColorStop(pos,col));
+  return g;
+}
+function textGrad(text, x, y, size, weight, ...stops) {
+  const g = ctx.createLinearGradient(x-200,y,x+200,y);
+  stops.forEach(([p,c]) => g.addColorStop(p,c));
+  ctx.font = `${weight} ${size}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  ctx.fillStyle = g;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y);
+}
+function drawStars(speed=1, alpha=1) {
+  ctx.save(); ctx.globalAlpha = alpha;
+  stars.forEach(s => {
+    s.x -= s.sp * speed;
+    if (s.x < 0) s.x = W;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${s.op})`; ctx.fill();
+  });
+  ctx.restore();
+}
+function bg(col="#020617") {
+  ctx.fillStyle = col; ctx.fillRect(0,0,W,H);
+}
+
+// ── SCENE 1: INTRO (0-4s) ─────────────────────────────
+function drawIntro(lt) {
+  // lt = local time 0..1
+  bg(); drawStars(0.3, lt);
+
+  // Purple glow
+  ctx.save();
+  ctx.globalAlpha = lt * 0.4;
+  const rg = radGrad(W/2, H/2, 400, [0,"rgba(124,77,255,0.5)"], [1,"transparent"]);
+  ctx.fillStyle = rg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  // "RUNNER" line
+  const r1 = clamp((lt-0.2)/0.4,0,1);
+  ctx.save();
+  ctx.globalAlpha = easeOut(r1);
+  ctx.translate(0, (1-easeOut(r1))*-40);
+  textGrad("RUNNER", W/2, H/2-70, 140, 900,
+    [0,"#ff7a59"],[0.5,"#ffb86b"],[1,"#7c4dff"]);
+  ctx.restore();
+
+  // "GACHA" line
+  const r2 = clamp((lt-0.45)/0.4,0,1);
+  ctx.save();
+  ctx.globalAlpha = easeOut(r2);
+  ctx.translate(0, (1-easeOut(r2))*40);
+  textGrad("GACHA", W/2, H/2+85, 140, 900,
+    [0,"#7c4dff"],[0.5,"#ff6b94"],[1,"#ff7a59"]);
+  ctx.restore();
+
+  // Tagline
+  const r3 = clamp((lt-0.7)/0.3,0,1);
+  ctx.save(); ctx.globalAlpha = easeOut(r3);
+  ctx.font = "600 28px sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("RUN · SPIN · DOMINATE", W/2, H/2+180);
+  ctx.restore();
+}
+
+// ── SCENE 2: GAMEPLAY (4-12s) ─────────────────────────
+function drawRun(lt) {
+  gameT += 1/60;
+  gameSpeed = 6 + lt*8;
+
+  // Background sky
+  ctx.fillStyle = grad(0,0,0,H,[0,"#020617"],[1,"#0f172a"]);
+  ctx.fillRect(0,0,W,H);
+  drawStars(gameSpeed/4, 0.6);
+
+  // Parallax mountains
+  ctx.save(); ctx.globalAlpha = 0.18;
+  ctx.fillStyle = "#1e3a5f";
+  [0,200,400,600,900,1100].forEach((bx,i) => {
+    const h2 = 120+i%3*60;
+    ctx.beginPath();
+    ctx.moveTo((bx - gameT*20) % (W+200) - 100, GY);
+    ctx.lineTo((bx - gameT*20) % (W+200), GY-h2);
+    ctx.lineTo((bx - gameT*20) % (W+200) + 140, GY);
+    ctx.fill();
+  });
+  ctx.restore();
+
+  // Ground
+  ctx.fillStyle = grad(0,GY,0,H,[0,"#0f172a"],[1,"#020617"]);
+  ctx.fillRect(0,GY,W,H-GY);
+  ctx.fillStyle = `rgba(56,189,248,0.25)`;
+  ctx.fillRect(0,GY,W,2);
+
+  // Grid lines on ground
+  ctx.save(); ctx.globalAlpha=0.06;
+  for(let gx=(-gameT*gameSpeed*60)%80; gx<W; gx+=80) {
+    ctx.fillStyle="#38bdf8"; ctx.fillRect(gx,GY,2,H-GY);
+  }
+  ctx.restore();
+
+  // Coins
+  for(let ci=0; ci<5; ci++) {
+    const cx = ((ci*220 - gameT*gameSpeed*60*0.7) % (W+200)) - 100;
+    const cy = GY - 120 - Math.sin(gameT*2+ci)*20;
+    ctx.save();
+    ctx.shadowBlur=16; ctx.shadowColor="#facc15";
+    ctx.fillStyle = grad(cx-18,cy-18,cx+18,cy+18,[0,"#fde68a"],[1,"#f59e0b"]);
+    ctx.beginPath(); ctx.arc(cx,cy,18,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Obstacles
+  obsTimer--;
+  if (obsTimer<=0) {
+    const oh = 40+Math.random()*100;
+    obs.push({x:W+40, y:GY-oh, w:36+Math.random()*24, h:oh, col:"#f43f5e"});
+    obsTimer = 90+Math.random()*60;
+  }
+  for(let i=obs.length-1;i>=0;i--) {
+    obs[i].x -= gameSpeed;
+    const o=obs[i];
+    ctx.fillStyle = grad(o.x,o.y,o.x+o.w,o.y+o.h,[0,o.col],[1,"#be123c"]);
+    ctx.fillRect(o.x,o.y,o.w,o.h);
+    ctx.fillStyle="rgba(255,255,255,0.1)"; ctx.fillRect(o.x+3,o.y+3,8,o.h-6);
+    if (o.x+o.w < -80) obs.splice(i,1);
+  }
+
+  // Auto-jump
+  if (player.onGround) {
+    const near = obs.find(o => o.x - (player.x+player.w) < 260 && o.x > player.x);
+    if (near && near.x - (player.x+player.w) < 200) {
+      player.vy = -22; player.onGround = false;
+    }
+  }
+  player.vy = Math.min(player.vy+0.85, 22);
+  player.y += player.vy;
+  if (player.y+player.h >= GY) { player.y=GY-player.h; player.vy=0; player.onGround=true; }
+
+  // Player glow trail
+  colorHue = (colorHue+1.5)%360;
+  for(let ti=3;ti>=1;ti--) {
+    ctx.save();
+    ctx.globalAlpha = 0.08*ti;
+    ctx.fillStyle=`hsl(${colorHue},80%,65%)`;
+    ctx.fillRect(player.x-ti*12, Math.round(player.y)+ti*4, player.w, player.h);
+    ctx.restore();
+  }
+  // Player
+  ctx.save();
+  ctx.shadowBlur=28; ctx.shadowColor=`hsl(${colorHue},80%,65%)`;
+  ctx.fillStyle=`hsl(${colorHue},80%,65%)`;
+  ctx.fillRect(player.x, Math.round(player.y), player.w, player.h);
+  ctx.fillStyle="rgba(255,255,255,0.2)";
+  ctx.fillRect(player.x+6, Math.round(player.y)+6, 22, 16);
+  ctx.restore();
+
+  // Score
+  gameScore = Math.floor(lt*60);
+  ctx.save();
+  ctx.font="bold 32px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.9)";
+  ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.fillText(`Score: ${gameScore}`, 40, 40);
+  ctx.restore();
+
+  // Text overlay on right
+  const tx = clamp((lt-0.05)/0.2,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(tx);
+  ctx.font="900 54px sans-serif";
+  ctx.fillStyle = grad(W-460,0,W-60,0,[0,"#38bdf8"],[1,"#7c4dff"]);
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  ctx.fillText("INFINITE RUNNER", W-60, H/2-40);
+  ctx.font="400 26px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.55)";
+  ctx.fillText("Jump. Dodge. Survive.", W-60, H/2+16);
+  ctx.restore();
+}
+
+// ── SCENE 3: GACHA (12-20s) ────────────────────────────
+const SEG_COLORS = ["#94a3b8","#38bdf8","#a855f7","#ffb86b","#ff6b94"];
+const SEG_LABELS = ["COMMON","RARE","EPIC","LEGENDARY","MYTHIC"];
+const NSEG = 5;
+
+function drawGacha(lt) {
+  // Background
+  bg();
+  ctx.save();
+  ctx.globalAlpha = 0.15;
+  const pg = radGrad(W/2,H/2,500,[0,"rgba(168,85,247,0.8)"],[1,"transparent"]);
+  ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+  ctx.restore();
+  drawStars(0.5, 0.4);
+
+  const WX=W/2, WY=H/2+20, WR=240;
+
+  // Spin: lt 0→0.6 = spinning, 0.6→0.8 = slow to legendary, 0.8→1 = show reward
+  const spinPhase = clamp(lt/0.6,0,1);
+  const stopPhase = clamp((lt-0.6)/0.25,0,1);
+  const rewardPhase = clamp((lt-0.82)/0.18,0,1);
+
+  // Target angle: Legendary is index 3
+  const legendaryAngle = 360 - (3 * (360/NSEG) + (360/NSEG)/2);
+  const spinRot = spinPhase * 360*4; // 4 full spins
+  const stopRot = lerp(spinRot, 360*4 + legendaryAngle, ease(stopPhase));
+  wheelAngle = stopRot;
+
+  // Draw wheel
+  ctx.save(); ctx.translate(WX,WY);
+  const step = (2*Math.PI)/NSEG;
+  for(let i=0;i<NSEG;i++) {
+    const s = i*step - Math.PI/2 + (wheelAngle*Math.PI/180);
+    const e = s+step;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.arc(0,0,WR,s,e);
+    ctx.fillStyle=SEG_COLORS[i]+"44"; ctx.fill();
+    ctx.strokeStyle=SEG_COLORS[i]; ctx.lineWidth=2; ctx.stroke();
+    // label
+    const mid=s+step/2;
+    ctx.save(); ctx.rotate(mid);
+    ctx.translate(WR*0.65,0);
+    ctx.rotate(-mid);
+    ctx.font="bold 18px sans-serif"; ctx.fillStyle="#fff";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(SEG_LABELS[i],0,0);
+    ctx.restore();
+  }
+  // Center
+  ctx.beginPath(); ctx.arc(0,0,28,0,Math.PI*2);
+  ctx.fillStyle="#0f172a"; ctx.fill();
+  ctx.strokeStyle="rgba(255,255,255,0.3)"; ctx.lineWidth=2; ctx.stroke();
+  ctx.font="bold 14px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.7)";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("SPIN",0,0);
+  ctx.restore();
+
+  // Pointer triangle
+  ctx.save(); ctx.translate(WX, WY-WR-10);
+  ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(14,12); ctx.lineTo(-14,12);
+  ctx.fillStyle="#ffb86b"; ctx.fill();
+  ctx.restore();
+
+  // Glow ring while spinning
+  if (spinPhase < 1) {
+    ctx.save();
+    ctx.globalAlpha = spinPhase * 0.3;
+    ctx.shadowBlur=40; ctx.shadowColor="#a855f7";
+    ctx.beginPath(); ctx.arc(WX,WY,WR+10,0,Math.PI*2);
+    ctx.strokeStyle="#a855f7"; ctx.lineWidth=3; ctx.stroke();
+    ctx.restore();
+  }
+
+  // "LEGENDARY!" reward reveal
+  if (rewardPhase > 0) {
+    // Flash
+    ctx.save(); ctx.globalAlpha = rewardPhase * 0.25;
+    ctx.fillStyle="#ffb86b"; ctx.fillRect(0,0,W,H);
+    ctx.restore();
+
+    // Particles burst
+    const bN = 24;
+    for(let bi=0;bi<bN;bi++) {
+      const ba = (bi/bN)*Math.PI*2;
+      const bd = rewardPhase * 280;
+      ctx.save();
+      ctx.globalAlpha = (1-rewardPhase)*0.9;
+      ctx.fillStyle=SEG_COLORS[3+(bi%2)];
+      ctx.beginPath();
+      ctx.arc(WX+Math.cos(ba)*bd, WY+Math.sin(ba)*bd, 6*(1-rewardPhase*0.5), 0, Math.PI*2);
+      ctx.fill(); ctx.restore();
+    }
+
+    // Big text
+    ctx.save(); ctx.globalAlpha=easeOut(rewardPhase);
+    const sc = 0.5+easeOut(rewardPhase)*0.5;
+    ctx.translate(W*0.72, H/2);
+    ctx.scale(sc,sc);
+    textGrad("LEGENDARY!", 0, -40, 68, 900, [0,"#ffb86b"],[0.5,"#fde68a"],[1,"#f59e0b"]);
+    ctx.font="600 24px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.6)";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("Dragon Flame unlocked!", 0, 40);
+    // Crown emoji large
+    ctx.font="80px sans-serif"; ctx.fillText("👑", 0, -130);
+    ctx.restore();
+  }
+
+  // Left label
+  const lp = clamp(lt/0.15,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(lp);
+  ctx.font="900 58px sans-serif";
+  ctx.fillStyle=grad(80,0,460,0,[0,"#a855f7"],[1,"#ff6b94"]);
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText("GACHA", 80, H/2-60);
+  ctx.font="400 26px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.5)";
+  ctx.fillText("Spin for legendary skins", 80, H/2-10);
+  ctx.font="600 22px sans-serif"; ctx.fillStyle="rgba(255,184,107,0.8)";
+  ctx.fillText("Pity: guaranteed at 50 spins", 80, H/2+36);
+  ctx.restore();
+}
+
+// ── SCENE 4: RARITIES (20-26s) ─────────────────────────
+const RARITY_DATA = [
+  { name:"Common",    color:"#94a3b8", icon:"🟫", pct:"75%" },
+  { name:"Rare",      color:"#38bdf8", icon:"💎", pct:"20%" },
+  { name:"Epic",      color:"#a855f7", icon:"🔮", pct:"4%"  },
+  { name:"Legendary", color:"#ffb86b", icon:"👑", pct:"0.7%"},
+  { name:"Mythic",    color:"#ff6b94", icon:"✨", pct:"0.3%"},
+];
+function drawRarities(lt) {
+  bg();
+  ctx.save(); ctx.globalAlpha=0.12;
+  ctx.fillStyle=radGrad(W/2,H/2,500,[0,"rgba(56,189,248,0.6)"],[1,"transparent"]);
+  ctx.fillRect(0,0,W,H); ctx.restore();
+  drawStars(0.3,0.3);
+
+  // Title
+  const tp = clamp(lt/0.15,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(tp);
+  textGrad("FIVE TIERS OF GLORY", W/2, 110, 58, 900,
+    [0,"#fff"],[0.5,"#38bdf8"],[1,"#a855f7"]);
+  ctx.font="400 24px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.45)";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("Every spin. Every chance. Every legend.", W/2, 162);
+  ctx.restore();
+
+  // Cards
+  const cardW=180, cardH=260, gap=26;
+  const totalW = RARITY_DATA.length*(cardW+gap)-gap;
+  const startX = (W-totalW)/2;
+
+  RARITY_DATA.forEach((r,i) => {
+    const delay = 0.1+i*0.12;
+    const cp = clamp((lt-delay)/0.25,0,1);
+    const cx = startX + i*(cardW+gap);
+    const cy = H/2 + 40;
+
+    ctx.save();
+    ctx.globalAlpha = easeOut(cp);
+    ctx.translate(cx + cardW/2, cy + cardH/2);
+    ctx.scale(1, 0.3+easeOut(cp)*0.7);
+    ctx.translate(-(cx+cardW/2), -(cy+cardH/2));
+
+    // Card bg
+    ctx.fillStyle=`${r.color}18`;
+    ctx.strokeStyle=r.color; ctx.lineWidth=2;
+    roundRect(ctx, cx, cy, cardW, cardH, 18);
+    ctx.fill(); ctx.stroke();
+
+    // Glow (mythic/legendary)
+    if(i>=3) {
+      ctx.save();
+      ctx.shadowBlur=30+(Math.sin(lt*6+i)*10); ctx.shadowColor=r.color;
+      ctx.strokeStyle=r.color; ctx.lineWidth=2.5;
+      roundRect(ctx, cx, cy, cardW, cardH, 18); ctx.stroke();
+      ctx.restore();
+    }
+
+    // Icon
+    ctx.font="54px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(r.icon, cx+cardW/2, cy+78);
+
+    // Name
+    ctx.font="bold 20px sans-serif"; ctx.fillStyle=r.color;
+    ctx.fillText(r.name, cx+cardW/2, cy+148);
+
+    // Pct
+    ctx.font="600 16px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.4)";
+    ctx.fillText(r.pct+" chance", cx+cardW/2, cy+180);
+
+    ctx.restore();
+  });
+}
+function roundRect(ctx,x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+// ── SCENE 5: CTA (26-32s) ─────────────────────────────
+function drawCTA(lt) {
+  const hue = (lt*40)%360;
+  bg(`hsl(${220+lt*20},50%,4%)`);
+  ctx.save(); ctx.globalAlpha=0.18+lt*0.1;
+  ctx.fillStyle=radGrad(W/2,H/2,420,[0,`hsla(${hue},80%,60%,0.6)`],[1,"transparent"]);
+  ctx.fillRect(0,0,W,H); ctx.restore();
+  drawStars(0.8,0.5);
+
+  // Big pulsing background ring
+  ctx.save();
+  ctx.globalAlpha=0.06+Math.sin(lt*4)*0.04;
+  ctx.beginPath(); ctx.arc(W/2,H/2,250+Math.sin(lt*3)*20,0,Math.PI*2);
+  ctx.strokeStyle=`hsl(${hue},80%,65%)`; ctx.lineWidth=4; ctx.stroke();
+  ctx.restore();
+
+  // "THE WORLD IS RUNNING"
+  const p1=clamp(lt/0.2,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(p1);
+  ctx.translate(0,(1-easeOut(p1))*-30);
+  ctx.font="900 62px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle=grad(W/2-300,0,W/2+300,0,[0,"#fff"],[0.5,"#38bdf8"],[1,"#ff6b94"]);
+  ctx.fillText("THE WORLD IS RUNNING.", W/2, H/2-110);
+  ctx.restore();
+
+  // "ARE YOU READY?"
+  const p2=clamp((lt-0.2)/0.2,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(p2);
+  ctx.font="900 88px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  const gg=ctx.createLinearGradient(W/2-350,0,W/2+350,0);
+  gg.addColorStop(0,"#ffb86b"); gg.addColorStop(0.5,"#ff6b94"); gg.addColorStop(1,"#a855f7");
+  ctx.fillStyle=gg;
+  ctx.shadowBlur=40; ctx.shadowColor="#ff6b94";
+  ctx.fillText("ARE YOU READY?", W/2, H/2+10);
+  ctx.restore();
+
+  // CTA button
+  const p3=clamp((lt-0.5)/0.3,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(p3);
+  const btnW=420, btnH=80, btnX=W/2-btnW/2, btnY=H/2+90;
+  const pulse=0.93+Math.sin(lt*5)*0.07;
+  ctx.translate(W/2,btnY+btnH/2); ctx.scale(pulse,pulse); ctx.translate(-W/2,-(btnY+btnH/2));
+  const bg2=grad(btnX,0,btnX+btnW,0,[0,"#ff7a59"],[0.5,"#ff6b94"],[1,"#7c4dff"]);
+  ctx.fillStyle=bg2;
+  ctx.shadowBlur=30; ctx.shadowColor="#ff6b94";
+  roundRect(ctx,btnX,btnY,btnW,btnH,40); ctx.fill();
+  ctx.font="bold 28px sans-serif"; ctx.fillStyle="#fff";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("▶  Play Free Now", W/2, btnY+btnH/2);
+  ctx.restore();
+
+  // URL
+  const p4=clamp((lt-0.65)/0.25,0,1);
+  ctx.save(); ctx.globalAlpha=easeOut(p4)*0.6;
+  ctx.font="600 26px sans-serif"; ctx.fillStyle="#fff";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("runnergacha.com", W/2, H/2+210);
+  ctx.restore();
+
+  // Feature pills
+  const p5=clamp((lt-0.75)/0.25,0,1);
+  const pills=[["🎰 Gacha","#a855f7"],["💰 Free","#34d399"],["🌍 Global","#38bdf8"],["✨ 70+ Skins","#ffb86b"]];
+  pills.forEach((pill,i)=>{
+    const px=W/2 + (i-1.5)*200;
+    const py=H/2+275;
+    ctx.save(); ctx.globalAlpha=easeOut(p5)*(0.6+i*0.1);
+    ctx.fillStyle=pill[1]+"22"; ctx.strokeStyle=pill[1]; ctx.lineWidth=1.5;
+    roundRect(ctx,px-70,py-16,140,32,16); ctx.fill(); ctx.stroke();
+    ctx.font="bold 16px sans-serif"; ctx.fillStyle=pill[1];
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(pill[0],px,py);
+    ctx.restore();
+  });
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────
+function getScene(t) {
+  return SCENES.find(s => t >= s.start && t < s.end);
+}
+
+function frame(ts) {
+  if (!startTime) startTime = ts;
+  t = (ts - startTime) / 1000;
+
+  // Timer display
+  const secs = Math.floor(Math.min(t,TOTAL));
+  document.getElementById("timer").textContent =
+    `${Math.floor(secs/60)}:${String(secs%60).padStart(2,"0")} / 0:${String(TOTAL).padStart(2,"0")}`;
+
+  if (t > TOTAL) { drawEnd(); return; }
+
+  const scene = getScene(t);
+  if (!scene) { drawEnd(); return; }
+
+  const lt = clamp((t - scene.start) / (scene.end - scene.start), 0, 1);
+
+  // Transition fade
+  let alpha = 1;
+  const FADE = 0.25;
+  if (lt < FADE/( scene.end - scene.start)) alpha = lt / (FADE/(scene.end-scene.start));
+  if (lt > 1 - FADE/(scene.end-scene.start)) alpha = (1-lt) / (FADE/(scene.end-scene.start));
+  alpha = clamp(alpha,0,1);
+
+  ctx.save();
+  switch(scene.id) {
+    case "intro":    drawIntro(lt);    break;
+    case "run":      drawRun(lt);      break;
+    case "gacha":    drawGacha(lt);    break;
+    case "rarities": drawRarities(lt); break;
+    case "cta":      drawCTA(lt);      break;
+  }
+  ctx.restore();
+
+  raf = requestAnimationFrame(frame);
+}
+
+function drawEnd() {
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+  ctx.font="900 52px sans-serif"; ctx.fillStyle="rgba(255,255,255,0.6)";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("— fin —", W/2, H/2);
+}
+
+function restart() {
+  if (raf) cancelAnimationFrame(raf);
+  startTime = null; t = 0;
+  resetGame();
+  wheelAngle=0; wheelSpin=0; wheelDone=false;
+  rewardShown=false; rewardAlpha=0;
+  raf = requestAnimationFrame(frame);
+}
+
+resetGame();
+raf = requestAnimationFrame(frame);
+</script>
+</body>
+</html>
