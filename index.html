@@ -3443,7 +3443,7 @@ const _Duel = {
     if (data.status==='accepted_playing' && amChallenger) {
       const oppName = data.challengedName||'Opponent';
       document.getElementById('duelWaitMsg').textContent = oppName + ' accepted!';
-      document.getElementById('duelWaitSub').textContent = 'They're finishing a run — watch them live!';
+      document.getElementById('duelWaitSub').textContent = "They're finishing a run — watch them live!";
       if (data.liveUid) Spectate.start(data.liveUid);
       return;
     }
