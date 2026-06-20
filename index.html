@@ -879,6 +879,31 @@
   .duel-dot  { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.12); transition: all .3s; }
   .duel-dot.won  { background: #34d399; box-shadow: 0 0 8px #34d399; }
   .duel-dot.lost { background: #f87171; }
+  /* Bottom-left notification cards */
+  .bn-card {
+    background: rgba(13,13,31,0.95); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 10px 12px; display: flex; align-items: flex-start;
+    gap: 8px; max-width: 240px; backdrop-filter: blur(12px);
+    animation: bnSlide .2s ease; pointer-events: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  @keyframes bnSlide { from { opacity:0; transform:translateX(-20px);} to { opacity:1; transform:none; } }
+  .bn-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .bn-body { flex: 1; min-width: 0; }
+  .bn-msg  { font-size: 11px; color: rgba(232,232,240,0.85); line-height: 1.4; margin-bottom: 6px; }
+  .bn-actions { display: flex; gap: 5px; }
+  .bn-btn { border: none; border-radius: 7px; padding: 4px 9px; font-size: 11px; font-weight: 800; cursor: pointer; }
+  .bn-btn.accept { background: #34d399; color: #021021; }
+  .bn-btn.reject { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+  .bn-btn.dismiss{ background: rgba(255,255,255,0.07); color: rgba(232,232,240,0.4); }
+  #bnCollapseAll  { pointer-events:auto; border:none; background:rgba(255,255,255,0.06); color:rgba(232,232,240,0.4); border-radius:8px; padding:4px 10px; font-size:10px; cursor:pointer; margin-bottom:2px; }
+  /* Game-over duel banner */
+  .go-duel-banner { background:linear-gradient(135deg,rgba(255,107,148,0.12),rgba(124,77,255,0.12)); border:1px solid rgba(255,107,148,0.3); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; align-items:center; gap:8px; font-size:12px; font-weight:700; text-align:center; width:100%; }
+  .go-duel-banner .duel-btns { display:flex; gap:8px; width:100%; }
+  .go-duel-banner .duel-btns button { flex:1; padding:8px; border-radius:8px; border:none; font-size:12px; font-weight:800; cursor:pointer; }
+  .go-duel-banner .duel-btns button:first-child { background:linear-gradient(90deg,#ff7a59,#ff6b94); color:#fff; }
+  .go-duel-banner .duel-btns button:last-child  { background:rgba(255,255,255,0.07); color:rgba(232,232,240,0.6); }
+
   .ban-grid { display: flex; flex-direction: column; gap: 7px; width: 100%; max-width: 310px; }
   .ban-opt {
     display: flex; align-items: center; gap: 12px; padding: 12px 14px;
@@ -932,7 +957,7 @@
     <button class="badge-btn" onclick="UI.openCollection()" title="Collection">📦</button>
     <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
     <button class="badge-btn" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
-    <button class="badge-btn" id="accountBtn" onclick="AuthUI.open()" title="Account">👤</button>
+    <button class="badge-btn" id="accountBtn" onclick="currentUser?Profile.view(currentUser.uid):AuthUI.open()" title="Account">👤</button>
     <button class="badge-btn" id="notifBell" onclick="Notif.toggle()" title="Notifications" style="position:relative;">
       🔔<span class="notif-dot" id="notifDot"></span>
     </button>
@@ -1078,6 +1103,14 @@
     <div id="banWaiting" style="display:none;font-size:12px;color:rgba(232,232,240,0.4);text-align:center;">⏳ Waiting for opponent's ban choice…</div>
   </div>
 
+  <!-- Duel: Wait Screen (challenger waits for challenged player) -->
+  <div id="duelWaitScreen" class="duel-overlay">
+    <div class="duel-tag">⚔️ DUEL</div>
+    <div id="duelWaitMsg" style="font-size:15px;font-weight:900;text-align:center;margin-top:8px;line-height:1.4;"></div>
+    <div id="duelWaitSub" style="font-size:11px;color:rgba(232,232,240,0.4);text-align:center;margin-top:4px;"></div>
+    <button class="btn secondary" onclick="_Duel.cancelChallenge()" style="margin-top:auto;max-width:220px;">Cancel Challenge</button>
+  </div>
+
   <!-- Duel: Round Result -->
   <div id="duelRoundResult" class="duel-overlay">
     <div class="duel-tag" id="drTag">Round 1 Result</div>
@@ -1133,6 +1166,7 @@
       <div class="duel-dot" id="duelDot1"></div>
       <div class="duel-dot" id="duelDot2"></div>
     </div>
+    <button onclick="_Duel.leave()" style="margin-left:auto;font-size:11px;color:#f87171;background:none;border:1px solid rgba(248,113,113,0.4);border-radius:6px;padding:3px 10px;cursor:pointer;">Leave</button>
   </div>
 
   <!-- Gacha Modal -->
@@ -1405,6 +1439,24 @@
 
   <!-- Toast -->
   <div id="toast"></div>
+
+  <!-- Bottom-left notification cards -->
+  <div id="bnPanel" style="position:absolute;bottom:62px;left:10px;z-index:50;display:flex;flex-direction:column-reverse;gap:6px;max-width:240px;pointer-events:none;"></div>
+
+  <!-- Mini spectate widget -->
+  <div id="spectateWidget" onclick="Spectate.expand()" style="display:none;position:absolute;bottom:10px;right:10px;z-index:48;width:105px;height:160px;border-radius:10px;overflow:hidden;cursor:pointer;border:2px solid rgba(255,107,148,0.5);">
+    <canvas id="spectateMini" width="105" height="160" style="display:block;width:100%;height:100%;"></canvas>
+    <div style="position:absolute;top:4px;left:4px;font-size:8px;font-weight:900;color:rgba(255,100,100,0.9);letter-spacing:1px;">● LIVE</div>
+    <div id="spectateScore" style="position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:11px;font-weight:900;color:#fff;text-shadow:0 1px 3px #000;"></div>
+  </div>
+
+  <!-- Full-screen spectate overlay -->
+  <div id="spectateOverlay" style="display:none;position:absolute;inset:0;z-index:49;background:#020617;">
+    <canvas id="spectateFull" width="420" height="640" style="display:block;width:100%;height:100%;"></canvas>
+    <div id="spectateFullScore" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:22px;font-weight:900;color:#fff;text-shadow:0 2px 6px #000;"></div>
+    <div style="position:absolute;top:10px;left:10px;font-size:10px;color:rgba(255,100,100,0.8);font-weight:900;letter-spacing:2px;">● LIVE</div>
+    <button onclick="Spectate.collapse()" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;">✕ Minimize</button>
+  </div>
 </div>
 
 <script>
@@ -2768,6 +2820,8 @@ const Notif = {
     this._unsubDuel?.(); this._unsubDuel = null;
   },
 
+  _seen: new Set(),
+
   async refresh() {
     if (!fbDb || !currentUser) return;
     try {
@@ -2784,13 +2838,26 @@ const Notif = {
         if (d.status !== 'pending') return;
         this._items.push({ id:doc.id, type:'fr', icon:'👋',
           msg:`<b>${esc(d.fromDisplayName||'Someone')}</b> sent you a friend request`, d });
+        if (!this._seen.has(doc.id)) {
+          this._seen.add(doc.id);
+          BottomNotif.add(doc.id, '👋', `${d.fromDisplayName||'Someone'} sent you a friend request`,
+            () => Social._acceptReq(doc.id, d.from, d.fromDisplayName||'', d.fromUsername||''),
+            () => Social._rejectReq(doc.id));
+        }
       });
       duelSnap.docs.forEach(doc => {
         const d = doc.data();
         if (d.status !== 'pending') return;
-        if (d.challenged === uid)
+        if (d.challenged === uid) {
           this._items.push({ id:doc.id, type:'duel', icon:'⚔️',
             msg:`<b>${esc(d.challengerName||'Someone')}</b> challenged you to a duel!`, d });
+          if (!this._seen.has(doc.id)) {
+            this._seen.add(doc.id);
+            BottomNotif.add(doc.id, '⚔️', `${d.challengerName||'Someone'} challenged you to a duel!`,
+              () => _Duel.acceptMidGame(doc.id),
+              () => _Duel.decline(doc.id));
+          }
+        }
       });
       respSnap.docs
         .filter(doc => ['accepted','rejected'].includes(doc.data().status))
@@ -2858,6 +2925,7 @@ const Notif = {
 
   clearAll() {
     this._items = [];
+    this._seen = new Set();
     this._updateBadge();
     this._renderPanel();
     document.getElementById("notifPanel").style.display = 'none';
@@ -2875,10 +2943,12 @@ const Social = {
     this.tab('friends', document.querySelector('.social-tab'));
   },
 
-  close() { document.getElementById("socialModal").style.display = "none"; },
+  _reqInterval: null,
+  close() { document.getElementById("socialModal").style.display = "none"; clearInterval(this._reqInterval); this._reqInterval=null; },
 
   tab(name, btn) {
     this._tab = name;
+    clearInterval(this._reqInterval); this._reqInterval=null;
     document.querySelectorAll('.social-tab').forEach(b => b.classList.remove('active'));
     btn?.classList.add('active');
     this._render(name);
@@ -2887,9 +2957,16 @@ const Social = {
   async _render(tab) {
     const body = document.getElementById("socialBody");
     body.innerHTML = '<div style="text-align:center;padding:30px;color:rgba(232,232,240,0.3);font-size:12px;">Loading…</div>';
+    clearInterval(this._reqInterval); this._reqInterval=null;
     if (tab==='friends')  await this._renderFriends(body);
     else if (tab==='search')   this._renderSearch(body);
-    else if (tab==='requests') await this._renderRequests(body);
+    else if (tab==='requests') {
+      await this._renderRequests(body);
+      this._reqInterval = setInterval(async () => {
+        if (this._tab==='requests' && document.getElementById('socialModal').style.display!=='none')
+          await this._renderRequests(document.getElementById('socialBody'));
+      }, 5000);
+    }
   },
 
   async _renderFriends(body) {
@@ -3149,7 +3226,7 @@ const Profile = {
 
     // Action buttons
     let actions = '';
-    if (isSelf) actions = '<span style="font-size:12px;color:rgba(232,232,240,0.4);padding:8px 14px;background:rgba(255,255,255,0.06);border-radius:12px;">👤 Your Profile</span>';
+    if (isSelf) actions = `<button class="prf-btn" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;" onclick="fbAuth.signOut();document.getElementById('profileModal').style.display='none'">Sign Out</button>`;
     else if (!myUid) actions = '';
     else if (isFriend) actions = `
       <button class="prf-btn fr">✓ Friends</button>
@@ -3269,8 +3346,13 @@ const _Duel = {
         winner:null, createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       });
       this.id = ref.id; currentDuelId = ref.id;
-      showToast(`⚔️ Duel invite sent to ${friendName}!`);
       this._listen(ref.id);
+      // Show wait screen
+      ['menu','socialModal','profileModal','gameOverModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+      const ws=document.getElementById('duelWaitScreen');
+      ws.style.display='flex'; menuOpen=true;
+      document.getElementById('duelWaitMsg').textContent='Waiting for ' + friendName + '…';
+      document.getElementById('duelWaitSub').textContent='Send them a notification to check their requests.';
     } catch(e) { showToast("Error: "+e.message); }
   },
 
@@ -3294,6 +3376,53 @@ const _Duel = {
     catch(e) { showToast("Error: "+e.message); }
   },
 
+  async acceptMidGame(duelId) {
+    if (!fbDb||!currentUser) return;
+    if (this.id && this.id!==duelId) { showToast("Already in a duel!"); return; }
+    if (!running) { return this.accept(duelId); }
+    // Mid-game accept — defer ban phase until run ends
+    try {
+      await fbDb.collection('duels').doc(duelId).update({
+        status:'accepted_playing', liveUid:currentUser.uid
+      });
+      this.id=duelId; currentDuelId=duelId;
+      this._listen(duelId);
+      BottomNotif.add('duel_ack_'+duelId,'⚔️','Duel accepted! Finish your run first.',null,null);
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+
+  async cancelChallenge() {
+    if (!fbDb||!this.id) return;
+    try { await fbDb.collection('duels').doc(this.id).update({status:'declined'}); }
+    catch(e) {}
+    this.exitToMenu();
+  },
+
+  async leave() {
+    if (!fbDb||!this.id||!currentUser) return;
+    if (!confirm('Leave the duel? Your opponent will be notified.')) return;
+    try { await fbDb.collection('duels').doc(this.id).update({status:'abandoned',abandonedBy:currentUser.uid}); }
+    catch(e) {}
+    this.exitToMenu();
+  },
+
+  async joinFromGameOver() {
+    if (!fbDb||!this.id) return;
+    document.getElementById('gameOverModal').style.display='none';
+    try {
+      await fbDb.collection('duels').doc(this.id).update({status:'ban_phase'});
+      const snap=await fbDb.collection('duels').doc(this.id).get();
+      this.data=snap.data();
+      this._showBanPhase();
+    } catch(e) { showToast("Error: "+e.message); }
+  },
+
+  async declineFromGameOver() {
+    if (!fbDb||!this.id) return;
+    try { await fbDb.collection('duels').doc(this.id).update({status:'declined'}); } catch(e) {}
+    currentDuelId=null; this.id=null; this.data=null; this._unsub?.(); this._unsub=null;
+  },
+
   _listen(duelId) {
     this._unsub?.(); this._unsub=null;
     if (!fbDb) return;
@@ -3308,8 +3437,36 @@ const _Duel = {
     this.data = data;
     const myUid = currentUser?.uid; if (!myUid) return;
     const oppUid = data.players.find(p=>p!==myUid);
+    const amChallenger = data.challenger === myUid;
+
+    // ── New status: opponent accepted but is mid-game ──
+    if (data.status==='accepted_playing' && amChallenger) {
+      const oppName = data.challengedName||'Opponent';
+      document.getElementById('duelWaitMsg').textContent = oppName + ' accepted!';
+      document.getElementById('duelWaitSub').textContent = 'They're finishing a run — watch them live!';
+      if (data.liveUid) Spectate.start(data.liveUid);
+      return;
+    }
+
+    // ── Abandoned: opponent left ──
+    if (data.status==='abandoned' && data.abandonedBy !== myUid) {
+      const who = amChallenger ? (data.challengedName||'Opponent') : (data.challengerName||'Opponent');
+      BottomNotif.add('abandoned_'+duelId, '⚔️', who+' left the duel.', null, null);
+      this.exitToMenu();
+      return;
+    }
+
+    // ── Declined: challenge rejected ──
+    if (data.status==='declined' && amChallenger) {
+      const who = data.challengedName||'Opponent';
+      BottomNotif.add('declined_'+duelId, '⚔️', who+' declined your duel challenge.', null, null);
+      this.exitToMenu();
+      return;
+    }
 
     if (data.status==='ban_phase') {
+      Spectate.stop();
+      document.getElementById('duelWaitScreen').style.display='none';
       const myBanDone = data.bans?.[myUid];
       const oppBanDone = data.bans?.[oppUid];
       if (!myBanDone) { this._showBanPhase(); return; }
@@ -3331,7 +3488,7 @@ const _Duel = {
     }
     if (data.status==='done') { this._showFinalResult(data); }
     // Challenger: detect opponent accepted (status changed to ban_phase)
-    if (data.status==='ban_phase' && data.challenger===myUid) {
+    if (data.status==='ban_phase' && amChallenger) {
       const banScr = document.getElementById("duelBanScreen");
       if (banScr.style.display!=='flex' && !data.bans?.[myUid]) this._showBanPhase();
     }
@@ -3428,7 +3585,8 @@ const _Duel = {
     document.getElementById("duelOppLbl").textContent=oppName;
     this._updateDots(roundNum, this.data);
     // Close overlays and start
-    ['duelBanScreen','duelRoundResult','duelFinalResult'].forEach(id=>document.getElementById(id).style.display='none');
+    Spectate.stop();
+    ['duelBanScreen','duelRoundResult','duelFinalResult','duelWaitScreen'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
     this._submitted=false;
     selectDifficulty(this.data.difficulty||'easy');
   },
@@ -3537,13 +3695,150 @@ const _Duel = {
     this._unsub?.(); this._unsub=null;
     this.id=null; this.data=null; this.myBan=null; this._submitted=false;
     currentDuelId=null; duelBannedPerks=[];
-    ['duelFinalResult','duelRoundResult','duelBanScreen','duelHUD','gameOverModal'].forEach(id=>document.getElementById(id).style.display='none');
+    Spectate.stop();
+    ['duelFinalResult','duelRoundResult','duelBanScreen','duelHUD','duelWaitScreen','gameOverModal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
     document.getElementById("menu").style.display='flex'; menuOpen=true; Music.playMenu();
   },
 };
 
 // expose Duel.onRoundEnd globally for gameOver() to call
-Object.assign(Duel, { onRoundEnd:(s)=>_Duel.onRoundEnd(s), confirmBan:()=>_Duel.confirmBan(), accept:(id)=>_Duel.accept(id), decline:(id)=>_Duel.decline(id), challenge:(uid,name)=>_Duel.challenge(uid,name), exitToMenu:()=>_Duel.exitToMenu() });
+Object.assign(Duel, { onRoundEnd:(s)=>_Duel.onRoundEnd(s), confirmBan:()=>_Duel.confirmBan(), accept:(id)=>_Duel.accept(id), decline:(id)=>_Duel.decline(id), challenge:(uid,name)=>_Duel.challenge(uid,name), exitToMenu:()=>_Duel.exitToMenu(), acceptMidGame:(id)=>_Duel.acceptMidGame(id), cancelChallenge:()=>_Duel.cancelChallenge(), leave:()=>_Duel.leave(), joinFromGameOver:()=>_Duel.joinFromGameOver(), declineFromGameOver:()=>_Duel.declineFromGameOver() });
+
+// ── BOTTOM-LEFT NOTIFICATION CARDS ──────────────────────────────────────────
+const BottomNotif = {
+  _cards: {},
+
+  add(id, icon, msg, onAccept, onDecline) {
+    if (this._cards[id]) return;
+    const panel = document.getElementById('bnPanel');
+    if (!panel) return;
+    const card = document.createElement('div');
+    card.className = 'bn-card';
+    const hasActions = onAccept || onDecline;
+    card.innerHTML = `<span class="bn-icon">${icon}</span>
+      <div class="bn-body">
+        <div class="bn-msg">${esc(msg)}</div>
+        <div class="bn-actions">
+          ${onAccept ? `<button class="bn-btn accept" onclick="BottomNotif._doAccept('${id}')">✓ Accept</button>` : ''}
+          ${onDecline ? `<button class="bn-btn reject" onclick="BottomNotif._doReject('${id}')">✗ Decline</button>` : ''}
+          <button class="bn-btn dismiss" onclick="BottomNotif.remove('${id}')">—</button>
+        </div>
+      </div>`;
+    panel.appendChild(card);
+    this._cards[id] = { card, onAccept, onDecline };
+    this._updateCollapseBtn();
+    // Auto-dismiss info cards after 8s
+    if (!hasActions) setTimeout(() => this.remove(id), 8000);
+  },
+
+  remove(id) {
+    const entry = this._cards[id];
+    if (!entry) return;
+    entry.card.remove();
+    delete this._cards[id];
+    this._updateCollapseBtn();
+  },
+
+  _doAccept(id) { const e=this._cards[id]; e?.onAccept?.(); this.remove(id); },
+  _doReject(id) { const e=this._cards[id]; e?.onDecline?.(); this.remove(id); },
+
+  collapseAll() { Object.keys(this._cards).forEach(id => this.remove(id)); },
+
+  _updateCollapseBtn() {
+    const panel = document.getElementById('bnPanel');
+    if (!panel) return;
+    let btn = document.getElementById('bnCollapseAll');
+    const n = Object.keys(this._cards).length;
+    if (n > 1 && !btn) {
+      btn = document.createElement('button');
+      btn.id = 'bnCollapseAll';
+      btn.textContent = '— Collapse all';
+      btn.onclick = () => BottomNotif.collapseAll();
+      panel.parentNode.insertBefore(btn, panel);
+    } else if (n <= 1 && btn) {
+      btn.remove();
+    }
+  }
+};
+
+// ── LIVE SPECTATING ───────────────────────────────────────────────────────────
+const Spectate = {
+  _unsub: null,
+  _miniCtx: null, _fullCtx: null,
+  _lastFrame: null,
+
+  start(uid) {
+    this.stop();
+    const mini = document.getElementById('spectateMini');
+    const full = document.getElementById('spectateFull');
+    if (mini) this._miniCtx = mini.getContext('2d');
+    if (full) this._fullCtx = full.getContext('2d');
+    const widget = document.getElementById('spectateWidget');
+    if (widget) widget.style.display = 'block';
+    if (!fbDb) return;
+    this._unsub = fbDb.collection('live_sessions')
+      .where('uid','==',uid).limit(1)
+      .onSnapshot(snap => {
+        if (snap.empty) { this._drawOffline(); return; }
+        const d = snap.docs[0].data();
+        this._lastFrame = d.frame || null;
+        const sc = d.frame?.score ?? d.score ?? '…';
+        const ss = document.getElementById('spectateScore');
+        const sfs = document.getElementById('spectateFullScore');
+        if (ss) ss.textContent = sc;
+        if (sfs) sfs.textContent = sc;
+        this._draw(this._miniCtx, 105, 160);
+        const ov = document.getElementById('spectateOverlay');
+        if (ov && ov.style.display !== 'none') this._draw(this._fullCtx, 420, 640);
+      }, () => {});
+  },
+
+  stop() {
+    this._unsub?.(); this._unsub = null;
+    this._lastFrame = null;
+    const w = document.getElementById('spectateWidget');
+    const o = document.getElementById('spectateOverlay');
+    if (w) w.style.display = 'none';
+    if (o) o.style.display = 'none';
+  },
+
+  expand() {
+    const o = document.getElementById('spectateOverlay');
+    if (o) { o.style.display = 'block'; this._draw(this._fullCtx, 420, 640); }
+  },
+  collapse() {
+    const o = document.getElementById('spectateOverlay');
+    if (o) o.style.display = 'none';
+  },
+
+  _draw(ctx, w, h) {
+    if (!ctx) return;
+    const f = this._lastFrame;
+    const s = w / 420;
+    ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, w, h);
+    if (!f) { this._drawOffline(ctx, w, h); return; }
+    // Ground hint
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, h * 0.9); ctx.lineTo(w, h * 0.9); ctx.stroke();
+    // Obstacles
+    ctx.fillStyle = '#374151';
+    (f.obstacles||[]).forEach(o => ctx.fillRect(o.x*s, o.y*s, o.w*s, o.h*s));
+    // Coins
+    ctx.fillStyle = '#ffd700';
+    (f.coins||[]).forEach(c => { ctx.beginPath(); ctx.arc(c.x*s, c.y*s, 4*s, 0, Math.PI*2); ctx.fill(); });
+    // Player
+    ctx.fillStyle = f.alive ? '#a78bfa' : '#f87171';
+    ctx.fillRect(60*s - 10*s, f.py*s - 20*s, 20*s, 30*s);
+  },
+
+  _drawOffline(ctx, w, h) {
+    if (!ctx) return;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = `${Math.round(10*w/105)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Not playing', w/2, h/2);
+  }
+};
 
 // ── LIVE SESSION TRACKING ───────────────────────────────────────────────────
 function startLiveSession() {
@@ -3566,11 +3861,19 @@ function startLiveSession() {
   sessionDoc.set(data).catch(() => {});
   liveSessionInterval = setInterval(() => {
     if (!currentLiveSessionId) return;
+    const frame = {
+      py: Math.round(playerY||0),
+      alive: running && !dead,
+      obstacles: (obstacles||[]).slice(0,8).map(o=>({x:Math.round(o.x),y:Math.round(o.y),w:Math.round(o.w||60),h:Math.round(o.h||30)})),
+      coins: (fieldCoins||[]).slice(0,12).map(c=>({x:Math.round(c.x),y:Math.round(c.y)})),
+      score,
+    };
     fbDb.collection("live_sessions").doc(currentLiveSessionId).update({
       score,
+      frame,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     }).catch(() => {});
-  }, 3000);
+  }, 1000);
 }
 
 function endLiveSession() {
@@ -3665,6 +3968,7 @@ function startGame() {
   document.getElementById("duelBanScreen").style.display = "none";
   document.getElementById("duelRoundResult").style.display = "none";
   document.getElementById("duelFinalResult").style.display = "none";
+  document.getElementById("duelWaitScreen").style.display = "none";
   document.getElementById("gachaModal").style.display = "none";
   document.getElementById("collectionModal").style.display = "none";
   document.getElementById("shopModal").style.display = "none";
@@ -3779,6 +4083,18 @@ function showGameOver(isNewBest, inDuel = false) {
 
   el.style.display = "flex";
   menuOpen = true;
+  // Duel continuation banner — shown if player accepted mid-game and just finished
+  if (currentDuelId && fbDb) {
+    fbDb.collection('duels').doc(currentDuelId).get().then(snap => {
+      const ds = snap.data();
+      if (ds?.status==='accepted_playing' && ds?.liveUid===currentUser?.uid) {
+        const banner = document.createElement('div');
+        banner.className = 'go-duel-banner';
+        banner.innerHTML = `<div>⚔️ A duel is waiting for you!</div><div class="duel-btns"><button onclick="_Duel.joinFromGameOver()">Join Ban Phase</button><button onclick="_Duel.declineFromGameOver();this.closest('.go-duel-banner').remove()">Leave Duel</button></div>`;
+        el.insertBefore(banner, el.firstChild);
+      }
+    }).catch(()=>{});
+  }
   Music.playMenu();
 }
 
@@ -4608,6 +4924,7 @@ async function renderWorldLeaderboard() {
       if (isMe) myEntryInTop = true;
       const row = document.createElement("div");
       row.className = "lb-row " + (isMe ? "you" : (tierClass[i] || ""));
+      if (!isMe) { row.style.cursor="pointer"; row.onclick=()=>Profile.view(doc.id); }
       row.innerHTML = `
         <span class="lb-rank">${medals[i] || "#" + (i+1)}</span>
         <span class="lb-name">${escHtml(d.name || "Player")}<span class="lb-mode">${d.mode || ""}</span></span>
