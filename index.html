@@ -9,19 +9,35 @@
   <link rel="manifest" href="manifest.json" />
   <style>
     :root {
-      --bg-1: #071029;
-      --bg-2: #0f172a;
+      --bg-1: #070b1c;
+      --bg-2: #0c1430;
       --accent: #ff7a59;
       --accent-2: #7c4dff;
-      --text: #e6eef8;
-      --glass: rgba(255,255,255,0.06);
+      --accent-grad: linear-gradient(135deg, #ff7a59 0%, #ff5fa2 52%, #7c4dff 100%);
+      --text: #eaf1fb;
+      --text-dim: rgba(234,241,251,0.58);
+      --text-mute: rgba(234,241,251,0.34);
+      --glass: rgba(255,255,255,0.055);
       --glass-strong: rgba(255,255,255,0.1);
+      --surface-1: rgba(255,255,255,0.035);
+      --surface-2: rgba(255,255,255,0.065);
+      --border-1: rgba(255,255,255,0.08);
+      --border-2: rgba(255,255,255,0.14);
+      --r-sm: 10px;
+      --r-md: 14px;
+      --r-lg: 18px;
+      --r-pill: 999px;
+      --shadow-1: 0 4px 16px rgba(0,0,0,0.3);
+      --shadow-2: 0 12px 34px rgba(0,0,0,0.5);
+      --shadow-glow: 0 8px 30px rgba(124,77,255,0.28);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
     body {
-      background: radial-gradient(ellipse at top, #0d1b3e 0%, #050c1a 100%);
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, #1a2456 0%, transparent 60%),
+        radial-gradient(ellipse at top, #0d1b3e 0%, #050913 100%);
       font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       color: var(--text);
       display: flex;
@@ -38,20 +54,33 @@
       max-width: 100vw;
       height: 640px;
       max-height: 100vh;
-      background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
-      border-radius: 20px;
-      box-shadow: 0 32px 80px rgba(2,6,23,0.8), 0 0 0 1px rgba(255,255,255,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.008));
+      border-radius: 22px;
+      box-shadow:
+        0 40px 100px rgba(2,6,23,0.85),
+        0 0 0 1px rgba(255,255,255,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.06);
       position: relative;
       overflow: hidden;
     }
 
     canvas {
       display: block;
-      border-radius: 20px;
+      border-radius: 22px;
       width: 100%;
       height: 100%;
       background: transparent;
     }
+
+    /* thin custom scrollbars for a cleaner look */
+    .modal-overlay::-webkit-scrollbar,
+    .collection-body-scroll::-webkit-scrollbar,
+    .ach-list::-webkit-scrollbar,
+    .lb-list::-webkit-scrollbar { width: 6px; }
+    .modal-overlay::-webkit-scrollbar-thumb,
+    .collection-body-scroll::-webkit-scrollbar-thumb,
+    .ach-list::-webkit-scrollbar-thumb,
+    .lb-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
 
     /* ── Top HUD ── */
     #ui {
@@ -69,32 +98,37 @@
     }
 
     .badge {
-      background: rgba(0,0,0,0.45);
-      border: 1px solid rgba(255,255,255,0.07);
-      padding: 5px 10px;
+      background: rgba(6,12,28,0.5);
+      border: 1px solid rgba(255,255,255,0.09);
+      padding: 5px 11px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       display: flex;
       gap: 6px;
       align-items: center;
       color: var(--text);
-      backdrop-filter: blur(6px);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     }
 
     .badge-btn {
-      background: rgba(0,0,0,0.4);
-      border: 1px solid rgba(255,255,255,0.07);
-      padding: 5px 9px;
-      border-radius: 999px;
+      background: rgba(6,12,28,0.45);
+      border: 1px solid rgba(255,255,255,0.09);
+      width: 30px; height: 30px;
+      padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
       font-weight: 700;
       cursor: pointer;
       color: var(--text);
-      font-size: 12px;
-      backdrop-filter: blur(6px);
-      transition: background .15s;
+      font-size: 13px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+      transition: background .15s, transform .1s, border-color .15s;
     }
-    .badge-btn:hover { background: rgba(255,255,255,0.1); }
+    .badge-btn:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.2); transform: translateY(-1px); }
+    .badge-btn:active { transform: translateY(0) scale(0.94); }
 
     /* ── Shared modal base ── */
     .modal-overlay {
@@ -198,15 +232,17 @@
     }
 
     .menu-logo {
-      font-size: 28px;
+      font-size: 34px;
       font-weight: 900;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
+      line-height: 1;
       background: linear-gradient(90deg, #ff7a59, #ffb86b, #7c4dff, #ff6b94, #38bdf8, #ff7a59);
       background-size: 300% 100%;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 2px;
+      margin: 4px 0 2px;
+      filter: drop-shadow(0 4px 18px rgba(124,77,255,0.35));
       animation: logoShift 5s linear infinite, logoFloat 3s ease-in-out infinite;
       display: inline-block;
     }
@@ -219,63 +255,90 @@
       50%       { transform: translateY(-4px); }
     }
 
-    .menu-sub { opacity: 0.65; font-size: 12px; margin-bottom: 8px; text-align: center; }
+    .menu-sub { color: var(--text-dim); font-size: 12px; margin-bottom: 6px; text-align: center; }
 
     .streak-banner {
-      background: linear-gradient(90deg, rgba(255,184,107,0.12), rgba(255,122,89,0.08));
-      border: 1px solid rgba(255,184,107,0.25);
-      border-radius: 12px;
-      padding: 8px 14px;
+      background: linear-gradient(90deg, rgba(255,184,107,0.14), rgba(255,122,89,0.07));
+      border: 1px solid rgba(255,184,107,0.28);
+      border-radius: var(--r-md);
+      padding: 9px 14px;
       font-size: 12px;
       text-align: center;
       width: 100%;
-      max-width: 320px;
+      max-width: 340px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
     }
     .streak-count { font-size: 20px; font-weight: 900; color: #ffb86b; }
 
-    .difficulty-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    /* Hero difficulty selector */
+    .difficulty-row { display: flex; gap: 8px; justify-content: center; width: 100%; max-width: 340px; }
+    .difficulty-row .btn {
+      flex: 1; min-width: 0; padding: 14px 8px; font-size: 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      border-radius: var(--r-md);
+    }
+    .difficulty-row .btn .diff-sub {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+      opacity: 0.7;
+    }
 
     .btn {
       border: none;
       padding: 10px 16px;
-      border-radius: 12px;
+      border-radius: var(--r-md);
       font-weight: 800;
       cursor: pointer;
       min-width: 110px;
       font-size: 13px;
       color: #021021;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-      transition: transform .08s, box-shadow .12s, filter .1s;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+      transition: transform .12s cubic-bezier(.34,1.4,.64,1), box-shadow .15s, filter .12s;
     }
-    .btn:active { transform: translateY(2px) scale(.996); }
-    .btn:hover { filter: brightness(1.08); }
+    .btn:active { transform: translateY(1px) scale(.985); }
+    .btn:hover { filter: brightness(1.07); transform: translateY(-2px); box-shadow: 0 12px 26px rgba(0,0,0,0.4); }
 
-    .easy    { background: linear-gradient(135deg,#34d399,#059669); }
-    .hard    { background: linear-gradient(135deg,#f87171,#dc2626); }
-    .extreme { background: linear-gradient(135deg,#8b5cf6,#6d28d9); }
-    .shop-btn { background: linear-gradient(90deg,#ffb86b,#ff7a59); box-shadow: 0 8px 30px rgba(255,122,89,0.25); }
-    .secondary { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.1); padding: 8px 14px; }
-    .ad-btn { background: linear-gradient(90deg,#34d399,#0891b2); color: #021021; }
+    .easy    { background: linear-gradient(135deg,#34d399,#059669); box-shadow: 0 8px 22px rgba(16,185,129,0.28); }
+    .hard    { background: linear-gradient(135deg,#fb7185,#dc2626); box-shadow: 0 8px 22px rgba(220,38,38,0.28); }
+    .extreme { background: linear-gradient(135deg,#a78bfa,#6d28d9); box-shadow: 0 8px 22px rgba(124,58,237,0.3); }
+    .shop-btn { background: linear-gradient(90deg,#ffb86b,#ff7a59); box-shadow: 0 8px 26px rgba(255,122,89,0.3); }
+    .secondary {
+      background: var(--surface-2); color: var(--text);
+      border: 1px solid var(--border-1); padding: 9px 14px;
+      box-shadow: none;
+    }
+    .secondary:hover { background: rgba(255,255,255,0.1); border-color: var(--border-2); }
+    .ad-btn { background: linear-gradient(90deg,#34d399,#0891b2); color: #021021; box-shadow: 0 8px 22px rgba(8,145,178,0.28); }
 
-    .menu-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-    .menu-hint { opacity: .55; font-size: 11px; text-align: center; }
+    .menu-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 340px; }
+    .menu-hint { color: var(--text-mute); font-size: 11px; text-align: center; }
+
+    /* menu section label */
+    .menu-section-label {
+      font-size: 10px; font-weight: 900; letter-spacing: 2.5px; text-transform: uppercase;
+      color: var(--text-mute); margin: 6px 0 -2px; text-align: center;
+      display: flex; align-items: center; gap: 8px; width: 100%; max-width: 340px; justify-content: center;
+    }
+    .menu-section-label::before, .menu-section-label::after {
+      content: ''; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    }
 
     /* ── Gacha Modal ── */
     #gachaModal { padding-top: 12px; }
 
     .gacha-type-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     .gacha-type-btn {
-      background: var(--glass);
+      background: var(--surface-2);
       border-radius: 999px;
-      padding: 6px 12px;
+      padding: 7px 14px;
       font-size: 12px;
       cursor: pointer;
-      border: 1px solid rgba(255,255,255,0.05);
-      color: var(--text);
-      font-weight: 700;
-      transition: background .15s;
+      border: 1px solid var(--border-1);
+      color: var(--text-dim);
+      font-weight: 800;
+      transition: background .15s, color .15s, transform .1s;
     }
-    .gacha-type-btn.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; }
+    .gacha-type-btn:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+    .gacha-type-btn.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; border-color: transparent; box-shadow: 0 4px 14px rgba(124,77,255,0.3); }
 
     #gachaWheel {
       border-radius: 50%;
@@ -328,16 +391,18 @@
 
     .collection-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
     .collection-tab {
-      background: var(--glass);
-      padding: 5px 10px;
+      background: var(--surface-2);
+      padding: 6px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.04);
+      border: 1px solid var(--border-1);
       cursor: pointer;
-      font-weight: 700;
-      color: var(--text);
+      font-weight: 800;
+      color: var(--text-dim);
       font-size: 11px;
+      transition: background .15s, color .15s;
     }
-    .collection-tab.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; }
+    .collection-tab:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+    .collection-tab.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; border-color: transparent; }
 
     .collection-body-scroll { flex: 1; overflow-y: auto; padding: 4px 2px; width: 100%; }
     .collection-section-title { font-size: 11px; opacity: .6; margin: 6px 0 4px; }
@@ -508,18 +573,19 @@
       top: 54px;
       left: 50%;
       transform: translateX(-50%) translateY(-8px);
-      background: rgba(30,50,80,0.95);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 8px 16px;
+      background: rgba(12,20,42,0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 9px 18px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
       z-index: 80;
       pointer-events: none;
       opacity: 0;
       transition: opacity .25s, transform .25s;
       white-space: nowrap;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -565,6 +631,13 @@
     /* ── Misc ── */
     .muted { opacity: .6; font-size: 11px; }
     .divider { width: 100%; height: 1px; background: rgba(255,255,255,0.04); flex-shrink: 0; }
+
+    /* refined modal headings (works alongside inline font-size) */
+    .modal-overlay h2 {
+      font-weight: 900;
+      letter-spacing: 0.3px;
+      color: #f4f8ff;
+    }
 
     /* ── Responsive ── */
     @media (max-width: 430px) {
@@ -700,8 +773,9 @@
   #notifPanel {
     position: absolute; top: 50px; right: 4px;
     width: min(320px, calc(100% - 8px));
-    max-height: 380px; background: #13131f;
-    border: 1px solid rgba(255,255,255,0.09);
+    max-height: 380px;
+    background: linear-gradient(180deg, #0f1834, #0a1124);
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 18px;
     box-shadow: 0 24px 70px rgba(0,0,0,0.8);
     z-index: 50; display: none; flex-direction: column; overflow: hidden;
@@ -982,41 +1056,38 @@
   <!-- Main Menu -->
   <div id="menu" class="modal-overlay modal-bg" style="display:flex;">
     <div class="menu-logo">Runner Gacha</div>
-    <p class="menu-sub">Jump over obstacles · Collect coins · Unlock rare skins</p>
+    <p class="menu-sub">Jump · Collect coins · Unlock rare skins</p>
 
     <div id="streakBanner" class="streak-banner">
       🔥 Day Streak: <span id="streakCount" class="streak-count">0</span>
       <span id="streakBonus" class="muted"> · Daily bonus ready!</span>
     </div>
 
+    <div class="menu-section-label">Select Mode</div>
     <div class="difficulty-row">
-      <button class="btn easy"    onclick="selectDifficulty('easy')">Easy</button>
-      <button class="btn hard"    onclick="selectDifficulty('hard')">Hard</button>
-      <button class="btn extreme" onclick="selectDifficulty('extreme')">Extreme</button>
+      <button class="btn easy"    onclick="selectDifficulty('easy')">Easy<span class="diff-sub">Relaxed</span></button>
+      <button class="btn hard"    onclick="selectDifficulty('hard')">Hard<span class="diff-sub">Faster</span></button>
+      <button class="btn extreme" onclick="selectDifficulty('extreme')">Extreme<span class="diff-sub">Brutal</span></button>
     </div>
 
+    <div class="menu-section-label">Earn &amp; Unlock</div>
     <div class="menu-actions">
       <button class="btn shop-btn" onclick="UI.openGacha()">🎰 Gacha Wheel</button>
       <button class="btn secondary" onclick="UI.openShop()">🛒 Coin Shop</button>
     </div>
+    <div class="menu-actions">
+      <button class="btn secondary" id="dailyBtn" onclick="claimDaily()">🎁 Daily Reward</button>
+      <button class="btn ad-btn" onclick="UI.watchAd()">▶ Watch Ad (+50 💰)</button>
+    </div>
 
+    <div class="menu-section-label">Progress</div>
     <div class="menu-actions">
       <button class="btn secondary" onclick="UI.openCollection()">📦 Collection</button>
       <button class="btn secondary" onclick="UI.openAchievements()">🏅 Achievements</button>
       <button class="btn secondary" onclick="UI.openLeaderboard()">🏆 Top Scores</button>
     </div>
 
-    <div class="menu-actions">
-      <button class="btn secondary" id="dailyBtn" onclick="claimDaily()">🎁 Daily Reward</button>
-      <button class="btn ad-btn" onclick="UI.watchAd()">▶ Watch Ad (+50 💰)</button>
-    </div>
-
-    <div class="menu-actions">
-      <button class="btn secondary" id="menuMusicBtn" onclick="cycleMenuMusic()" style="font-size:12px;">🎵 Music: —</button>
-      <button class="btn secondary" id="menuMusicToggle" onclick="toggleMusic()" style="font-size:12px;">🎵 Music: On</button>
-      <button class="btn secondary" id="menuSfxToggle"   onclick="toggleSfx()"   style="font-size:12px;">🔔 SFX: On</button>
-    </div>
-
+    <div class="menu-section-label">Social</div>
     <div class="menu-actions">
       <button class="btn secondary" onclick="Social.open()">👥 Friends &amp; Duels</button>
       <button class="btn secondary" onclick="currentUser?Profile.view(currentUser.uid):AuthUI.open()" id="menuAccountBtn">👤 Account</button>
@@ -1024,9 +1095,17 @@
     <div class="menu-actions" id="adminMenuRow" style="display:none;">
       <button class="btn secondary" onclick="Admin.open()" style="background:rgba(255,107,148,0.1);border:1px solid rgba(255,107,148,0.3);color:#ff6b94;">🛡️ Admin Panel</button>
     </div>
+
+    <div class="menu-section-label">Settings</div>
     <div class="menu-actions">
-      <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">🌍 Share the Game</a>
+      <button class="btn secondary" id="menuMusicBtn" onclick="cycleMenuMusic()" style="font-size:12px;">🎵 Music: —</button>
+      <button class="btn secondary" id="menuMusicToggle" onclick="toggleMusic()" style="font-size:12px;">🎵 Music: On</button>
+      <button class="btn secondary" id="menuSfxToggle"   onclick="toggleSfx()"   style="font-size:12px;">🔔 SFX: On</button>
     </div>
+    <div class="menu-actions">
+      <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center;">🌍 Share the Game</a>
+    </div>
+
     <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
     <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
   </div>
