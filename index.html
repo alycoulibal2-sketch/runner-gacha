@@ -809,6 +809,11 @@
     justify-content: center; font-size: 26px; font-weight: 900;
     border: 3px solid rgba(255,255,255,0.1); flex-shrink: 0;
   }
+  .prf-status { font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 999px; margin-bottom: 6px; display: inline-block; }
+  .prf-status.online  { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .prf-status.offline { background: rgba(255,255,255,0.05); color: rgba(232,232,240,0.35); border: 1px solid rgba(255,255,255,0.08); }
+  .prf-status.ingame  { background: rgba(124,77,255,0.15); color: #a78bfa; border: 1px solid rgba(124,77,255,0.3); }
+  .prf-status.duel    { background: rgba(255,107,148,0.15); color: #ff6b94; border: 1px solid rgba(255,107,148,0.3); }
   .prf-name { font-size: 20px; font-weight: 900; margin-bottom: 2px; }
   .prf-tag  { font-size: 11px; color: rgba(232,232,240,0.38); font-weight: 700; margin-bottom: 10px; }
   .prf-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
@@ -3199,16 +3204,40 @@ const Profile = {
     const isSelf = currentUser && currentUser.uid === uid;
     const myUid = currentUser?.uid;
 
-    // Friendship status
+    // Friendship status + live presence
     let isFriend=false, isPending=false;
-    if (!isSelf && fbDb && myUid) {
-      const fid = [myUid,uid].sort().join('_');
-      const [fSnap, rSnap] = await Promise.all([
-        fbDb.collection('friendships').doc(fid).get(),
-        fbDb.collection('friend_requests').where('from','==',myUid).where('to','==',uid).where('status','==','pending').get(),
-      ]);
-      isFriend = fSnap.exists;
-      isPending = !rSnap.empty;
+    let statusBadge = '';
+    if (fbDb) {
+      const queries = [
+        fbDb.collection('presence').doc(uid).get(),
+        fbDb.collection('live_sessions').where('uid','==',uid).where('status','==','playing').limit(1).get(),
+        fbDb.collection('duels').where('players','array-contains',uid).limit(5).get(),
+      ];
+      if (!isSelf && myUid) {
+        const fid = [myUid,uid].sort().join('_');
+        queries.push(fbDb.collection('friendships').doc(fid).get());
+        queries.push(fbDb.collection('friend_requests').where('from','==',myUid).where('to','==',uid).where('status','==','pending').get());
+      }
+      const results = await Promise.all(queries).catch(()=>[]);
+      const [presSnap, liveSnap, duelSnap, fSnap, rSnap] = results;
+      if (!isSelf && fSnap) { isFriend = fSnap.exists; isPending = rSnap && !rSnap.empty; }
+
+      // Determine live status
+      const activeDuel = duelSnap?.docs.find(d=>['playing','ban_phase','accepted_playing'].includes(d.data().status));
+      if (activeDuel) {
+        statusBadge = '<div class="prf-status duel">⚔️ In Duel</div>';
+      } else if (liveSnap && !liveSnap.empty) {
+        const liveData = liveSnap.docs[0].data();
+        statusBadge = `<div class="prf-status ingame" onclick="Spectate.start('${uid}');document.getElementById('profileModal').style.display='none'" style="cursor:pointer;">🎮 In Game — Score: ${liveData.score||0} <span style="font-size:9px;opacity:0.6;">(tap to spectate)</span></div>`;
+      } else if (presSnap?.exists) {
+        const p = presSnap.data();
+        const ago = Date.now() - (p.lastSeen?.toMillis?.() || 0);
+        if (p.online && ago < 120000) {
+          statusBadge = '<div class="prf-status online">🟢 Online</div>';
+        } else if (p.lastSeen) {
+          statusBadge = `<div class="prf-status offline">⚫ Last seen ${fmtAgoSocial(p.lastSeen)}</div>`;
+        }
+      }
     }
 
     const dn = data.displayName || data.username || 'Unknown';
@@ -3280,6 +3309,7 @@ const Profile = {
         <div class="prf-avatar" style="background:${uidColor(uid)}">${dn[0].toUpperCase()}</div>
         <div class="prf-name">${esc(dn)}</div>
         <div class="prf-tag">#${esc(uname)}</div>
+        ${statusBadge}
         ${data.hasPass?'<div class="prf-pass-badge">⭐ PASS HOLDER</div>':''}
         <div class="prf-actions">${actions}</div>
       </div>
