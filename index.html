@@ -5410,7 +5410,7 @@ const Admin = {
       if (names.length) update[`ownedSkins.${type}`] = firebase.firestore.FieldValue.arrayUnion(...names);
     });
     try {
-      await fbDb.collection("users").doc(uid).set(update, {merge:true});
+      await fbDb.collection("users").doc(uid).update(update);
       const label = {commun:"Common",rare:"Rare",epic:"Epic",legendaire:"Legendary",mythique:"Mythic"}[rarity]||rarity;
       showToast(`✅ Gave all ${label} skins to @${this._username}`);
     } catch(e) { showToast(`❌ ${e.message}`); }
@@ -5419,9 +5419,9 @@ const Admin = {
   async giveSkin(uid, skinName, type) {
     if (!fbDb) return;
     try {
-      await fbDb.collection("users").doc(uid).set(
-        {ownedSkins: {[type]: firebase.firestore.FieldValue.arrayUnion(skinName)}}, {merge:true}
-      );
+      await fbDb.collection("users").doc(uid).update({
+        [`ownedSkins.${type}`]: firebase.firestore.FieldValue.arrayUnion(skinName)
+      });
       showToast(`✅ Gave "${skinName}" to @${this._username}`);
     } catch(e) { showToast(`❌ ${e.message}`); }
   },
@@ -5434,7 +5434,7 @@ const Admin = {
       if (names.length) update[`ownedSkins.${type}`] = firebase.firestore.FieldValue.arrayUnion(...names);
     });
     try {
-      await fbDb.collection("users").doc(uid).set(update, {merge:true});
+      await fbDb.collection("users").doc(uid).update(update);
       showToast(`✅ Gave ALL skins to @${this._username}`);
     } catch(e) { showToast(`❌ ${e.message}`); }
   },

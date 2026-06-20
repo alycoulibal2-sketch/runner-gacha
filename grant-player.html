@@ -197,7 +197,7 @@ async function runQuickGrant(rarity) {
         .map(s => s.name);
       if (names.length) update[`ownedSkins.${type}`] = firebase.firestore.FieldValue.arrayUnion(...names);
     });
-    await db.collection('users').doc(uid).set(update, {merge:true});
+    await db.collection('users').doc(uid).update(update);
     log(`✅ Done! Skins granted successfully.`, 'ok');
   } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
 }
@@ -254,19 +254,15 @@ async function runCustomGrant() {
       const skin = ALL_SKINS.find(s => s.name.toLowerCase() === name.toLowerCase());
       if (!skin) { log(`⚠ Unknown skin: "${name}" — skipped`, 'err'); return; }
       const key = `ownedSkins.${skin.type}`;
-      if (!update[key]) update[key] = firebase.firestore.FieldValue.arrayUnion(skin.name);
-      else {
-        // Accumulate multiple arrayUnion calls into one by rebuilding
-        update[key] = firebase.firestore.FieldValue.arrayUnion(
-          ...((update[key]._elements)||[skin.name]), skin.name
-        );
-      }
+      if (!update[key]) update[key] = [skin.name];
+      else update[key].push(skin.name);
     });
-    const validKeys = Object.keys(update).filter(k => update[k]);
-    if (!validKeys.length) { log('No valid skins to grant.', 'err'); return; }
     const finalUpdate = {};
-    validKeys.forEach(k => { finalUpdate[k] = update[k]; });
-    await db.collection('users').doc(uid).set(finalUpdate, {merge:true});
+    Object.entries(update).forEach(([k,v]) => {
+      finalUpdate[k] = firebase.firestore.FieldValue.arrayUnion(...v);
+    });
+    if (!Object.keys(finalUpdate).length) { log('No valid skins to grant.', 'err'); return; }
+    await db.collection('users').doc(uid).update(finalUpdate);
     log('✅ Done! Custom skins granted.', 'ok');
   } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
 }
