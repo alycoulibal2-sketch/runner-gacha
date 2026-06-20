@@ -5291,27 +5291,32 @@ const Admin = {
     this._uid = uid; this._username = username; this._displayName = displayName;
     const res = document.getElementById("adminSearchResults");
     const panel = document.getElementById("adminActionPanel");
-    let banned = false;
+    let banned = false, hasPassVal = false, currentCoins = 0;
     try {
       const snap = await fbDb.collection("users").doc(uid).get();
-      if (snap.exists) banned = snap.data().banned === true;
+      if (snap.exists) {
+        const d = snap.data();
+        banned = d.banned === true;
+        hasPassVal = d.hasPass === true;
+        currentCoins = d.coins || 0;
+      }
     } catch(_) {}
     res.innerHTML = `<div class="friend-row" style="border:1px solid rgba(255,107,148,0.35);cursor:default;">
       <div class="fr-avatar" style="background:${uidColor(uid)}">${(displayName||username||"?")[0].toUpperCase()}</div>
       <div class="fr-info">
         <div class="fr-name">${esc(displayName||username||"?")}</div>
-        <div class="fr-sub">@${esc(username)} · ${banned ? "🚫 Banned" : "🟢 Active"}</div>
+        <div class="fr-sub">@${esc(username)} · ${banned ? "🚫 Banned" : "🟢 Active"} · 💰 ${currentCoins.toLocaleString()} · ${hasPassVal ? "⭐ Pass" : "No Pass"}</div>
       </div>
     </div>`;
     panel.style.display = "block";
-    panel.innerHTML = this._buildActionPanel(uid, username, banned);
+    panel.innerHTML = this._buildActionPanel(uid, username, banned, hasPassVal);
   },
 
   _rc(r) {
     return {commun:"#94a3b8",rare:"#38bdf8",epic:"#a855f7",legendaire:"#ffb86b",mythique:"#ff6b94"}[r]||"#fff";
   },
 
-  _buildActionPanel(uid, username, banned) {
+  _buildActionPanel(uid, username, banned, hasPassVal) {
     const rarities = ["commun","rare","epic","legendaire","mythique"];
     const rarLabels = {commun:"Common",rare:"Rare",epic:"Epic",legendaire:"Legendary",mythique:"Mythic"};
     const rarBtns = rarities.map(r =>
@@ -5325,7 +5330,30 @@ const Admin = {
     const banBg     = banned ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)";
     const banBorder = banned ? "rgba(52,211,153,0.35)" : "rgba(248,113,113,0.35)";
     const banLabel  = banned ? "✓ Unban Player" : "🚫 Ban Player";
+    const passColor  = hasPassVal ? "#f87171" : "#ffb86b";
+    const passBg     = hasPassVal ? "rgba(248,113,113,0.12)" : "rgba(255,184,107,0.12)";
+    const passBorder = hasPassVal ? "rgba(248,113,113,0.35)" : "rgba(255,184,107,0.35)";
+    const passLabel  = hasPassVal ? "✕ Revoke Pass" : "⭐ Grant Runner Pass";
     return `
+      <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">GIVE COINS</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <input id="adminCoinAmt" type="number" min="1" value="1000" placeholder="Amount"
+          style="width:110px;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);
+          background:#1c1c2e;color:#e8e8f0;font-size:12px;outline:none;"/>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          ${[100,500,1000,5000,10000].map(n =>
+            `<button onclick="document.getElementById('adminCoinAmt').value=${n}"
+              style="font-size:9px;padding:3px 7px;border-radius:6px;cursor:pointer;
+              border:1px solid rgba(250,204,21,0.3);background:rgba(250,204,21,0.08);color:#facc15;font-weight:600;">
+              ${n>=1000?(n/1000)+"k":n}</button>`
+          ).join("")}
+        </div>
+        <button onclick="Admin.giveCoins('${uid}')"
+          style="font-size:10px;padding:5px 12px;border-radius:8px;cursor:pointer;
+          border:1px solid rgba(250,204,21,0.4);background:rgba(250,204,21,0.12);color:#facc15;font-weight:700;">
+          💰 Add Coins</button>
+      </div>
+
       <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">GIVE RARITY BUNDLE</div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;">${rarBtns}</div>
 
@@ -5346,6 +5374,10 @@ const Admin = {
           style="font-size:10px;padding:5px 12px;border-radius:8px;cursor:pointer;
           border:1px solid rgba(52,211,153,0.4);background:rgba(52,211,153,0.12);color:#34d399;font-weight:700;">
           🎁 Give All Skins</button>
+        <button onclick="Admin.togglePass('${uid}',${hasPassVal})"
+          style="font-size:10px;padding:5px 12px;border-radius:8px;cursor:pointer;
+          border:1px solid ${passBorder};background:${passBg};color:${passColor};font-weight:700;">
+          ${passLabel}</button>
         <button id="adminBanBtn" onclick="Admin.toggleBan('${uid}',${banned})"
           style="font-size:10px;padding:5px 12px;border-radius:8px;cursor:pointer;
           border:1px solid ${banBorder};background:${banBg};color:${banColor};font-weight:700;">
@@ -5404,6 +5436,28 @@ const Admin = {
     try {
       await fbDb.collection("users").doc(uid).set(update, {merge:true});
       showToast(`✅ Gave ALL skins to @${this._username}`);
+    } catch(e) { showToast(`❌ ${e.message}`); }
+  },
+
+  async giveCoins(uid) {
+    if (!fbDb) return;
+    const amt = parseInt(document.getElementById("adminCoinAmt")?.value) || 0;
+    if (amt <= 0) { showToast("Enter a positive coin amount."); return; }
+    try {
+      await fbDb.collection("users").doc(uid).set(
+        {coins: firebase.firestore.FieldValue.increment(amt)}, {merge:true}
+      );
+      showToast(`✅ Added ${amt.toLocaleString()} coins to @${this._username}`);
+    } catch(e) { showToast(`❌ ${e.message}`); }
+  },
+
+  async togglePass(uid, currentlyHas) {
+    if (!fbDb) return;
+    const newVal = !currentlyHas;
+    try {
+      await fbDb.collection("users").doc(uid).set({hasPass: newVal}, {merge:true});
+      showToast(newVal ? `⭐ Runner Pass granted to @${this._username}` : `✕ Runner Pass revoked from @${this._username}`);
+      this._selectUser(uid, this._username, this._displayName);
     } catch(e) { showToast(`❌ ${e.message}`); }
   },
 

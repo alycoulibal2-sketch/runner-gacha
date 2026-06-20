@@ -47,6 +47,20 @@
     <div class="row"><label>Target UID</label><input id="targetUid" placeholder="Firebase UID"/></div>
 
     <div class="section">
+      <div class="section-title">Give Coins</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="coinAmt" type="number" min="1" value="1000" style="width:120px;"/>
+        <div class="quick-btns" style="margin:0;">
+          <button class="qbtn" style="color:#facc15;border-color:#facc1555;" onclick="document.getElementById('coinAmt').value=500">500</button>
+          <button class="qbtn" style="color:#facc15;border-color:#facc1555;" onclick="document.getElementById('coinAmt').value=1000">1k</button>
+          <button class="qbtn" style="color:#facc15;border-color:#facc1555;" onclick="document.getElementById('coinAmt').value=5000">5k</button>
+          <button class="qbtn" style="color:#facc15;border-color:#facc1555;" onclick="document.getElementById('coinAmt').value=10000">10k</button>
+        </div>
+        <button class="btn" style="margin-top:0;width:auto;padding:8px 16px;" onclick="runGiveCoins()">💰 Add Coins</button>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title">Quick Presets</div>
       <div class="quick-btns">
         <button class="qbtn" style="color:#ffb86b;border-color:#ffb86b55;" onclick="runQuickGrant('legendaire')">All Legendary</button>
@@ -55,7 +69,13 @@
         <button class="qbtn" style="color:#38bdf8;border-color:#38bdf855;" onclick="runQuickGrant('rare')">All Rare</button>
         <button class="qbtn" style="color:#34d399;border-color:#34d39955;" onclick="runQuickGrant('all')">All Skins</button>
       </div>
-      <div style="display:flex;gap:6px;">
+    </div>
+
+    <div class="section">
+      <div class="section-title">Gamepasses &amp; Account</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-success" style="margin-top:0;" onclick="runTogglePass(true)">⭐ Grant Runner Pass</button>
+        <button class="btn btn-danger" style="margin-top:0;" onclick="runTogglePass(false)">✕ Revoke Pass</button>
         <button class="btn btn-danger" style="margin-top:0;" onclick="runBan(true)">🚫 Ban Player</button>
         <button class="btn btn-success" style="margin-top:0;" onclick="runBan(false)">✓ Unban Player</button>
       </div>
@@ -179,6 +199,31 @@ async function runQuickGrant(rarity) {
     });
     await db.collection('users').doc(uid).set(update, {merge:true});
     log(`✅ Done! Skins granted successfully.`, 'ok');
+  } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
+}
+
+async function runGiveCoins() {
+  const uid = document.getElementById('targetUid').value.trim();
+  const amt = parseInt(document.getElementById('coinAmt').value) || 0;
+  if (!uid) { alert('Enter a target UID first.'); return; }
+  if (amt <= 0) { alert('Enter a positive coin amount.'); return; }
+  clearLog();
+  log(`Target: ${uid}  ·  Adding ${amt.toLocaleString()} coins`, 'dim');
+  try {
+    await db.collection('users').doc(uid).set(
+      {coins: firebase.firestore.FieldValue.increment(amt)}, {merge:true}
+    );
+    log(`✅ Added ${amt.toLocaleString()} coins.`, 'ok');
+  } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
+}
+
+async function runTogglePass(grant) {
+  const uid = document.getElementById('targetUid').value.trim();
+  if (!uid) { alert('Enter a target UID first.'); return; }
+  clearLog();
+  try {
+    await db.collection('users').doc(uid).set({hasPass: grant}, {merge:true});
+    log(grant ? '⭐ Runner Pass granted.' : '✕ Runner Pass revoked.', grant ? 'ok' : 'err');
   } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
 }
 
