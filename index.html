@@ -3779,7 +3779,7 @@ const Spectate = {
     this._unsub = fbDb.collection('live_sessions')
       .where('uid','==',uid).limit(1)
       .onSnapshot(snap => {
-        if (snap.empty) { this._drawOffline(); return; }
+        if (snap.empty) { this._drawOffline(this._miniCtx, 105, 160); return; }
         const d = snap.docs[0].data();
         this._lastFrame = d.frame || null;
         const sc = d.frame?.score ?? d.score ?? '…';
@@ -3827,8 +3827,9 @@ const Spectate = {
     ctx.fillStyle = '#ffd700';
     (f.coins||[]).forEach(c => { ctx.beginPath(); ctx.arc(c.x*s, c.y*s, 4*s, 0, Math.PI*2); ctx.fill(); });
     // Player
+    const fpx = (f.px ?? 70) * s;
     ctx.fillStyle = f.alive ? '#a78bfa' : '#f87171';
-    ctx.fillRect(60*s - 10*s, f.py*s - 20*s, 20*s, 30*s);
+    ctx.fillRect(fpx - 10*s, f.py*s - 20*s, 20*s, 30*s);
   },
 
   _drawOffline(ctx, w, h) {
@@ -3862,8 +3863,9 @@ function startLiveSession() {
   liveSessionInterval = setInterval(() => {
     if (!currentLiveSessionId) return;
     const frame = {
-      py: Math.round(playerY||0),
-      alive: running && !dead,
+      px: Math.round(player.x),
+      py: Math.round(player.y),
+      alive: running,
       obstacles: (obstacles||[]).slice(0,8).map(o=>({x:Math.round(o.x),y:Math.round(o.y),w:Math.round(o.w||60),h:Math.round(o.h||30)})),
       coins: (fieldCoins||[]).slice(0,12).map(c=>({x:Math.round(c.x),y:Math.round(c.y)})),
       score,
@@ -5218,6 +5220,19 @@ try {
           updateAccountBtn(true);
           showToast(`👋 Welcome back, ${getDisplayName()}!`);
           Notif.init(user.uid);
+          // Presence: mark online
+          if (fbDb) {
+            fbDb.collection('presence').doc(user.uid).set({
+              uid: user.uid, online: true, lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+            }, {merge:true}).catch(()=>{});
+            if (!window._presenceInterval) {
+              window._presenceInterval = setInterval(()=>{
+                if (fbDb && currentUser) fbDb.collection('presence').doc(currentUser.uid).update({
+                  lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+                }).catch(()=>{});
+              }, 30000);
+            }
+          }
           // Always refresh public profile on login so the player is searchable
           const uname = (S.get("rg-username","") || "").toLowerCase();
           if (uname && fbDb) {
@@ -5238,6 +5253,8 @@ try {
       Notif.destroy();
       Notif._items = [];
       Notif._updateBadge?.();
+      clearInterval(window._presenceInterval); window._presenceInterval = null;
+      if (fbDb && user?.uid) fbDb.collection('presence').doc(user.uid).update({online:false,lastSeen:firebase.firestore.FieldValue.serverTimestamp()}).catch(()=>{});
     }
   });
 } catch (e) {
