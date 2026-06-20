@@ -2,21 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <title>Grant Player · One-Shot</title>
+  <title>Grant Player · Admin Tool</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Inter,system-ui,sans-serif;background:#0a0a0f;color:#e8e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-    .card{background:#13131f;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:36px;width:460px;max-width:100%}
+    .card{background:#13131f;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:36px;width:520px;max-width:100%}
     h1{font-size:18px;font-weight:900;margin-bottom:4px}
     .sub{font-size:12px;color:rgba(232,232,240,0.5);margin-bottom:24px}
     .row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
     label{font-size:11px;font-weight:700;color:rgba(232,232,240,0.5);text-transform:uppercase;letter-spacing:1px}
-    input{padding:10px 14px;background:#1c1c2e;border:1px solid rgba(255,255,255,0.07);border-radius:10px;color:#e8e8f0;font-size:14px;font-family:inherit;outline:none}
-    input:focus{border-color:#7c4dff}
+    input,select{padding:10px 14px;background:#1c1c2e;border:1px solid rgba(255,255,255,0.07);border-radius:10px;color:#e8e8f0;font-size:14px;font-family:inherit;outline:none}
+    input:focus,select:focus{border-color:#7c4dff}
     .btn{width:100%;padding:12px;background:#7c4dff;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;margin-top:8px}
     .btn:hover{filter:brightness(1.1)}
     .btn:disabled{opacity:0.5;cursor:default}
-    .log{margin-top:20px;background:#0a0a0f;border-radius:10px;padding:14px;font-size:12px;line-height:1.8;min-height:60px;white-space:pre-wrap;word-break:break-all}
+    .btn-danger{background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;}
+    .btn-success{background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);color:#34d399;}
+    .section{margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.07);}
+    .section-title{font-size:11px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;}
+    .quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+    .qbtn{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid;background:transparent;}
+    .log{margin-top:20px;background:#0a0a0f;border-radius:10px;padding:14px;font-size:12px;line-height:1.8;min-height:60px;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow-y:auto;}
     .ok{color:#34d399}.err{color:#f87171}.dim{color:rgba(232,232,240,0.4)}
     .login{display:flex;flex-direction:column;gap:12px}
     .login h2{font-size:15px;font-weight:700;margin-bottom:4px}
@@ -25,8 +31,8 @@
 <body>
 
 <div class="card">
-  <h1>Grant Player · One-Shot</h1>
-  <p class="sub">Sign in as admin, then grant skins + score to the target UID.</p>
+  <h1>🛡️ Admin Grant Tool</h1>
+  <p class="sub">Sign in as admin, then grant skins or ban/unban players.</p>
 
   <!-- Login -->
   <div id="loginBox" class="login">
@@ -38,14 +44,31 @@
 
   <!-- Grant form (shown after login) -->
   <div id="grantBox" style="display:none">
-    <div class="row"><label>Target UID</label><input id="targetUid" value="SEbAruA3ZPRrgENJC0cvIGXrYln1"/></div>
-    <div class="row"><label>Score to Set (Best)</label><input id="scoreVal" type="number" value="63"/></div>
-    <div class="row"><label>Mode</label><input id="modeVal" value="Extreme"/></div>
-    <div class="row"><label>Skins to Add (comma-separated)</label><input id="skinNames" value="Thunder King,Thunder Plains,Thunder Wall"/></div>
-    <button class="btn" id="runBtn" onclick="runGrant()">Run Grant</button>
+    <div class="row"><label>Target UID</label><input id="targetUid" placeholder="Firebase UID"/></div>
+
+    <div class="section">
+      <div class="section-title">Quick Presets</div>
+      <div class="quick-btns">
+        <button class="qbtn" style="color:#ffb86b;border-color:#ffb86b55;" onclick="runQuickGrant('legendaire')">All Legendary</button>
+        <button class="qbtn" style="color:#ff6b94;border-color:#ff6b9455;" onclick="runQuickGrant('mythique')">All Mythic</button>
+        <button class="qbtn" style="color:#a855f7;border-color:#a855f755;" onclick="runQuickGrant('epic')">All Epic</button>
+        <button class="qbtn" style="color:#38bdf8;border-color:#38bdf855;" onclick="runQuickGrant('rare')">All Rare</button>
+        <button class="qbtn" style="color:#34d399;border-color:#34d39955;" onclick="runQuickGrant('all')">All Skins</button>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-danger" style="margin-top:0;" onclick="runBan(true)">🚫 Ban Player</button>
+        <button class="btn btn-success" style="margin-top:0;" onclick="runBan(false)">✓ Unban Player</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Custom Skin Grant</div>
+      <div class="row"><label>Skins to Add (comma-separated)</label><input id="skinNames" placeholder="Dragon Flame, Sacred Temple, Thunder Wall"/></div>
+      <button class="btn" id="runBtn" onclick="runCustomGrant()">Grant Custom Skins</button>
+    </div>
   </div>
 
-  <div class="log dim" id="log">Waiting…</div>
+  <div class="log dim" id="log">Sign in to get started.</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -70,16 +93,52 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-const SKIN_TYPES = {
-  "Thunder King":   "player",
-  "Thunder Plains": "background",
-  "Thunder Wall":   "obstacle",
-};
+// All skins organised by rarity and type
+const ALL_SKINS = [
+  {name:"Crimson Block",rarity:"commun",type:"player"},{name:"Sapphire Block",rarity:"commun",type:"player"},
+  {name:"Jade Block",rarity:"commun",type:"player"},{name:"Obsidian Block",rarity:"commun",type:"player"},
+  {name:"Ivory Block",rarity:"commun",type:"player"},{name:"Coral Block",rarity:"commun",type:"player"},
+  {name:"Slate Block",rarity:"commun",type:"player"},{name:"Amber Block",rarity:"commun",type:"player"},
+  {name:"Starfield",rarity:"commun",type:"background"},{name:"Ocean Floor",rarity:"commun",type:"background"},
+  {name:"Midnight Forest",rarity:"commun",type:"background"},{name:"Desert Dusk",rarity:"commun",type:"background"},
+  {name:"Arctic Plain",rarity:"commun",type:"background"},{name:"Storm Clouds",rarity:"commun",type:"background"},
+  {name:"Rolling Hills",rarity:"commun",type:"background"},{name:"Iron Block",rarity:"commun",type:"obstacle"},
+  {name:"Stone Wall",rarity:"commun",type:"obstacle"},{name:"Cracked Brick",rarity:"commun",type:"obstacle"},
+  {name:"Rust Cube",rarity:"commun",type:"obstacle"},{name:"Concrete Slab",rarity:"commun",type:"obstacle"},
+  {name:"Neon Edge",rarity:"rare",type:"player"},{name:"Circuit Board",rarity:"rare",type:"player"},
+  {name:"Arctic Fox",rarity:"rare",type:"player"},{name:"Lava Flow",rarity:"rare",type:"player"},
+  {name:"Deep Ocean",rarity:"rare",type:"player"},{name:"Forest Spirit",rarity:"rare",type:"player"},
+  {name:"Chrome Knight",rarity:"rare",type:"player"},{name:"Northern Lights",rarity:"rare",type:"background"},
+  {name:"Cyber City",rarity:"rare",type:"background"},{name:"Undersea Realm",rarity:"rare",type:"background"},
+  {name:"Sakura Storm",rarity:"rare",type:"background"},{name:"Blood Moon",rarity:"rare",type:"background"},
+  {name:"Neon Grid",rarity:"rare",type:"background"},{name:"Volcanic Sky",rarity:"rare",type:"background"},
+  {name:"Chrome Steel",rarity:"rare",type:"obstacle"},{name:"Carbon Fiber",rarity:"rare",type:"obstacle"},
+  {name:"Ice Crystal",rarity:"rare",type:"obstacle"},{name:"Copper Vein",rarity:"rare",type:"obstacle"},
+  {name:"Glass Prism",rarity:"rare",type:"obstacle"},{name:"Vine Wall",rarity:"rare",type:"obstacle"},
+  {name:"Plasma Core",rarity:"epic",type:"player"},{name:"Void Walker",rarity:"epic",type:"player"},
+  {name:"Crystal Heart",rarity:"epic",type:"player"},{name:"Shadow Form",rarity:"epic",type:"player"},
+  {name:"Quantum Shift",rarity:"epic",type:"player"},{name:"Galactic Storm",rarity:"epic",type:"background"},
+  {name:"Digital Rain",rarity:"epic",type:"background"},{name:"Hyperdrive",rarity:"epic",type:"background"},
+  {name:"Ethereal Mist",rarity:"epic",type:"background"},{name:"Thunder Plains",rarity:"epic",type:"background"},
+  {name:"Vortex",rarity:"epic",type:"background"},{name:"Energy Barrier",rarity:"epic",type:"obstacle"},
+  {name:"Dark Matter",rarity:"epic",type:"obstacle"},{name:"Laser Grid",rarity:"epic",type:"obstacle"},
+  {name:"Plasma Wall",rarity:"epic",type:"obstacle"},
+  {name:"Dragon Flame",rarity:"legendaire",type:"player"},{name:"Golden God",rarity:"legendaire",type:"player"},
+  {name:"Thunder King",rarity:"legendaire",type:"player"},{name:"Solar Phoenix",rarity:"legendaire",type:"player"},
+  {name:"Dragon Realm",rarity:"legendaire",type:"background"},{name:"Sacred Temple",rarity:"legendaire",type:"background"},
+  {name:"Inferno Sky",rarity:"legendaire",type:"background"},{name:"Dragon Scale",rarity:"legendaire",type:"obstacle"},
+  {name:"Royal Decree",rarity:"legendaire",type:"obstacle"},{name:"Thunder Wall",rarity:"legendaire",type:"obstacle"},
+  {name:"Cosmic God",rarity:"mythique",type:"player"},{name:"Time Rift",rarity:"mythique",type:"player"},
+  {name:"Void Realm",rarity:"mythique",type:"background"},{name:"Dimension Break",rarity:"mythique",type:"background"},
+  {name:"Reality Wall",rarity:"mythique",type:"obstacle"},
+];
 
 function log(msg, cls='') {
   const el = document.getElementById('log');
   el.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
 }
+function clearLog() { document.getElementById('log').innerHTML = ''; }
 
 auth.onAuthStateChanged(u => {
   if (!u) return;
@@ -90,98 +149,81 @@ auth.onAuthStateChanged(u => {
   }
   document.getElementById('loginBox').style.display = 'none';
   document.getElementById('grantBox').style.display = 'block';
-  document.getElementById('log').textContent = '';
+  clearLog();
   log(`✅ Signed in as ${u.email}`, 'ok');
-  log('Ready. Click "Run Grant" to proceed.', 'dim');
+  log('Ready.', 'dim');
 });
 
 async function doLogin() {
   const email = document.getElementById('email').value.trim();
   const pw    = document.getElementById('pw').value;
   document.getElementById('loginErr').textContent = '';
-  try {
-    await auth.signInWithEmailAndPassword(email, pw);
-  } catch(ex) {
-    document.getElementById('loginErr').textContent = ex.message;
-  }
+  try { await auth.signInWithEmailAndPassword(email, pw); }
+  catch(ex) { document.getElementById('loginErr').textContent = ex.message; }
 }
 
-async function runGrant() {
-  const btn = document.getElementById('runBtn');
-  btn.disabled = true;
-  btn.textContent = 'Running…';
-  document.getElementById('log').textContent = '';
-
-  const uid      = document.getElementById('targetUid').value.trim();
-  const score    = parseInt(document.getElementById('scoreVal').value) || 63;
-  const mode     = document.getElementById('modeVal').value.trim() || 'Extreme';
-  const skinList = document.getElementById('skinNames').value.split(',').map(s => s.trim()).filter(Boolean);
-
-  log(`Target UID: ${uid}`, 'dim');
-  log(`Score: ${score} · Mode: ${mode}`, 'dim');
-  log(`Skins: ${skinList.join(', ')}`, 'dim');
-  log('─'.repeat(40), 'dim');
-
+async function runQuickGrant(rarity) {
+  const uid = document.getElementById('targetUid').value.trim();
+  if (!uid) { alert('Enter a target UID first.'); return; }
+  clearLog();
+  log(`Target: ${uid}`, 'dim');
+  log(`Mode: Give all ${rarity === 'all' ? 'skins' : rarity + ' skins'}`, 'dim');
+  log('─'.repeat(44), 'dim');
   try {
-    // 1. Read existing user doc
-    log('1/4 Reading user document…');
-    const snap = await db.collection('users').doc(uid).get();
-    const existing = snap.exists ? snap.data() : {};
-    log(`    ${snap.exists ? 'Found' : 'No doc yet — will create'}`, snap.exists ? 'ok' : 'err');
+    const update = {};
+    ['player','background','obstacle'].forEach(type => {
+      const names = ALL_SKINS
+        .filter(s => (rarity === 'all' || s.rarity === rarity) && s.type === type)
+        .map(s => s.name);
+      if (names.length) update[`ownedSkins.${type}`] = firebase.firestore.FieldValue.arrayUnion(...names);
+    });
+    await db.collection('users').doc(uid).set(update, {merge:true});
+    log(`✅ Done! Skins granted successfully.`, 'ok');
+  } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
+}
 
-    // 2. Build merged ownedSkins
-    const owned = existing.ownedSkins || { player:[], background:[], obstacle:[] };
+async function runBan(ban) {
+  const uid = document.getElementById('targetUid').value.trim();
+  if (!uid) { alert('Enter a target UID first.'); return; }
+  if (ban && !confirm(`Ban UID ${uid}?`)) return;
+  clearLog();
+  try {
+    await db.collection('users').doc(uid).set({banned: ban}, {merge:true});
+    log(ban ? `🚫 Player banned.` : `✅ Player unbanned.`, ban ? 'err' : 'ok');
+  } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
+}
+
+async function runCustomGrant() {
+  const uid = document.getElementById('targetUid').value.trim();
+  const skinList = document.getElementById('skinNames').value
+    .split(',').map(s => s.trim()).filter(Boolean);
+  if (!uid) { alert('Enter a target UID first.'); return; }
+  if (!skinList.length) { alert('Enter at least one skin name.'); return; }
+  clearLog();
+  log(`Target: ${uid}`, 'dim');
+  log(`Skins: ${skinList.join(', ')}`, 'dim');
+  log('─'.repeat(44), 'dim');
+  try {
+    const update = {};
     skinList.forEach(name => {
-      const type = SKIN_TYPES[name];
-      if (!type) { log(`    ⚠ Unknown skin type for "${name}" — skipping`, 'err'); return; }
-      if (!owned[type]) owned[type] = [];
-      if (!owned[type].includes(name)) owned[type].push(name);
+      const skin = ALL_SKINS.find(s => s.name.toLowerCase() === name.toLowerCase());
+      if (!skin) { log(`⚠ Unknown skin: "${name}" — skipped`, 'err'); return; }
+      const key = `ownedSkins.${skin.type}`;
+      if (!update[key]) update[key] = firebase.firestore.FieldValue.arrayUnion(skin.name);
+      else {
+        // Accumulate multiple arrayUnion calls into one by rebuilding
+        update[key] = firebase.firestore.FieldValue.arrayUnion(
+          ...((update[key]._elements)||[skin.name]), skin.name
+        );
+      }
     });
-
-    // 3. Build scores array — keep existing, add new entry at top
-    const existingScores = existing.scores || [];
-    const newEntry = { score, mode, ts: Date.now() };
-    const mergedScores = [newEntry, ...existingScores].sort((a,b)=>b.score-a.score).slice(0,20);
-
-    const currentBest = Math.max(existing.best || 0, score);
-    const displayName = existing.displayName || existing.username || 'Player';
-
-    // 4. Update user doc
-    log('2/4 Updating user document (skins + score + best)…');
-    await db.collection('users').doc(uid).set({
-      ...existing,
-      ownedSkins: owned,
-      best:       currentBest,
-      scores:     mergedScores,
-      updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
-    log('    User doc updated.', 'ok');
-
-    // 5. Update leaderboard
-    log('3/4 Updating world leaderboard…');
-    await db.collection('leaderboard').doc(uid).set({
-      uid,
-      name:  displayName,
-      score: currentBest,
-      mode,
-      ts:    Date.now(),
-    });
-    log('    Leaderboard updated.', 'ok');
-
-    log('4/4 Done!', 'ok');
-    log('─'.repeat(40), 'dim');
-    log(`✅ ${displayName} (${uid})`, 'ok');
-    log(`   Skins added: ${skinList.join(', ')}`, 'ok');
-    log(`   Best score: ${currentBest} · Mode: ${mode}`, 'ok');
-    log(`   Leaderboard score: ${currentBest}`, 'ok');
-
-    btn.textContent = '✅ Done!';
-    btn.style.background = '#34d399';
-  } catch(ex) {
-    log(`❌ Error: ${ex.message}`, 'err');
-    btn.disabled = false;
-    btn.textContent = 'Retry Grant';
-  }
+    const validKeys = Object.keys(update).filter(k => update[k]);
+    if (!validKeys.length) { log('No valid skins to grant.', 'err'); return; }
+    const finalUpdate = {};
+    validKeys.forEach(k => { finalUpdate[k] = update[k]; });
+    await db.collection('users').doc(uid).set(finalUpdate, {merge:true});
+    log('✅ Done! Custom skins granted.', 'ok');
+  } catch(e) { log(`❌ Error: ${e.message}`, 'err'); }
 }
 </script>
 </body>

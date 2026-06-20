@@ -1021,6 +1021,9 @@
       <button class="btn secondary" onclick="Social.open()">👥 Friends &amp; Duels</button>
       <button class="btn secondary" onclick="currentUser?Profile.view(currentUser.uid):AuthUI.open()" id="menuAccountBtn">👤 Account</button>
     </div>
+    <div class="menu-actions" id="adminMenuRow" style="display:none;">
+      <button class="btn secondary" onclick="Admin.open()" style="background:rgba(255,107,148,0.1);border:1px solid rgba(255,107,148,0.3);color:#ff6b94;">🛡️ Admin Panel</button>
+    </div>
     <div class="menu-actions">
       <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">🌍 Share the Game</a>
     </div>
@@ -1461,6 +1464,19 @@
     <div id="spectateFullScore" style="position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:22px;font-weight:900;color:#fff;text-shadow:0 2px 6px #000;"></div>
     <div style="position:absolute;top:10px;left:10px;font-size:10px;color:rgba(255,100,100,0.8);font-weight:900;letter-spacing:2px;">● LIVE</div>
     <button onclick="Spectate.collapse()" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.1);border:none;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;">✕ Minimize</button>
+  </div>
+
+  <!-- Admin Panel Modal -->
+  <div id="adminModal" class="modal-overlay modal-bg" style="display:none;z-index:60;">
+    <h2 style="font-size:16px;">🛡️ Admin Panel</h2>
+    <div class="search-row">
+      <input class="search-input" id="adminSearchInput" placeholder="Search username…"
+        onkeydown="if(event.key==='Enter')Admin._doSearch()"/>
+      <button class="search-go" onclick="Admin._doSearch()">Go</button>
+    </div>
+    <div id="adminSearchResults" style="width:100%;"></div>
+    <div id="adminActionPanel" style="display:none;width:100%;"></div>
+    <button class="btn secondary" onclick="Admin.close()" style="margin-top:auto;flex-shrink:0;">Close</button>
   </div>
 </div>
 
@@ -5229,6 +5245,180 @@ function getDisplayName() { return S.get("rg-displayName", "") || S.get("rg-user
 function setDisplayName(n) { S.set("rg-displayName", n); }
 let lastDisplayNameChange = S.get("rg-lastDNChange", 0);
 
+// ── ADMIN PANEL ─────────────────────────────────────────────────────────────
+const Admin = {
+  _uid: null, _username: null, _displayName: null,
+
+  open() {
+    document.getElementById("adminModal").style.display = "flex";
+    document.getElementById("adminSearchResults").innerHTML = "";
+    document.getElementById("adminActionPanel").style.display = "none";
+    document.getElementById("adminSearchInput").value = "";
+    setTimeout(() => document.getElementById("adminSearchInput")?.focus(), 100);
+  },
+
+  close() {
+    document.getElementById("adminModal").style.display = "none";
+  },
+
+  async _doSearch() {
+    if (!fbDb || !currentUser) return;
+    const q = (document.getElementById("adminSearchInput").value || "").trim().toLowerCase().replace(/^@/, "");
+    if (!q) return;
+    const res = document.getElementById("adminSearchResults");
+    res.innerHTML = `<div style="text-align:center;padding:16px;color:rgba(232,232,240,0.3);font-size:12px;">Searching…</div>`;
+    try {
+      const snap = await fbDb.collection("public_profiles")
+        .where("username", ">=", q).where("username", "<=", q + "").limit(8).get();
+      if (snap.empty) { res.innerHTML = `<div class="social-empty">No player found.</div>`; return; }
+      res.innerHTML = snap.docs.map(doc => {
+        const d = doc.data(), uid = doc.id;
+        return `<div class="friend-row" style="cursor:pointer;" onclick="Admin._selectUser('${uid}','${esc(d.username||"")}','${esc(d.displayName||"")}')">
+          <div class="fr-avatar" style="background:${uidColor(uid)}">${(d.displayName||d.username||"?")[0].toUpperCase()}</div>
+          <div class="fr-info">
+            <div class="fr-name">${esc(d.displayName||d.username||"Unknown")}</div>
+            <div class="fr-sub">@${esc(d.username||"—")} · Best: ${d.best||0}</div>
+          </div>
+          <button class="fr-btn add" style="font-size:10px;pointer-events:none;">Select</button>
+        </div>`;
+      }).join("");
+    } catch(e) {
+      res.innerHTML = `<div class="social-empty" style="color:#f87171;">Search error: ${esc(e.message)}</div>`;
+    }
+  },
+
+  async _selectUser(uid, username, displayName) {
+    this._uid = uid; this._username = username; this._displayName = displayName;
+    const res = document.getElementById("adminSearchResults");
+    const panel = document.getElementById("adminActionPanel");
+    let banned = false;
+    try {
+      const snap = await fbDb.collection("users").doc(uid).get();
+      if (snap.exists) banned = snap.data().banned === true;
+    } catch(_) {}
+    res.innerHTML = `<div class="friend-row" style="border:1px solid rgba(255,107,148,0.35);cursor:default;">
+      <div class="fr-avatar" style="background:${uidColor(uid)}">${(displayName||username||"?")[0].toUpperCase()}</div>
+      <div class="fr-info">
+        <div class="fr-name">${esc(displayName||username||"?")}</div>
+        <div class="fr-sub">@${esc(username)} · ${banned ? "🚫 Banned" : "🟢 Active"}</div>
+      </div>
+    </div>`;
+    panel.style.display = "block";
+    panel.innerHTML = this._buildActionPanel(uid, username, banned);
+  },
+
+  _rc(r) {
+    return {commun:"#94a3b8",rare:"#38bdf8",epic:"#a855f7",legendaire:"#ffb86b",mythique:"#ff6b94"}[r]||"#fff";
+  },
+
+  _buildActionPanel(uid, username, banned) {
+    const rarities = ["commun","rare","epic","legendaire","mythique"];
+    const rarLabels = {commun:"Common",rare:"Rare",epic:"Epic",legendaire:"Legendary",mythique:"Mythic"};
+    const rarBtns = rarities.map(r =>
+      `<button onclick="Admin.giveRarity('${uid}','${r}')"
+        style="font-size:10px;padding:4px 10px;border-radius:8px;cursor:pointer;
+        border:1px solid ${this._rc(r)}55;background:${this._rc(r)}18;color:${this._rc(r)};font-weight:700;">
+        ${rarLabels[r]}</button>`
+    ).join("");
+    const skinGrid = this._buildSkinGrid("all", uid);
+    const banColor  = banned ? "#34d399" : "#f87171";
+    const banBg     = banned ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)";
+    const banBorder = banned ? "rgba(52,211,153,0.35)" : "rgba(248,113,113,0.35)";
+    const banLabel  = banned ? "✓ Unban Player" : "🚫 Ban Player";
+    return `
+      <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">GIVE RARITY BUNDLE</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">${rarBtns}</div>
+
+      <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">GIVE SPECIFIC SKIN</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px;" id="adminTypeRow">
+        ${["all","player","background","obstacle"].map((t,i) =>
+          `<button class="collection-tab${i===0?" active":""}" style="font-size:10px;"
+            onclick="Admin._filterSkins(this,'${t}','${uid}')">${t[0].toUpperCase()+t.slice(1)}</button>`
+        ).join("")}
+      </div>
+      <div id="adminSkinGrid" style="max-height:160px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:4px;padding:2px 0;">
+        ${skinGrid}
+      </div>
+
+      <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">ACCOUNT ACTIONS</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button onclick="Admin.giveAll('${uid}')"
+          style="font-size:10px;padding:5px 12px;border-radius:8px;cursor:pointer;
+          border:1px solid rgba(52,211,153,0.4);background:rgba(52,211,153,0.12);color:#34d399;font-weight:700;">
+          🎁 Give All Skins</button>
+        <button id="adminBanBtn" onclick="Admin.toggleBan('${uid}',${banned})"
+          style="font-size:10px;padding:5px 12px;border-radius:8px;cursor:pointer;
+          border:1px solid ${banBorder};background:${banBg};color:${banColor};font-weight:700;">
+          ${banLabel}</button>
+      </div>`;
+  },
+
+  _buildSkinGrid(typeFilter, uid) {
+    return SKINS.filter(s => typeFilter === "all" || s.type === typeFilter).map(s => {
+      const c = this._rc(s.rarity);
+      return `<button onclick="Admin.giveSkin('${uid}','${esc(s.name)}','${s.type}')"
+        style="font-size:9px;padding:3px 7px;border-radius:6px;cursor:pointer;white-space:nowrap;
+        border:1px solid ${c}44;background:${c}14;color:${c};font-weight:600;"
+        title="${s.rarity}">${esc(s.name)}</button>`;
+    }).join("");
+  },
+
+  _filterSkins(btn, typeFilter, uid) {
+    document.getElementById("adminTypeRow").querySelectorAll(".collection-tab")
+      .forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("adminSkinGrid").innerHTML = this._buildSkinGrid(typeFilter, uid);
+  },
+
+  async giveRarity(uid, rarity) {
+    if (!fbDb) return;
+    const update = {};
+    ["player","background","obstacle"].forEach(type => {
+      const names = SKINS.filter(s => s.rarity === rarity && s.type === type).map(s => s.name);
+      if (names.length) update[`ownedSkins.${type}`] = firebase.firestore.FieldValue.arrayUnion(...names);
+    });
+    try {
+      await fbDb.collection("users").doc(uid).set(update, {merge:true});
+      const label = {commun:"Common",rare:"Rare",epic:"Epic",legendaire:"Legendary",mythique:"Mythic"}[rarity]||rarity;
+      showToast(`✅ Gave all ${label} skins to @${this._username}`);
+    } catch(e) { showToast(`❌ ${e.message}`); }
+  },
+
+  async giveSkin(uid, skinName, type) {
+    if (!fbDb) return;
+    try {
+      await fbDb.collection("users").doc(uid).set(
+        {ownedSkins: {[type]: firebase.firestore.FieldValue.arrayUnion(skinName)}}, {merge:true}
+      );
+      showToast(`✅ Gave "${skinName}" to @${this._username}`);
+    } catch(e) { showToast(`❌ ${e.message}`); }
+  },
+
+  async giveAll(uid) {
+    if (!fbDb) return;
+    const update = {};
+    ["player","background","obstacle"].forEach(type => {
+      const names = SKINS.filter(s => s.type === type).map(s => s.name);
+      if (names.length) update[`ownedSkins.${type}`] = firebase.firestore.FieldValue.arrayUnion(...names);
+    });
+    try {
+      await fbDb.collection("users").doc(uid).set(update, {merge:true});
+      showToast(`✅ Gave ALL skins to @${this._username}`);
+    } catch(e) { showToast(`❌ ${e.message}`); }
+  },
+
+  async toggleBan(uid, currentlyBanned) {
+    if (!fbDb) return;
+    const newBanned = !currentlyBanned;
+    if (newBanned && !confirm(`Ban @${this._username}? They will be signed out immediately.`)) return;
+    try {
+      await fbDb.collection("users").doc(uid).set({banned: newBanned}, {merge:true});
+      showToast(newBanned ? `🚫 @${this._username} banned` : `✅ @${this._username} unbanned`);
+      this._selectUser(uid, this._username, this._displayName);
+    } catch(e) { showToast(`❌ ${e.message}`); }
+  },
+};
+
 try {
   if (!firebase) throw new Error("Firebase SDK not loaded");
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -5435,10 +5625,12 @@ saveAll = function() {
 function updateAccountBtn(loggedIn) {
   const hud  = document.getElementById("accountBtn");
   const menu = document.getElementById("menuAccountBtn");
+  const adminRow = document.getElementById("adminMenuRow");
   const name = S.get("rg-username", "");
   const dn = getDisplayName();
   if (hud)  hud.innerHTML   = loggedIn ? `👤 <span class="dot"></span>` : "👤";
   if (menu) menu.textContent = loggedIn ? `👤 ${dn || "Account"}` : "👤 Account / Sign In";
+  if (adminRow) adminRow.style.display = (loggedIn && name === "_admin") ? "block" : "none";
 }
 
 function avatarLetter(username) {
