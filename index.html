@@ -3198,22 +3198,89 @@ const Social = {
 
 // ── PLAYER PROFILE ───────────────────────────────────────────────────────────
 const Profile = {
+  _unsubs: [],
+  _openUid: null,
+
+  close() {
+    this._unsubs.forEach(u => u());
+    this._unsubs = [];
+    this._openUid = null;
+    document.getElementById('profileModal').style.display = 'none';
+  },
+
   async view(uid) {
     if (!fbDb) return;
+    this.close();
+    this._openUid = uid;
     const modal = document.getElementById("profileModal");
     modal.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(232,232,240,0.3);font-size:13px;">Loading…</div>';
     modal.style.display = "flex";
     try {
       let data = null;
-      // Try full user doc (works for own profile or if rules allow auth reads)
       try { const s = await fbDb.collection('users').doc(uid).get(); if (s.exists) data = s.data(); } catch(e) {}
-      // Fallback: public profile (always readable by authenticated users)
       if (!data) { const s = await fbDb.collection('public_profiles').doc(uid).get(); if (s.exists) data = s.data(); }
       if (!data) throw new Error("Player not found");
       this._render(uid, data, modal);
+      this._startLive(uid);
     } catch(e) {
-      modal.innerHTML = `<div style="text-align:center;padding:40px;color:#f87171;font-size:13px;">${esc(e.message)}<br><br><button class="btn secondary" onclick="document.getElementById('profileModal').style.display='none'">Close</button></div>`;
+      modal.innerHTML = `<div style="text-align:center;padding:40px;color:#f87171;font-size:13px;">${esc(e.message)}<br><br><button class="btn secondary" onclick="Profile.close()">Close</button></div>`;
     }
+  },
+
+  _stopLive() {
+    this._unsubs.forEach(u => u());
+    this._unsubs = [];
+  },
+
+  _startLive(uid) {
+    this._stopLive();
+
+    // Helper: rebuild the status badge from latest snapshots
+    let _pres = null, _live = null, _duels = null;
+    const refreshStatus = () => {
+      const el = document.getElementById('prfStatusBadge');
+      if (!el) return;
+      const activeDuel = _duels?.docs?.find(d => ['playing','ban_phase','accepted_playing'].includes(d.data().status));
+      let badge = '';
+      if (activeDuel) {
+        badge = '<div class="prf-status duel">⚔️ In Duel</div>';
+      } else if (_live && !_live.empty) {
+        const sc = _live.docs[0].data().score || 0;
+        badge = `<div class="prf-status ingame" onclick="Spectate.start('${uid}');Profile.close()" style="cursor:pointer;">🎮 In Game — Score: ${sc} <span style="font-size:9px;opacity:0.6;">(tap to spectate)</span></div>`;
+      } else if (_pres?.exists) {
+        const p = _pres.data();
+        const ago = Date.now() - (p.lastSeen?.toMillis?.() || 0);
+        badge = (p.online && ago < 120000)
+          ? '<div class="prf-status online">🟢 Online</div>'
+          : p.lastSeen ? `<div class="prf-status offline">⚫ Last seen ${fmtAgoSocial(p.lastSeen)}</div>` : '';
+      }
+      el.innerHTML = badge;
+    };
+
+    const u1 = fbDb.collection('presence').doc(uid)
+      .onSnapshot(snap => { _pres = snap; refreshStatus(); }, () => {});
+
+    const u2 = fbDb.collection('live_sessions')
+      .where('uid','==',uid).where('status','==','playing').limit(1)
+      .onSnapshot(snap => { _live = snap; refreshStatus(); }, () => {});
+
+    const u3 = fbDb.collection('duels')
+      .where('players','array-contains',uid).limit(5)
+      .onSnapshot(snap => { _duels = snap; refreshStatus(); }, () => {});
+
+    const u4 = fbDb.collection('users').doc(uid)
+      .onSnapshot(snap => {
+        if (!snap.exists) return;
+        const d = snap.data();
+        const upd = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        upd('prfStatBest',   (d.best||0).toLocaleString());
+        upd('prfStatRuns',   (d.scores||[]).length);
+        upd('prfStatStreak', (d.streak||0) + '🔥');
+        upd('prfStatCoins',  (d.totalCoins||0).toLocaleString());
+        upd('prfStatSpins',  d.totalSpins||0);
+      }, () => {});
+
+    this._unsubs = [u1, u2, u3, u4];
   },
 
   async _render(uid, data, modal) {
@@ -3244,7 +3311,7 @@ const Profile = {
         statusBadge = '<div class="prf-status duel">⚔️ In Duel</div>';
       } else if (liveSnap && !liveSnap.empty) {
         const liveData = liveSnap.docs[0].data();
-        statusBadge = `<div class="prf-status ingame" onclick="Spectate.start('${uid}');document.getElementById('profileModal').style.display='none'" style="cursor:pointer;">🎮 In Game — Score: ${liveData.score||0} <span style="font-size:9px;opacity:0.6;">(tap to spectate)</span></div>`;
+        statusBadge = `<div class="prf-status ingame" onclick="Spectate.start('${uid}');Profile.close()" style="cursor:pointer;">🎮 In Game — Score: ${liveData.score||0} <span style="font-size:9px;opacity:0.6;">(tap to spectate)</span></div>`;
       } else if (presSnap?.exists) {
         const p = presSnap.data();
         const ago = Date.now() - (p.lastSeen?.toMillis?.() || 0);
@@ -3271,11 +3338,11 @@ const Profile = {
 
     // Action buttons
     let actions = '';
-    if (isSelf) actions = `<button class="prf-btn" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;" onclick="fbAuth.signOut();document.getElementById('profileModal').style.display='none'">Sign Out</button>`;
+    if (isSelf) actions = `<button class="prf-btn" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);color:#f87171;" onclick="fbAuth.signOut();Profile.close()">Sign Out</button>`;
     else if (!myUid) actions = '';
     else if (isFriend) actions = `
       <button class="prf-btn fr">✓ Friends</button>
-      <button class="prf-btn duel" onclick="document.getElementById('profileModal').style.display='none';_Duel.challenge('${uid}','${esc(dn)}')">⚔️ Duel</button>`;
+      <button class="prf-btn duel" onclick="Profile.close();_Duel.challenge('${uid}','${esc(dn)}')">⚔️ Duel</button>`;
     else if (isPending) actions = `<button class="prf-btn pending">Request Sent</button>`;
     else actions = `<button class="prf-btn add" onclick="Social._sendReq('${uid}','${esc(uname)}',this)">+ Add Friend</button>`;
 
@@ -3321,11 +3388,11 @@ const Profile = {
 
     modal.innerHTML = `
       <div class="prf-banner" style="background:${bannerBg}">
-        <button class="prf-close" onclick="document.getElementById('profileModal').style.display='none'">✕</button>
+        <button class="prf-close" onclick="Profile.close()">✕</button>
         <div class="prf-avatar" style="background:${uidColor(uid)}">${dn[0].toUpperCase()}</div>
         <div class="prf-name">${esc(dn)}</div>
         <div class="prf-tag">#${esc(uname)}</div>
-        ${statusBadge}
+        <div id="prfStatusBadge">${statusBadge}</div>
         ${data.hasPass?'<div class="prf-pass-badge">⭐ PASS HOLDER</div>':''}
         <div class="prf-actions">${actions}</div>
       </div>
@@ -3333,18 +3400,18 @@ const Profile = {
       <div class="prf-section">
         <div class="prf-sec-title">Performance</div>
         <div class="prf-grid">
-          <div class="prf-stat"><div class="prf-stat-val" style="color:#facc15">${(data.best||0).toLocaleString()}</div><div class="prf-stat-lbl">All-Time Best</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#facc15" id="prfStatBest">${(data.best||0).toLocaleString()}</div><div class="prf-stat-lbl">All-Time Best</div></div>
           <div class="prf-stat"><div class="prf-stat-val" style="color:#a78bfa">${(modeScores['Extreme']||0).toLocaleString()}</div><div class="prf-stat-lbl">Extreme Best</div></div>
-          <div class="prf-stat"><div class="prf-stat-val" style="color:#38bdf8">${(data.scores||[]).length}</div><div class="prf-stat-lbl">Total Runs</div></div>
-          <div class="prf-stat"><div class="prf-stat-val" style="color:#ffb86b">${data.streak||0}🔥</div><div class="prf-stat-lbl">Day Streak</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#38bdf8" id="prfStatRuns">${(data.scores||[]).length}</div><div class="prf-stat-lbl">Total Runs</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#ffb86b" id="prfStatStreak">${data.streak||0}🔥</div><div class="prf-stat-lbl">Day Streak</div></div>
         </div>
       </div>
 
       <div class="prf-section">
         <div class="prf-sec-title">Collection Stats</div>
         <div class="prf-grid">
-          <div class="prf-stat"><div class="prf-stat-val" style="color:#facc15">${(data.totalCoins||0).toLocaleString()}</div><div class="prf-stat-lbl">Total Coins</div></div>
-          <div class="prf-stat"><div class="prf-stat-val" style="color:#7c4dff">${data.totalSpins||0}</div><div class="prf-stat-lbl">Total Spins</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#facc15" id="prfStatCoins">${(data.totalCoins||0).toLocaleString()}</div><div class="prf-stat-lbl">Total Coins</div></div>
+          <div class="prf-stat"><div class="prf-stat-val" style="color:#7c4dff" id="prfStatSpins">${data.totalSpins||0}</div><div class="prf-stat-lbl">Total Spins</div></div>
           <div class="prf-stat"><div class="prf-stat-val" style="color:#a855f7">${totalOwned}<span style="font-size:11px;color:rgba(232,232,240,0.3)">/${SKINS.length}</span></div><div class="prf-stat-lbl">Skins Owned</div></div>
           <div class="prf-stat"><div class="prf-stat-val" style="color:#34d399">${achieveCount}<span style="font-size:11px;color:rgba(232,232,240,0.3)">/${ACH_DEFS.length}</span></div><div class="prf-stat-lbl">Achievements</div></div>
         </div>
@@ -3394,7 +3461,7 @@ const _Duel = {
       this.id = ref.id; currentDuelId = ref.id;
       this._listen(ref.id);
       // Show wait screen
-      ['menu','socialModal','profileModal','gameOverModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+      Profile.close(); ['menu','socialModal','gameOverModal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
       const ws=document.getElementById('duelWaitScreen');
       ws.style.display='flex'; menuOpen=true;
       document.getElementById('duelWaitMsg').textContent='Waiting for ' + friendName + '…';
@@ -3546,7 +3613,7 @@ const _Duel = {
     const oppUid=this.data.players.find(p=>p!==myUid);
     const oppName=myUid===this.data.challenger?this.data.challengedName:this.data.challengerName;
     // Hide everything else
-    ['menu','socialModal','profileModal','gameOverModal'].forEach(id=>document.getElementById(id).style.display='none');
+    Profile.close(); ['menu','socialModal','gameOverModal'].forEach(id=>document.getElementById(id).style.display='none');
     document.getElementById("duelBanScreen").style.display='flex'; menuOpen=true;
     // Render vs row
     document.getElementById("banVsRow").innerHTML = `
@@ -4012,7 +4079,7 @@ function startGame() {
   document.getElementById("menu").style.display = "none";
   document.getElementById("gameOverModal").style.display = "none";
   document.getElementById("socialModal").style.display = "none";
-  document.getElementById("profileModal").style.display = "none";
+  Profile.close();
   document.getElementById("duelBanScreen").style.display = "none";
   document.getElementById("duelRoundResult").style.display = "none";
   document.getElementById("duelFinalResult").style.display = "none";
