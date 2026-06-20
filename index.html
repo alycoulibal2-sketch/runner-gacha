@@ -5292,6 +5292,7 @@ const Admin = {
     const res = document.getElementById("adminSearchResults");
     const panel = document.getElementById("adminActionPanel");
     let banned = false, hasPassVal = false, currentCoins = 0;
+    this._ownedSkins = {player:[], background:[], obstacle:[]};
     try {
       const snap = await fbDb.collection("users").doc(uid).get();
       if (snap.exists) {
@@ -5299,13 +5300,15 @@ const Admin = {
         banned = d.banned === true;
         hasPassVal = d.hasPass === true;
         currentCoins = d.coins || 0;
+        if (d.ownedSkins) this._ownedSkins = d.ownedSkins;
       }
     } catch(_) {}
+    const totalSkins = (this._ownedSkins.player?.length||0) + (this._ownedSkins.background?.length||0) + (this._ownedSkins.obstacle?.length||0);
     res.innerHTML = `<div class="friend-row" style="border:1px solid rgba(255,107,148,0.35);cursor:default;">
       <div class="fr-avatar" style="background:${uidColor(uid)}">${(displayName||username||"?")[0].toUpperCase()}</div>
       <div class="fr-info">
         <div class="fr-name">${esc(displayName||username||"?")}</div>
-        <div class="fr-sub">@${esc(username)} · ${banned ? "🚫 Banned" : "🟢 Active"} · 💰 ${currentCoins.toLocaleString()} · ${hasPassVal ? "⭐ Pass" : "No Pass"}</div>
+        <div class="fr-sub">@${esc(username)} · ${banned ? "🚫 Banned" : "🟢 Active"} · 💰 ${currentCoins.toLocaleString()} · ${hasPassVal ? "⭐ Pass" : "No Pass"} · 🎨 ${totalSkins} skins</div>
       </div>
     </div>`;
     panel.style.display = "block";
@@ -5368,6 +5371,17 @@ const Admin = {
         ${skinGrid}
       </div>
 
+      <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">REMOVE SKIN FROM COLLECTION</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px;" id="adminRemoveTypeRow">
+        ${["all","player","background","obstacle"].map((t,i) =>
+          `<button class="collection-tab${i===0?" active":""}" style="font-size:10px;"
+            onclick="Admin._filterRemove(this,'${t}','${uid}')">${t[0].toUpperCase()+t.slice(1)}</button>`
+        ).join("")}
+      </div>
+      <div id="adminRemoveGrid" style="max-height:130px;overflow-y:auto;display:flex;flex-wrap:wrap;gap:4px;padding:2px 0;">
+        ${this._buildRemoveGrid("all", uid)}
+      </div>
+
       <div style="font-size:10px;font-weight:900;color:rgba(232,232,240,0.35);letter-spacing:1px;margin:10px 0 5px;">ACCOUNT ACTIONS</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button onclick="Admin.giveAll('${uid}')"
@@ -5400,6 +5414,49 @@ const Admin = {
       .forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("adminSkinGrid").innerHTML = this._buildSkinGrid(typeFilter, uid);
+  },
+
+  _buildRemoveGrid(typeFilter, uid) {
+    const owned = this._ownedSkins || {player:[], background:[], obstacle:[]};
+    const skins = SKINS.filter(s =>
+      (typeFilter === "all" || s.type === typeFilter) &&
+      (owned[s.type]||[]).includes(s.name)
+    );
+    if (!skins.length) return `<div style="font-size:10px;color:rgba(232,232,240,0.25);padding:4px;">No skins owned in this category.</div>`;
+    return skins.map(s => {
+      const c = this._rc(s.rarity);
+      return `<button onclick="Admin.removeSkin('${uid}','${esc(s.name)}','${s.type}')"
+        style="font-size:9px;padding:3px 7px;border-radius:6px;cursor:pointer;white-space:nowrap;
+        border:1px solid rgba(248,113,113,0.4);background:rgba(248,113,113,0.08);color:${c};font-weight:600;"
+        title="Remove ${s.rarity}">✕ ${esc(s.name)}</button>`;
+    }).join("");
+  },
+
+  _filterRemove(btn, typeFilter, uid) {
+    document.getElementById("adminRemoveTypeRow").querySelectorAll(".collection-tab")
+      .forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("adminRemoveGrid").innerHTML = this._buildRemoveGrid(typeFilter, uid);
+  },
+
+  async removeSkin(uid, skinName, type) {
+    if (!fbDb) return;
+    if (!confirm(`Remove "${skinName}" from @${this._username}'s collection?`)) return;
+    try {
+      await fbDb.collection("users").doc(uid).update({
+        [`ownedSkins.${type}`]: firebase.firestore.FieldValue.arrayRemove(skinName)
+      });
+      // Update local cache and refresh grid
+      if (this._ownedSkins[type]) {
+        this._ownedSkins[type] = this._ownedSkins[type].filter(n => n !== skinName);
+      }
+      document.getElementById("adminRemoveGrid").innerHTML =
+        this._buildRemoveGrid(
+          document.querySelector("#adminRemoveTypeRow .collection-tab.active")?.textContent?.toLowerCase() || "all",
+          uid
+        );
+      showToast(`✅ Removed "${skinName}" from @${this._username}`);
+    } catch(e) { showToast(`❌ ${e.message}`); }
   },
 
   async giveRarity(uid, rarity) {
