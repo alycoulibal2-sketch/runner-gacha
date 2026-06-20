@@ -1014,7 +1014,7 @@
 
     <div class="menu-actions">
       <button class="btn secondary" onclick="Social.open()">👥 Friends &amp; Duels</button>
-      <button class="btn secondary" onclick="AuthUI.open()" id="menuAccountBtn">👤 Account</button>
+      <button class="btn secondary" onclick="currentUser?Profile.view(currentUser.uid):AuthUI.open()" id="menuAccountBtn">👤 Account</button>
     </div>
     <div class="menu-actions">
       <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">🌍 Share the Game</a>
