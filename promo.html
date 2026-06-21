@@ -266,7 +266,25 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* ── RESPONSIVE ── */
+  .btn-share {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 15px 28px; border-radius: 14px; cursor: pointer;
+    font-size: 15px; font-weight: 700; border: none; color: #fff;
+    background: linear-gradient(135deg, rgba(56,189,248,0.18), rgba(168,85,247,0.18));
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(10px);
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    position: relative; overflow: hidden;
+  }
+  .btn-share:hover { background: linear-gradient(135deg,rgba(56,189,248,0.28),rgba(168,85,247,0.28)); transform: translateY(-2px); box-shadow: 0 0 30px rgba(168,85,247,0.25); }
+  .btn-share .share-copied {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(52,211,153,0.9); border-radius: 14px; font-weight: 800; font-size: 13px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+  }
+  .btn-share.copied .share-copied { opacity: 1; }
+
+
   @media (max-width: 500px) {
     .stat:first-child { border-radius: 14px 14px 0 0; }
     .stat:last-child  { border-radius: 0 0 14px 14px; }
@@ -289,6 +307,10 @@
   <div class="hero-cta">
     <a href="https://runnergacha.com" class="btn-main">▶ Play Now — It's Free</a>
     <a href="#features" class="btn-sec">See what's inside ↓</a>
+    <button class="btn-share" onclick="shareGame(this)">
+      🔗 Share
+      <span class="share-copied">✓ Copied!</span>
+    </button>
   </div>
 
   <div class="mockup-wrap">
@@ -445,10 +467,14 @@
 <section id="cta-final">
   <h2 class="cta-title reveal">The world is running.<br>Are you <em>ready?</em></h2>
   <p class="cta-sub reveal">Free forever. No account required to start.</p>
-  <div class="reveal">
+  <div class="reveal" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
     <a href="https://runnergacha.com" class="btn-main" style="font-size:18px;padding:18px 44px;">
       ▶ Play Runner Gacha — Free
     </a>
+    <button class="btn-share" onclick="shareGame(this)" style="font-size:16px;padding:18px 32px;">
+      🔗 Share with Friends
+      <span class="share-copied">✓ Copied!</span>
+    </button>
   </div>
   <p class="cta-note reveal">Works on mobile, tablet & desktop · No download · No ads during gameplay</p>
 </section>
@@ -458,6 +484,26 @@
 </footer>
 
 <script>
+// ── SHARE ──────────────────────────────────────────────
+async function shareGame(btn) {
+  const data = {
+    title: 'Runner Gacha',
+    text: 'Check out Runner Gacha — a free infinite runner with gacha skins, global leaderboard and mythic abilities!',
+    url: 'https://runnergacha.com',
+  };
+  try {
+    if (navigator.share && navigator.canShare?.(data)) {
+      await navigator.share(data);
+    } else {
+      await navigator.clipboard.writeText('https://runnergacha.com');
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 2000);
+    }
+  } catch (_) {
+    // user cancelled native share — do nothing
+  }
+}
+
 // ── STARFIELD ──────────────────────────────────────────
 const starsEl = document.getElementById("stars");
 for (let i = 0; i < 120; i++) {
