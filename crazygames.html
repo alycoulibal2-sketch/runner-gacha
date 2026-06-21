@@ -1008,6 +1008,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <div id="game">
   <canvas id="canvas" width="420" height="640"></canvas>
@@ -3982,6 +3983,7 @@ function endLiveSession() {
 window.addEventListener("beforeunload", () => { endLiveSession(); });
 
 function startGame() {
+  CrazyGames.SDK.game.gameplayStart();
   obstacles = []; fieldCoins = []; particles = []; powerups = [];
   gameSpeed = currentDiff.startSpeed;
   score = 0;
@@ -4070,6 +4072,12 @@ function startGame() {
 
 function gameOver() {
   running = false;
+  CrazyGames.SDK.game.gameplayStop();
+  CrazyGames.SDK.ad.requestAd('midgame', {
+    adFinished: () => {},
+    adError:    () => {},
+    adStarted:  () => {},
+  });
   endLiveSession();
   spawnParticles(player.x + player.w / 2, player.y + player.h / 2, "#ef4444", 16);
 
@@ -5254,6 +5262,7 @@ try {
   fbAuth = firebase.auth();
   fbDb   = firebase.firestore();
   fbReady = true;
+  CrazyGames.SDK.init().then(() => CrazyGames.SDK.game.sdkGameLoadingStop());
 
   fbAuth.onAuthStateChanged(user => {
     currentUser = user;
