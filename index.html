@@ -404,15 +404,15 @@
     .collection-tab:hover { color: var(--text); background: rgba(255,255,255,0.1); }
     .collection-tab.active { background: linear-gradient(90deg,#7c4dff,#ff7a59); color: #021021; border-color: transparent; }
 
-    .collection-body-scroll { flex: 1; overflow-y: auto; padding: 4px 2px; width: 100%; }
+    .collection-body-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 2px; width: 100%; }
     .collection-section-title { font-size: 11px; opacity: .6; margin: 6px 0 4px; }
-    .collection-type-block { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap: 8px; margin-bottom: 10px; }
+    .collection-type-block { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px,1fr)); gap: 8px; margin-bottom: 10px; }
 
     .skin-card {
       background: rgba(255,255,255,0.025);
       border-radius: 12px;
       padding: 8px 6px;
-      height: 108px;
+      min-height: 150px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -430,6 +430,42 @@
     .equipped-badge { font-size: 10px; color: #34d399; font-weight: 700; }
 
     .locked { filter: grayscale(1) brightness(.25); pointer-events: none; }
+
+    /* ── Upgraded Collection skin art ── */
+    .skin-card {
+      position: relative; overflow: hidden;
+      --rc: #94a3b8; --rcg: rgba(148,163,184,0.5);
+      background: linear-gradient(180deg,#121a30,#0b1322);
+      border: 1px solid rgba(255,255,255,0.05);
+      gap: 6px;
+    }
+    .skin-card[data-rar="rare"]       { --rc:#38bdf8; --rcg:rgba(56,189,248,0.6); }
+    .skin-card[data-rar="epic"]       { --rc:#a855f7; --rcg:rgba(168,85,247,0.6); }
+    .skin-card[data-rar="legendaire"] { --rc:#ffb86b; --rcg:rgba(255,184,107,0.65); }
+    .skin-card[data-rar="mythique"]   { --rc:#ff6b94; --rcg:rgba(255,107,148,0.7); }
+    .skin-card.owned { box-shadow: 0 0 0 1px var(--rcg), 0 0 16px -5px var(--rc); }
+    .skin-card.owned[data-rar="legendaire"],
+    .skin-card.owned[data-rar="mythique"] { box-shadow: 0 0 0 1px var(--rcg), 0 0 24px -4px var(--rc); }
+    .skin-card:hover { border-color: rgba(255,255,255,0.12); }
+
+    .sk-art {
+      position: relative; width: 100%; height: 66px; border-radius: 9px; overflow: hidden;
+      background-color: #0c1322; background-size: cover; background-position: center;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 -10px 18px rgba(0,0,0,0.35);
+    }
+    .sk-art.locked-art { filter: grayscale(.85) brightness(.4); }
+    .sk-halo  { position:absolute; inset:0; background:radial-gradient(circle at 50% 42%, var(--rcg), transparent 62%); mix-blend-mode:screen; opacity:.5; animation:skHalo 3.2s ease-in-out infinite; }
+    .sk-gloss { position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,0.16), transparent 42%); pointer-events:none; }
+    .sk-sheen { position:absolute; top:0; left:-60%; width:42%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.30),transparent); transform:skewX(-18deg); animation:skSheen 4.6s ease-in-out infinite; }
+    .sk-p  { position:absolute; width:3px; height:3px; border-radius:50%; background:var(--rc); box-shadow:0 0 6px var(--rc); }
+    .sk-p1 { top:18%; left:22%; animation:skTw 2.4s ease-in-out infinite; }
+    .sk-p2 { bottom:20%; right:24%; animation:skFloat 4.2s ease-in-out infinite; }
+    .sk-p3 { top:30%; right:20%; animation:skTw 3s ease-in-out infinite .6s; }
+    .sk-lock { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:20px; opacity:.85; }
+    @keyframes skHalo  { 0%,100%{opacity:.3;transform:scale(.94)} 50%{opacity:.7;transform:scale(1.08)} }
+    @keyframes skTw    { 0%,100%{opacity:.25;transform:scale(.6)} 50%{opacity:1;transform:scale(1)} }
+    @keyframes skFloat { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-3px,-6px)} }
+    @keyframes skSheen { 0%{left:-60%} 55%,100%{left:135%} }
 
     /* ── Shop Modal ── */
     #shopModal { padding: 12px; }
@@ -1713,9 +1749,13 @@ const SKINS = [
   { name:"Dragon Realm",     rarity:"legendaire",type:"background" },
   { name:"Sacred Temple",    rarity:"legendaire",type:"background" },
   { name:"Inferno Sky",      rarity:"legendaire",type:"background" },
+  { name:"Thunder Realm",    rarity:"legendaire",type:"background" },
   { name:"Dragon Scale",     rarity:"legendaire",type:"obstacle"   },
   { name:"Royal Decree",     rarity:"legendaire",type:"obstacle"   },
   { name:"Thunder Wall",     rarity:"legendaire",type:"obstacle"   },
+  { name:"Magma Spire",      rarity:"legendaire",type:"obstacle"   },
+  { name:"Frost Pillar",     rarity:"legendaire",type:"obstacle"   },
+  { name:"Storm Spike",      rarity:"legendaire",type:"obstacle"   },
   // ── MYTHIC (5) ───────────────────────────────
   { name:"Cosmic God",       rarity:"mythique",  type:"player",    ability:"revival" },
   { name:"Time Rift",        rarity:"mythique",  type:"player",    ability:"revival" },
@@ -2250,9 +2290,35 @@ const Music = (() => {
 })();
 
 // ─────────────────────────────────────────────
+//  GACHA PULL SOUNDS
+// ─────────────────────────────────────────────
+const GachaSFX = (() => {
+  const SRC = {
+    commun:     'sounds/pull-common.mp3',
+    rare:       'sounds/pull-rare.mp3',
+    epic:       'sounds/pull-epic.mp3',
+    legendaire: 'sounds/pull-legendary.mp3',
+    mythique:   'sounds/pull-mythic.mp3',
+  };
+  const cache = {};
+  function play(rarity) {
+    if (!sfxEnabled) return;
+    const src = SRC[rarity]; if (!src) return;
+    try {
+      if (!cache[rarity]) cache[rarity] = new Audio(src);
+      const a = cache[rarity].cloneNode();
+      a.volume = rarity === 'commun' ? 0.6 : 0.85;
+      a.play().catch(() => {});
+    } catch (_) {}
+  }
+  return { play };
+})();
+
+// ─────────────────────────────────────────────
 //  SKIN RENDERING
 // ─────────────────────────────────────────────
 const _patCache = {};
+const _skCanvasURL = {};
 function getSkinColor(name) {
   if (!name || name === "default") return null;
   if (_patCache[name]) return _patCache[name];
@@ -2588,6 +2654,19 @@ function getSkinColor(name) {
     for(let i=0;i<12;i++){ p.beginPath(); p.arc(Math.sin(i*41)*55+60,Math.cos(i*53)*55+60,1.5,0,Math.PI*2); p.fill(); }
     p.fillStyle="rgba(239,68,68,0.35)"; p.beginPath(); p.arc(60,60,50,0,Math.PI*2); p.fill();
   }
+  else if (n==="thunder realm") {
+    lgrad3("#020617","#1e3a8a","#0f172a",0,0,0,S);
+    // roiling storm clouds
+    p.fillStyle="rgba(30,41,59,0.55)";
+    [[18,28,34,18],[58,20,30,15],[92,30,26,14],[12,52,40,20],[72,50,34,18],[44,66,30,16]].forEach(([x,y,rx,ry])=>{ p.beginPath(); p.ellipse(x,y,rx,ry,0,0,Math.PI*2); p.fill(); });
+    // forked lightning bolts
+    p.strokeStyle="rgba(191,219,254,0.95)"; p.lineWidth=2.5; p.lineJoin="round";
+    [[40,30],[84,42]].forEach(([sx,sy])=>{ p.beginPath(); p.moveTo(sx,sy); p.lineTo(sx-7,sy+22); p.lineTo(sx+3,sy+24); p.lineTo(sx-6,sy+52); p.lineTo(sx+2,sy+40); p.lineTo(sx-3,sy+58); p.stroke(); });
+    p.strokeStyle="rgba(96,165,250,0.5)"; p.lineWidth=5; p.beginPath(); p.moveTo(40,30); p.lineTo(34,52); p.lineTo(37,58); p.stroke();
+    // electric sparks
+    p.fillStyle="rgba(224,242,254,0.9)"; for(let i=0;i<9;i++){ p.beginPath(); p.arc(Math.sin(i*37)*55+60,Math.cos(i*53)*45+45,1.2,0,Math.PI*2); p.fill(); }
+    p.fillStyle="rgba(96,165,250,0.18)"; p.fillRect(0,0,S,S);
+  }
 
   // ── LEGENDARY OBSTACLES ──────────────────────────────────
   else if (n==="dragon scale") {
@@ -2607,6 +2686,27 @@ function getSkinColor(name) {
     p.strokeStyle="rgba(250,204,21,0.7)"; p.lineWidth=2;
     for(let i=0;i<3;i++){ const x=20+i*38; p.beginPath(); p.moveTo(x,5); p.lineTo(x-8,40); p.lineTo(x+4,40); p.lineTo(x-4,S-5); p.stroke(); }
     border("#60a5fa",4);
+  }
+  else if (n==="magma spire") {
+    lgrad3("#7f1d1d","#dc2626","#fb923c",0,S,0,0);
+    p.strokeStyle="rgba(255,220,120,0.6)"; p.lineWidth=2;
+    for(let i=0;i<4;i++){ const x=14+i*30; p.beginPath(); p.moveTo(x,S); p.bezierCurveTo(x+7,S*0.6,x-7,S*0.35,x+2,0); p.stroke(); }
+    p.fillStyle="rgba(255,190,90,0.5)"; for(let i=0;i<7;i++){ p.beginPath(); p.arc(Math.sin(i*37)*50+60,Math.cos(i*53)*50+60,2,0,Math.PI*2); p.fill(); }
+    border("#f97316",4);
+  }
+  else if (n==="frost pillar") {
+    lgrad("#bae6fd","#0c4a6e");
+    p.strokeStyle="rgba(255,255,255,0.55)"; p.lineWidth=2;
+    for(let i=0;i<3;i++){ const x=22+i*40; p.beginPath(); p.moveTo(x,0); p.lineTo(x-11,S); p.moveTo(x,0); p.lineTo(x+11,S); p.stroke(); }
+    p.fillStyle="rgba(255,255,255,0.6)"; for(let i=0;i<8;i++){ p.beginPath(); p.arc(Math.sin(i*29)*55+60,Math.cos(i*47)*55+60,1.5,0,Math.PI*2); p.fill(); }
+    border("#7dd3fc",4);
+  }
+  else if (n==="storm spike") {
+    lgrad("#312e81","#0f172a");
+    p.strokeStyle="rgba(165,180,252,0.85)"; p.lineWidth=2;
+    for(let i=0;i<3;i++){ const x=18+i*40; p.beginPath(); p.moveTo(x,4); p.lineTo(x-9,42); p.lineTo(x+5,42); p.lineTo(x-3,S-4); p.stroke(); }
+    p.fillStyle="rgba(199,210,254,0.5)"; for(let i=0;i<5;i++){ p.beginPath(); p.arc(Math.sin(i*41)*50+60,Math.cos(i*37)*50+60,1.5,0,Math.PI*2); p.fill(); }
+    border("#818cf8",4);
   }
 
   // ── MYTHIC PLAYERS ───────────────────────────────────────
@@ -2656,70 +2756,286 @@ function getSkinColor(name) {
   else { lgrad("#1e293b","#0f172a"); shine(); }
 
   _patCache[name] = p.createPattern(c, "repeat");
+  _skCanvasURL[name] = c.toDataURL();
   return _patCache[name];
+}
+// Returns a data-URL of the skin's unique 120×120 texture, for the Collection cards.
+function getSkinDataURL(name) {
+  if (!name || name === "default") return null;
+  if (!_skCanvasURL[name]) getSkinColor(name);
+  return _skCanvasURL[name] || null;
 }
 
 // ─────────────────────────────────────────────
 //  ANIMATED SKIN EFFECTS (drawn each frame)
 // ─────────────────────────────────────────────
+// Per-skin accent color used for the in-game aura/glow.
+function skinGlow(skin) {
+  const byName = {
+    "Thunder King":"#60a5fa", "Golden God":"#fbbf24", "Solar Phoenix":"#fb923c", "Dragon Flame":"#f97316",
+    "Dragon Scale":"#f97316", "Royal Decree":"#fbbf24", "Thunder Wall":"#60a5fa",
+    "Magma Spire":"#fb923c", "Frost Pillar":"#7dd3fc", "Storm Spike":"#818cf8",
+  };
+  return byName[skin.name] || RARITY_COLORS[skin.rarity] || "#94a3b8";
+}
+function hexA(hex, a) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+const _rarTier = { commun:0, rare:1, epic:2, legendaire:3, mythique:4 };
+
 function drawSkinEffects(ctx2, skinName, x, y, w, h, t) {
   if (!skinName || skinName === "default") return;
   const skin = SKINS.find(s => s.name === skinName);
-  if (!skin) return;
+  if (!skin || skin.type === "background") return;
   const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);
+  const tier = _rarTier[skin.rarity] ?? 0;
+  const mythHue = skin.rarity === "mythique" ? (t * 60) % 360 : null;
+  const rc = mythHue != null ? `hsl(${mythHue},100%,68%)` : skinGlow(skin);
   ctx2.save();
 
-  if (skin.rarity === "epic") {
-    ctx2.shadowBlur = 10 + 8 * pulse;
-    ctx2.shadowColor = skin.type === "obstacle" ? "#06b6d4" : "#a855f7";
-    ctx2.strokeStyle = skin.type === "obstacle" ? `rgba(6,182,212,${0.4+0.3*pulse})` : `rgba(168,85,247,${0.4+0.3*pulse})`;
-    ctx2.lineWidth = 2;
-    ctx2.strokeRect(x + 1, y + 1, w - 2, h - 2);
+  // ── Gloss + depth (all skins) — gives the flat block a lit, 3D feel ──
+  const gl = ctx2.createLinearGradient(0, y, 0, y + h);
+  gl.addColorStop(0,   "rgba(255,255,255,0.30)");
+  gl.addColorStop(0.42,"rgba(255,255,255,0.05)");
+  gl.addColorStop(1,   "rgba(0,0,0,0.20)");
+  ctx2.fillStyle = gl;
+  ctx2.fillRect(x, y, w, h);
+  // corner specular
+  ctx2.fillStyle = "rgba(255,255,255,0.22)";
+  ctx2.beginPath(); ctx2.ellipse(x + w * 0.3, y + h * 0.26, w * 0.26, h * 0.16, -0.5, 0, Math.PI * 2); ctx2.fill();
+
+  // ── Aura rim — thickness & glow scale with rarity ──
+  ctx2.shadowBlur = (5 + tier * 5) + (2 + tier * 2.5) * pulse;
+  ctx2.shadowColor = rc;
+  ctx2.strokeStyle = rc;
+  ctx2.lineWidth = tier >= 3 ? 3 : 2;
+  const inset = tier >= 3 ? -1 : 1;
+  ctx2.strokeRect(x + inset, y + inset, w - inset * 2, h - inset * 2);
+
+  // inner second border for epic+
+  if (tier >= 2) {
+    ctx2.shadowBlur = 0;
+    ctx2.globalAlpha = 0.5;
+    ctx2.lineWidth = 1;
+    ctx2.strokeRect(x + 3, y + 3, w - 6, h - 6);
+    ctx2.globalAlpha = 1;
   }
 
-  if (skin.rarity === "legendaire") {
-    const col = skin.name === "Thunder King" ? "#60a5fa" : skin.name === "Golden God" ? "#fbbf24" : "#f97316";
-    ctx2.shadowBlur = 18 + 12 * pulse;
-    ctx2.shadowColor = col;
-    ctx2.strokeStyle = col;
-    ctx2.lineWidth = 3;
-    ctx2.strokeRect(x - 1, y - 1, w + 2, h + 2);
-    if (skin.type === "player") {
+  // sparkle motes for rare & epic
+  if (tier >= 1 && tier <= 2) {
+    for (let i = 0; i <= tier; i++) {
+      const sx = x + 3 + ((i * 53 + t * 28) % Math.max(1, w - 6));
+      const sy = y + 4 + ((i * 37) % Math.max(1, h - 8));
+      ctx2.globalAlpha = Math.max(0, 0.4 + 0.5 * Math.sin(t * 4 + i * 2));
+      ctx2.fillStyle = rc; ctx2.shadowBlur = 6; ctx2.shadowColor = rc;
+      ctx2.beginPath(); ctx2.arc(sx, sy, 1.7, 0, Math.PI * 2); ctx2.fill();
+    }
+    ctx2.globalAlpha = 1;
+  }
+
+  // ── Legendary & Mythic: constant motion swirling all around the object ──
+  if (tier >= 3) {
+    const cx = x + w / 2, cy = y + h / 2;
+    const rad = Math.max(w, h) * 0.62 + 8;
+    const isMyth = skin.rarity === "mythique";
+    const baseCol = skinGlow(skin);
+    const orbCount = isMyth ? 6 : 4;
+    // Mythic player's orbiting circle fades once the first revive is lost.
+    const mythPlayer = isMyth && skin.type === "player";
+    const showOrbit = !mythPlayer || legendaryReviveCount >= 2;
+
+    if (showOrbit) {
+    // orbiting energy sparks + trailing comets (around everything)
+    for (let i = 0; i < orbCount; i++) {
+      const ang = t * (isMyth ? 2.6 : 1.8) + (i / orbCount) * Math.PI * 2;
+      const ox = cx + Math.cos(ang) * rad;
+      const oy = cy + Math.sin(ang) * (rad * 0.6);
+      const col = isMyth ? `hsl(${(mythHue + i * 60) % 360},100%,70%)` : baseCol;
+      ctx2.fillStyle = col; ctx2.shadowBlur = 10; ctx2.shadowColor = col;
+      ctx2.beginPath(); ctx2.arc(ox, oy, Math.max(1, 2.4 + 1.4 * Math.sin(t * 5 + i)), 0, Math.PI * 2); ctx2.fill();
+      for (let k = 1; k <= 2; k++) {
+        const tx = cx + Math.cos(ang - k * 0.35) * rad;
+        const ty = cy + Math.sin(ang - k * 0.35) * (rad * 0.6);
+        ctx2.globalAlpha = 0.45 / k;
+        ctx2.beginPath(); ctx2.arc(tx, ty, 1.6, 0, Math.PI * 2); ctx2.fill();
+      }
+      ctx2.globalAlpha = 1;
+    }
+
+    // rotating energy ring(s)
+    ctx2.shadowBlur = 8;
+    ctx2.shadowColor = isMyth ? `hsl(${mythHue},100%,70%)` : baseCol;
+    ctx2.strokeStyle = ctx2.shadowColor; ctx2.lineWidth = 2;
+    const a0 = t * (isMyth ? -2.2 : 1.4);
+    ctx2.beginPath(); ctx2.ellipse(cx, cy, rad, rad * 0.6, 0, a0, a0 + Math.PI * 1.15); ctx2.stroke();
+    if (isMyth) {
+      const a1 = t * 1.7;
+      ctx2.strokeStyle = `hsl(${(mythHue + 140) % 360},100%,72%)`;
+      ctx2.shadowColor = ctx2.strokeStyle;
+      ctx2.beginPath(); ctx2.ellipse(cx, cy, rad * 0.78, rad * 0.48, Math.PI / 2, a1, a1 + Math.PI * 1.25); ctx2.stroke();
+    }
+    }
+
+    // rising embers / motes streaming up through the object
+    const eCol = isMyth ? `hsl(${(mythHue + 30) % 360},100%,70%)` : "rgba(251,191,36,1)";
+    ctx2.fillStyle = eCol; ctx2.shadowColor = eCol;
+    for (let i = 0; i < (isMyth ? 5 : 4); i++) {
+      const fx = x + 4 + ((i * 73 + t * 11) % Math.max(1, w - 8));
+      const fy = (y + h + 6) - ((t * 34 + i * 26) % (h + 24));
+      ctx2.globalAlpha = Math.max(0, Math.min(1, (fy - y) / h));
+      ctx2.shadowBlur = 6;
+      ctx2.beginPath(); ctx2.arc(fx, fy, 2 + Math.sin(t * 4 + i), 0, Math.PI * 2); ctx2.fill();
+    }
+    ctx2.globalAlpha = 1;
+
+    // sheen sweep gliding across the surface
+    const sweep = (t * 0.55) % 1.4;
+    const sx = x - 12 + sweep * (w + 24);
+    ctx2.shadowBlur = 0;
+    ctx2.save();
+    ctx2.beginPath(); ctx2.rect(x, y, w, h); ctx2.clip();
+    const sg = ctx2.createLinearGradient(sx - 9, 0, sx + 9, 0);
+    sg.addColorStop(0, "rgba(255,255,255,0)");
+    sg.addColorStop(0.5, isMyth ? `hsla(${mythHue},100%,82%,0.55)` : "rgba(255,255,255,0.45)");
+    sg.addColorStop(1, "rgba(255,255,255,0)");
+    ctx2.fillStyle = sg;
+    ctx2.fillRect(sx - 10, y, 20, h);
+    ctx2.restore();
+  }
+
+  // bespoke per-skin ornaments (wings, halo, crown, rift…)
+  if (skin.type === "player") drawOrnament(ctx2, skin, x, y, w, h, t);
+
+  ctx2.restore();
+}
+
+// ── Bespoke animated ornaments for signature skins ──
+function drawWings(ctx2, cx, cy, w, h, t, col, membrane) {
+  const flap = Math.sin(t * 4) * 0.22;
+  for (const side of [-1, 1]) {
+    ctx2.save();
+    ctx2.translate(cx + side * w * 0.32, cy - h * 0.05);
+    ctx2.rotate(side * (0.15 + flap));
+    ctx2.scale(side, 1);
+    ctx2.shadowBlur = 10; ctx2.shadowColor = col;
+    if (membrane) {
+      ctx2.fillStyle = hexA(col, 0.8);
+      ctx2.beginPath();
+      ctx2.moveTo(0, -h * 0.2);
+      ctx2.quadraticCurveTo(w * 0.5, -h * 0.6, w * 1.0, -h * 0.15);
+      ctx2.lineTo(w * 0.66, 0);
+      ctx2.lineTo(w * 0.98, h * 0.2);
+      ctx2.lineTo(w * 0.52, h * 0.04);
+      ctx2.lineTo(w * 0.72, h * 0.42);
+      ctx2.lineTo(w * 0.28, h * 0.08);
+      ctx2.closePath(); ctx2.fill();
+      ctx2.strokeStyle = hexA(col, 0.9); ctx2.lineWidth = 1.5; ctx2.stroke();
+    } else {
       for (let i = 0; i < 4; i++) {
-        const fx = x + 6 + ((Math.floor(t * 40 + i * 30)) % (w - 12));
-        const fy = y - 5 - Math.abs(Math.sin(t * 4 + i * 1.5)) * 12;
-        ctx2.fillStyle = `rgba(251,191,36,${0.5 + 0.4 * Math.sin(t * 5 + i)})`;
-        ctx2.shadowBlur = 6; ctx2.shadowColor = "#fbbf24";
-        ctx2.beginPath(); ctx2.arc(fx, fy, 3 + Math.sin(t * 4 + i) * 1.5, 0, Math.PI * 2); ctx2.fill();
+        const len = w * (0.92 - i * 0.14);
+        const yy = -h * 0.14 + i * h * 0.12;
+        ctx2.fillStyle = hexA(col, 0.85 - i * 0.12);
+        ctx2.beginPath();
+        ctx2.moveTo(0, yy);
+        ctx2.quadraticCurveTo(len * 0.6, yy - h * 0.14, len, yy + h * 0.02);
+        ctx2.quadraticCurveTo(len * 0.55, yy + h * 0.07, 0, yy + h * 0.11);
+        ctx2.closePath(); ctx2.fill();
       }
     }
+    ctx2.restore();
   }
-
-  if (skin.rarity === "mythique") {
-    const hue = (t * 60) % 360;
-    ctx2.shadowBlur = 24 + 8 * pulse;
-    ctx2.shadowColor = `hsl(${hue},100%,65%)`;
-    ctx2.strokeStyle = `hsl(${hue},100%,70%)`;
-    ctx2.lineWidth = 3;
-    ctx2.strokeRect(x - 2, y - 2, w + 4, h + 4);
-    if (skin.type === "player") {
-      for (let i = 0; i < 5; i++) {
-        const angle = t * 2.5 + (i / 5) * Math.PI * 2;
-        const orbitR = w * 0.65 + 6;
-        const ox = x + w / 2 + Math.cos(angle) * orbitR;
-        const oy = y + h / 2 + Math.sin(angle) * (orbitR * 0.6);
-        ctx2.fillStyle = `hsl(${(hue + i * 72) % 360},100%,70%)`;
-        ctx2.shadowBlur = 8; ctx2.shadowColor = ctx2.fillStyle;
-        ctx2.beginPath(); ctx2.arc(ox, oy, 3, 0, Math.PI * 2); ctx2.fill();
-      }
-    }
-    if (skin.name === "Reality Wall") {
-      ctx2.strokeStyle = `hsl(${(hue + 120) % 360},100%,70%)`;
-      ctx2.lineWidth = 2;
-      ctx2.strokeRect(x + 3, y + 3, w - 6, h - 6);
-    }
+}
+function drawHalo(ctx2, cx, yTop, w, t, col) {
+  const hy = yTop - 11 + Math.sin(t * 2) * 2;
+  ctx2.save();
+  ctx2.shadowBlur = 12; ctx2.shadowColor = col;
+  ctx2.strokeStyle = col; ctx2.lineWidth = 3;
+  ctx2.beginPath(); ctx2.ellipse(cx, hy, w * 0.4, w * 0.15, 0, 0, Math.PI * 2); ctx2.stroke();
+  ctx2.restore();
+}
+function drawCrown(ctx2, cx, yTop, w, col, t) {
+  const cw = w * 0.62, ch = w * 0.26, bx = cx - cw / 2, by = yTop - ch - 3 + Math.sin(t * 2) * 1.5;
+  ctx2.save();
+  ctx2.shadowBlur = 8; ctx2.shadowColor = col; ctx2.fillStyle = col;
+  ctx2.beginPath();
+  ctx2.moveTo(bx, by + ch);
+  ctx2.lineTo(bx, by + ch * 0.45);
+  ctx2.lineTo(bx + cw * 0.22, by + ch * 0.8);
+  ctx2.lineTo(bx + cw * 0.5, by);
+  ctx2.lineTo(bx + cw * 0.78, by + ch * 0.8);
+  ctx2.lineTo(bx + cw, by + ch * 0.45);
+  ctx2.lineTo(bx + cw, by + ch);
+  ctx2.closePath(); ctx2.fill();
+  ctx2.fillStyle = "#fff";
+  [[0.22, 0.8], [0.5, 0.05], [0.78, 0.8]].forEach(([fx, fy]) => {
+    ctx2.beginPath(); ctx2.arc(bx + cw * fx, by + ch * fy, 1.6, 0, Math.PI * 2); ctx2.fill();
+  });
+  ctx2.restore();
+}
+function drawClock(ctx2, cx, cy, w, h, t, col) {
+  const r = Math.max(w, h) * 0.52 + 7;
+  ctx2.save();
+  ctx2.shadowBlur = 10; ctx2.shadowColor = col; ctx2.strokeStyle = col; ctx2.lineWidth = 2;
+  ctx2.beginPath(); ctx2.arc(cx, cy, r, 0, Math.PI * 2); ctx2.stroke();
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2;
+    ctx2.beginPath();
+    ctx2.moveTo(cx + Math.cos(a) * r * 0.86, cy + Math.sin(a) * r * 0.86);
+    ctx2.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    ctx2.stroke();
   }
+  ctx2.lineWidth = 2.5;
+  ctx2.beginPath(); ctx2.moveTo(cx, cy); ctx2.lineTo(cx + Math.cos(t * 3) * r * 0.8, cy + Math.sin(t * 3) * r * 0.8); ctx2.stroke();
+  ctx2.lineWidth = 3.5;
+  ctx2.beginPath(); ctx2.moveTo(cx, cy); ctx2.lineTo(cx + Math.cos(t * 1.05) * r * 0.5, cy + Math.sin(t * 1.05) * r * 0.5); ctx2.stroke();
+  ctx2.restore();
+}
+function drawOrnament(ctx2, skin, x, y, w, h, t) {
+  const cx = x + w / 2, cy = y + h / 2;
+  const hasRev = skin.ability === "revival";
+  const rev = (typeof legendaryReviveCount === "number") ? legendaryReviveCount : 0;
+  const wingsOn = !hasRev || rev > 0;                          // wings vanish when the last revive is spent
+  const mythCircleOn = skin.rarity === "mythique" && rev >= 2; // halo/circle only while no revive lost
+  switch (skin.name) {
+    case "Solar Phoenix": if (wingsOn) drawWings(ctx2, cx, cy, w, h, t, "#fb923c", false); break;
+    case "Cosmic God":    if (wingsOn) drawWings(ctx2, cx, cy, w, h, t, "#a5f3fc", false); if (mythCircleOn) drawHalo(ctx2, cx, y, w, t, "#a5f3fc"); break;
+    case "Dragon Flame":  if (wingsOn) drawWings(ctx2, cx, cy, w, h, t, "#ef4444", true); break;
+    case "Shadow Form":   if (wingsOn) drawWings(ctx2, cx, cy, w, h, t, "#a855f7", true); break;
+    case "Void Walker":   if (wingsOn) drawWings(ctx2, cx, cy, w, h, t, "#8b5cf6", true); break;
+    case "Golden God":    drawCrown(ctx2, cx, y, w, "#fbbf24", t); break;
+    case "Thunder King":  drawCrown(ctx2, cx, y, w, "#60a5fa", t); break;
+    case "Time Rift":     drawClock(ctx2, cx, cy, w, h, t, "#c4b5fd"); break;
+    case "Quantum Shift": drawClock(ctx2, cx, cy, w, h, t, "#a855f7"); break;
+  }
+}
 
+// Subtle whole-screen ambiance tinted to the equipped background's rarity.
+function drawBgAmbiance(ctx2, name, t) {
+  const skin = SKINS.find(s => s.name === name);
+  if (!skin) return;
+  const tier = _rarTier[skin.rarity] ?? 0;
+  if (tier === 0) return;
+  const rc = RARITY_COLORS[skin.rarity];
+  const pulse = 0.5 + 0.5 * Math.sin(t * 1.2);
+  ctx2.save();
+  // top glow vignette
+  const g = ctx2.createRadialGradient(W / 2, -30, 20, W / 2, -30, W * 0.95);
+  g.addColorStop(0, hexA(rc, (0.05 + tier * 0.022) * (0.7 + 0.3 * pulse)));
+  g.addColorStop(1, hexA(rc, 0));
+  ctx2.fillStyle = g;
+  ctx2.fillRect(0, 0, W, GROUND_Y);
+  // drifting glints for epic+
+  if (tier >= 2) {
+    ctx2.shadowBlur = 8; ctx2.shadowColor = rc; ctx2.fillStyle = rc;
+    for (let i = 0; i < tier + 1; i++) {
+      const gx = ((i * 123 + t * 16 * (0.5 + i * 0.2)) % (W + 40)) - 20;
+      const gy = 26 + ((i * 67) % (GROUND_Y - 60));
+      ctx2.globalAlpha = 0.45 * (0.5 + 0.5 * Math.sin(t * 3 + i));
+      ctx2.beginPath(); ctx2.arc(gx, gy, 1.6, 0, Math.PI * 2); ctx2.fill();
+    }
+    ctx2.globalAlpha = 1;
+  }
   ctx2.restore();
 }
 
@@ -4404,6 +4720,9 @@ function gameLoop(timestamp) {
     });
   }
 
+  // Background ambiance — subtle rarity-tinted glow
+  drawBgAmbiance(ctx, selectedSkins.background, t);
+
   // Ground line
   ctx.fillStyle = "rgba(15,23,42,0.5)";
   ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
@@ -4770,6 +5089,7 @@ const Gacha = (() => {
   }
 
   function showReward(skin) {
+    GachaSFX.play(skin.rarity);
     const colorMap = { commun: "#94a3b8", rare: "#38bdf8", epic: "#a855f7", legendaire: "#ffb86b", mythique: "#ff6b94" };
     document.getElementById("rewardName").textContent   = skin.name;
     document.getElementById("rewardRarity").textContent = skin.rarity.toUpperCase();
@@ -4845,24 +5165,43 @@ const Collection = (() => {
   function buildCard(skin, rarity) {
     const card = document.createElement("div");
     card.className = "skin-card";
+    card.dataset.rar = skin.rarity;
     const owned = ownedSkins[skin.type].includes(skin.name);
+    if (owned) card.classList.add("owned");
 
-    const box = document.createElement("div");
-    box.className = "skin-box";
+    const rc = RARITY_COLORS[skin.rarity] || "#94a3b8";
+    const fancy = skin.rarity === "epic" || skin.rarity === "legendaire" || skin.rarity === "mythique";
+    const nParticles = (skin.rarity === "legendaire" || skin.rarity === "mythique") ? 3 : skin.rarity === "commun" ? 1 : 2;
+
+    // Animated art tile — the skin's own unique texture under a rarity-tiered glow.
+    const art = document.createElement("div");
+    art.className = "sk-art" + (owned ? "" : " locked-art");
     if (owned) {
-      const colorMap = { commun: "#374151", rare: "#0369a1", epic: "#6d28d9", legendaire: "#92400e", mythique: "#9f1239" };
-      box.style.background = colorMap[skin.rarity] || "#1f2937";
-    } else {
-      box.classList.add("locked");
+      const url = getSkinDataURL(skin.name);
+      if (url) art.style.backgroundImage = `url(${url})`;
     }
+    let layers = `<div class="sk-halo"></div><div class="sk-gloss"></div>`;
+    if (owned) {
+      if (fancy) layers += `<div class="sk-sheen"></div>`;
+      for (let i = 1; i <= nParticles; i++) layers += `<div class="sk-p sk-p${i}"></div>`;
+    } else {
+      layers += `<div class="sk-lock">🔒</div>`;
+    }
+    art.innerHTML = layers;
 
     const name = document.createElement("div");
     name.className = "skin-name";
     name.textContent = skin.name;
 
-    const type = document.createElement("div");
+    const meta = document.createElement("div");
+    meta.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;";
+    const type = document.createElement("span");
     type.className = "skin-type";
     type.textContent = skin.type;
+    const rar = document.createElement("span");
+    rar.textContent = skin.rarity === "legendaire" ? "Legendary" : skin.rarity === "mythique" ? "Mythic" : skin.rarity === "commun" ? "Common" : skin.rarity[0].toUpperCase() + skin.rarity.slice(1);
+    rar.style.cssText = `font-size:8px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:${rc};background:${rc}1f;border:1px solid ${rc}66;padding:2px 7px;border-radius:999px;`;
+    meta.appendChild(type); meta.appendChild(rar);
 
     // Perk badge for legendary / mythic
     const PERKS = {
@@ -4871,7 +5210,7 @@ const Collection = (() => {
     };
     const perkText = PERKS[skin.rarity]?.[skin.type];
 
-    card.appendChild(box); card.appendChild(name); card.appendChild(type);
+    card.appendChild(art); card.appendChild(name); card.appendChild(meta);
     if (perkText) {
       const perk = document.createElement("div");
       perk.style.cssText = `font-size:9px;font-weight:800;text-align:center;line-height:1.3;color:${skin.rarity === 'mythique' ? '#ff6b94' : '#ffb86b'};`;
