@@ -1447,10 +1447,6 @@
         <button class="btn shop-btn" style="min-width:auto;" onclick="AuthUI.showSignup()">Create Account</button>
         <button class="btn secondary" onclick="AuthUI.showSignin()">Sign In</button>
       </div>
-      <button onclick="AuthUI.doGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;color:#333;border:none;border-radius:10px;padding:10px 18px;font-weight:800;font-size:13px;cursor:pointer;width:100%;max-width:320px;justify-content:center;">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-        Continue with Google
-      </button>
       <button class="btn secondary" onclick="AuthUI.close()">Close</button>
     </div>
 
@@ -1516,16 +1512,6 @@
         <button class="btn shop-btn" style="width:100%;padding:8px;" onclick="AuthUI.changeDisplayName()">Change Display Name</button>
         <div id="dnCooldown" style="font-size:11px;opacity:.5;text-align:center;"></div>
         <div id="dnError" class="auth-error"></div>
-      </div>
-
-      <!-- Add email/password login (shown only for Google-only accounts) -->
-      <div id="linkEmailSection" style="display:none;width:100%;max-width:320px;background:rgba(124,77,255,0.08);border:1px solid rgba(124,77,255,0.22);border-radius:14px;padding:14px;flex-direction:column;gap:10px;">
-        <div style="font-size:12px;font-weight:800;opacity:.7;letter-spacing:.5px;text-transform:uppercase;">🔑 Add Email Login</div>
-        <div style="font-size:11px;opacity:.55;">Set a password to also sign in with <strong id="linkEmailAddr"></strong> — stays the same account.</div>
-        <input class="auth-input" id="linkPw1" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password" />
-        <input class="auth-input" id="linkPw2" type="password" placeholder="Confirm password" autocomplete="new-password" />
-        <button class="btn shop-btn" style="width:100%;padding:8px;" onclick="AuthUI.linkEmailPassword()">Enable Email Login</button>
-        <div id="linkError" class="auth-error"></div>
       </div>
 
       <button class="btn secondary" style="width:100%;max-width:320px;" onclick="AuthUI.doSignout()">Sign Out</button>
@@ -6012,21 +5998,6 @@ const AuthUI = {
     document.getElementById("dnInput").value               = "";
     document.getElementById("dnError").textContent         = "";
 
-    // Show "Add Email Login" only for accounts that use Google but have no password yet
-    const providers = (currentUser?.providerData || []).map(p => p.providerId);
-    const linkSec = document.getElementById("linkEmailSection");
-    if (linkSec) {
-      if (providers.includes("google.com") && !providers.includes("password")) {
-        linkSec.style.display = "flex";
-        document.getElementById("linkEmailAddr").textContent = currentUser?.email || "";
-        document.getElementById("linkPw1").value = "";
-        document.getElementById("linkPw2").value = "";
-        document.getElementById("linkError").textContent = "";
-      } else {
-        linkSec.style.display = "none";
-      }
-    }
-
     // Cooldown display
     const weekMs = 7 * 24 * 60 * 60 * 1000;
     const remaining = weekMs - (Date.now() - lastDisplayNameChange);
@@ -6059,29 +6030,7 @@ const AuthUI = {
     if (pw1 !== pw2)     { errEl.textContent = "Passwords don't match."; return; }
 
     try {
-      // If this email is already registered with Google, link a password to that
-      // SAME account instead of erroring — Google + email become one account.
       const existingMethods = await fbAuth.fetchSignInMethodsForEmail(email);
-      if (existingMethods.includes("google.com") && !existingMethods.includes("password")) {
-        errEl.style.color = "#94a3b8";
-        errEl.textContent = "Confirming your Google account to link your password…";
-        const provider = new firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({ login_hint: email });
-        const gCred = await fbAuth.signInWithPopup(provider);
-        if ((gCred.user.email || "").toLowerCase() !== email.toLowerCase()) {
-          await fbAuth.signOut();
-          errEl.style.color = "";
-          errEl.textContent = "That Google account doesn't match this email.";
-          return;
-        }
-        const emailCred = firebase.auth.EmailAuthProvider.credential(email, pw1);
-        await gCred.user.linkWithCredential(emailCred);
-        saveRecentAccount(gCred.user.uid, S.get("rg-username", username), email);
-        errEl.style.color = "";
-        showToast("✅ Password added! You can now sign in with Google or email.");
-        beep(1200, 0.14, "sine", 0.07);
-        return;
-      }
       if (existingMethods.length) { errEl.textContent = "Email already has an account. Try signing in."; return; }
 
       // Check username uniqueness
@@ -6217,64 +6166,6 @@ const AuthUI = {
     showToast(`✅ Display name changed to "${newName}"!`);
     beep(1100, 0.1, "sine", 0.05);
     this.showProfile(); // refresh to show new name + reset cooldown display
-  },
-
-  // ── Google Sign-In ──
-  async doGoogle() {
-    if (!fbReady) { showToast("⚠ Firebase not configured yet."); return; }
-    try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      const cred = await fbAuth.signInWithPopup(provider);
-      const user = cred.user;
-      // Use Google display name as username if not set
-      const existing = S.get("rg-username", "");
-      if (!existing) {
-        const gName = (user.displayName || "player").toLowerCase().replace(/\s+/g,"_").slice(0,20);
-        S.set("rg-username", gName);
-        // Try to reserve username (best effort, no uniqueness enforcement for Google)
-        try { await fbDb.collection("usernames").doc(gName).set({ uid: user.uid }); } catch {}
-      }
-      saveRecentAccount(user.uid, S.get("rg-username", user.displayName || "Player"), user.email);
-    } catch(e) {
-      if (e.code === "auth/account-exists-with-different-credential") {
-        // This email already signs in with a password. Link Google onto that account.
-        try {
-          const pendingCred = e.credential;
-          const email = e.customData?.email || e.email;
-          const pw = window.prompt(`This email (${email}) already has a password.\nEnter it to link Google to the same account:`);
-          if (!pw) return;
-          const userCred = await fbAuth.signInWithEmailAndPassword(email, pw);
-          await userCred.user.linkWithCredential(pendingCred);
-          showToast("✅ Google linked! Same account, either way to sign in.");
-        } catch(le) {
-          showToast("❌ " + friendlyAuthError(le.code));
-        }
-        return;
-      }
-      if (e.code !== "auth/popup-closed-by-user") showToast("❌ " + friendlyAuthError(e.code));
-    }
-  },
-
-  // ── Add email/password login to a Google account ──
-  async linkEmailPassword() {
-    const errEl = document.getElementById("linkError");
-    errEl.style.color = "";
-    errEl.textContent = "";
-    if (!fbReady || !currentUser || !currentUser.email) { errEl.textContent = "Account not available."; return; }
-    const pw1 = document.getElementById("linkPw1").value;
-    const pw2 = document.getElementById("linkPw2").value;
-    if (pw1.length < 6) { errEl.textContent = "Password must be at least 6 characters."; return; }
-    if (pw1 !== pw2)    { errEl.textContent = "Passwords don't match."; return; }
-    try {
-      const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, pw1);
-      await currentUser.linkWithCredential(cred);
-      saveRecentAccount(currentUser.uid, S.get("rg-username", "Player"), currentUser.email);
-      showToast("✅ Email login enabled! Sign in with " + currentUser.email);
-      beep(1200, 0.12, "sine", 0.06);
-      this.showProfile();
-    } catch(e) {
-      errEl.textContent = friendlyAuthError(e.code);
-    }
   },
 
   async doResetQuick() {
