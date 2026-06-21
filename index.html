@@ -2003,18 +2003,30 @@ const GachaSFX = (() => {
     legendaire: 'sounds/pull-legendary.mp3',
     mythique:   'sounds/pull-mythic.mp3',
   };
+  const VOLS = { commun:0.55, rare:0.72, epic:0.78, legendaire:0.78, mythique:0.55 };
   const cache = {};
+  let _locked = false;
+
+  function _setSpinBtn(disabled) {
+    const btn = document.getElementById('spinBtn');
+    if (btn) { btn.disabled = disabled; btn.style.opacity = disabled ? '0.4' : ''; }
+  }
+
   function play(rarity) {
     if (!sfxEnabled) return;
     const src = SRC[rarity]; if (!src) return;
     try {
       if (!cache[rarity]) cache[rarity] = new Audio(src);
       const a = cache[rarity].cloneNode();
-      a.volume = rarity === 'commun' ? 0.6 : 0.85;
-      a.play().catch(() => {});
-    } catch (_) {}
+      a.volume = VOLS[rarity] ?? 0.72;
+      _locked = true;
+      _setSpinBtn(true);
+      a.addEventListener('ended', () => { _locked = false; _setSpinBtn(false); }, { once: true });
+      a.play().catch(() => { _locked = false; _setSpinBtn(false); });
+    } catch (_) { _locked = false; _setSpinBtn(false); }
   }
-  return { play };
+
+  return { play, get locked() { return _locked; } };
 })();
 
 // ─────────────────────────────────────────────
@@ -4738,7 +4750,7 @@ const Gacha = (() => {
   }
 
   function spin() {
-    if (spinning) return;
+    if (spinning || GachaSFX.locked) return;
     if (coins < 30) { showToast("❌ Need 30 coins to spin!"); beep(220, 0.07); return; }
     coins -= 30;
     pity[activeType] = (pity[activeType] || 0) + 1;
