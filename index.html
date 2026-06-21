@@ -1848,58 +1848,10 @@ function beep(freq = 440, dur = 0.06, type = "sine", vol = 0.05) {
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   o.type = type; o.frequency.value = freq;
-  g.gain.setValueAtTime(vol, audioCtx.currentTime);
+  g.gain.setValueAtTime(vol * 0.4, audioCtx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
   o.connect(g); g.connect(audioCtx.destination);
   o.start(); o.stop(audioCtx.currentTime + dur);
-}
-function playGachaJingle(rarity) {
-  if (!sfxEnabled) return;
-  ensureAudio();
-  const ctx = audioCtx;
-  const now = ctx.currentTime;
-  function n(freq, start, dur, vol, type = 'sine') {
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.setValueAtTime(0, now + start);
-    g.gain.linearRampToValueAtTime(vol, now + start + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(now + start); o.stop(now + start + dur + 0.05);
-  }
-  if (rarity === 'commun') {
-    n(523, 0.00, 0.12, 0.10);
-    n(659, 0.14, 0.20, 0.10);
-  } else if (rarity === 'rare') {
-    n(523, 0.00, 0.11, 0.12);
-    n(659, 0.12, 0.11, 0.12);
-    n(784, 0.24, 0.28, 0.14);
-  } else if (rarity === 'epic') {
-    n(523, 0.00, 0.10, 0.14, 'triangle');
-    n(659, 0.11, 0.10, 0.14, 'triangle');
-    n(784, 0.22, 0.10, 0.14, 'triangle');
-    n(1047, 0.33, 0.45, 0.18, 'triangle');
-    n(784,  0.33, 0.45, 0.08, 'sine');
-  } else if (rarity === 'legendaire') {
-    n(392,  0.00, 0.10, 0.13, 'sine');
-    n(523,  0.11, 0.10, 0.14, 'sine');
-    n(659,  0.22, 0.10, 0.15, 'sine');
-    n(784,  0.33, 0.10, 0.16, 'sine');
-    n(1047, 0.44, 0.55, 0.20, 'sine');
-    n(1319, 0.44, 0.55, 0.09, 'sine');
-    n(784,  0.44, 0.55, 0.09, 'sine');
-  } else if (rarity === 'mythique') {
-    n(261,  0.00, 0.12, 0.12, 'sine');
-    n(330,  0.10, 0.12, 0.14, 'sine');
-    n(392,  0.20, 0.12, 0.15, 'sine');
-    n(523,  0.30, 0.12, 0.16, 'sine');
-    n(659,  0.40, 0.12, 0.17, 'sine');
-    n(784,  0.50, 0.12, 0.18, 'sine');
-    n(1047, 0.60, 0.75, 0.22, 'sine');
-    n(1319, 0.60, 0.75, 0.12, 'triangle');
-    n(1568, 0.60, 0.75, 0.07, 'triangle');
-    n(130,  0.60, 0.30, 0.14, 'sine');
-  }
 }
 function updateSoundUI() {
   const allOff = !musicEnabled && !sfxEnabled;
@@ -5059,7 +5011,6 @@ const Gacha = (() => {
     document.getElementById("gachaCoins").textContent = `Your coins: ${coins}`;
     saveAll();
     updatePityText();
-    beep(900, 0.12, "sine", 0.06);
     requestAnimationFrame(animate);
   }
 
@@ -5085,7 +5036,6 @@ const Gacha = (() => {
     if (!ownedSkins[skin.type].includes(skin.name)) ownedSkins[skin.type].push(skin.name);
     saveAll();
     showReward(skin);
-    playGachaJingle(rarity);
   }
 
   function showReward(skin) {
