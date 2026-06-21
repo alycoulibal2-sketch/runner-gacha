@@ -3983,7 +3983,7 @@ function endLiveSession() {
 window.addEventListener("beforeunload", () => { endLiveSession(); });
 
 function startGame() {
-  CrazyGames.SDK.game.gameplayStart();
+  if (window.CrazyGames?.SDK) CrazyGames.SDK.game.gameplayStart();
   obstacles = []; fieldCoins = []; particles = []; powerups = [];
   gameSpeed = currentDiff.startSpeed;
   score = 0;
@@ -4072,12 +4072,10 @@ function startGame() {
 
 function gameOver() {
   running = false;
-  CrazyGames.SDK.game.gameplayStop();
-  CrazyGames.SDK.ad.requestAd('midgame', {
-    adFinished: () => {},
-    adError:    () => {},
-    adStarted:  () => {},
-  });
+  if (window.CrazyGames?.SDK) {
+    CrazyGames.SDK.game.gameplayStop();
+    CrazyGames.SDK.ad.requestAd('midgame', { adFinished: ()=>{}, adError: ()=>{}, adStarted: ()=>{} });
+  }
   endLiveSession();
   spawnParticles(player.x + player.w / 2, player.y + player.h / 2, "#ef4444", 16);
 
@@ -5262,7 +5260,7 @@ try {
   fbAuth = firebase.auth();
   fbDb   = firebase.firestore();
   fbReady = true;
-  CrazyGames.SDK.init().then(() => CrazyGames.SDK.game.sdkGameLoadingStop());
+  if (window.CrazyGames?.SDK) CrazyGames.SDK.init().then(() => CrazyGames.SDK.game.sdkGameLoadingStop());
 
   fbAuth.onAuthStateChanged(user => {
     currentUser = user;
