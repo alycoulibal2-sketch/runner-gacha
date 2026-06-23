@@ -5571,9 +5571,6 @@ const AuthUI = {
     if (pw1 !== pw2)     { errEl.textContent = "Passwords don't match."; return; }
 
     try {
-      const existingMethods = await fbAuth.fetchSignInMethodsForEmail(email);
-      if (existingMethods.length) { errEl.textContent = "Email already has an account. Try signing in."; return; }
-
       // Check username uniqueness
       const usernameDoc = await fbDb.collection("usernames").doc(username).get();
       if (usernameDoc.exists) { errEl.textContent = "Username already taken."; return; }
