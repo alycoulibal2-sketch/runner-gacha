@@ -6300,6 +6300,13 @@ const ResetPage = {
 window.ResetPage = ResetPage;
 // ─────────────────────────────────────────────
 ResetPage.init();
+// First-ever load: wipe to a clean slate so new players start with only the 3 base skins.
+if (!S.get("rg-initialized")) {
+  ownedSkins    = { player: [], background: [], obstacle: [] };
+  selectedSkins = { player: "default", background: "default", obstacle: "default" };
+  pity          = { player: 0, background: 0, obstacle: 0 };
+  S.set("rg-initialized", true);
+}
 giveStarterSkins();
 updateStreak();
 refreshHUD();
