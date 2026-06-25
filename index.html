@@ -1658,7 +1658,7 @@ let adWatchCount   = S.get("rg-adCount", 0);
 let totalSpins     = S.get("rg-totalSpins", 0);
 let totalCoins     = S.get("rg-totalCoins", 0);
 
-let musicEnabled = S.get("rg-music", true);
+let musicEnabled = false;  // always start muted; prompt asks each session
 let sfxEnabled   = S.get("rg-sfx",   true);
 let audioCtx;
 let score = 0, gameSpeed = 3, running = false, paused = false, menuOpen = true;
@@ -1918,15 +1918,15 @@ function toggleSound() {
 // ─────────────────────────────────────────────
 const Music = (() => {
   const TRACKS = {
-    menu0:      { name:'Menu 1',       src:'sounds/menu-1.mp3',       vol:0.40 },
-    menu1:      { name:'Menu 2',       src:'sounds/menu-2.mp3',       vol:0.40 },
-    menu2:      { name:'Menu 3',       src:'sounds/menu-3.mp3',       vol:0.40 },
-    easy:       { name:'Easy Mode',    src:'sounds/game-easy.mp3',    vol:0.55 },
-    hard:       { name:'Hard Mode',    src:'sounds/game-hard.mp3',    vol:0.55 },
-    extreme:    { name:'Extreme Mode', src:'sounds/game-extreme.mp3', vol:0.55 },
-    gacha:      { name:'Gacha',        src:'sounds/gacha-screen.mp3', vol:0.45 },
-    duel_lobby: { name:'Duel Lobby',   src:'sounds/duel-lobby.mp3',   vol:0.50 },
-    duel_match: { name:'Duel Match',   src:'sounds/duel-match.mp3',   vol:0.55 },
+    menu0:      { name:'Menu 1',       src:'sounds/menu-1.mp3',       vol:0.25 },
+    menu1:      { name:'Menu 2',       src:'sounds/menu-2.mp3',       vol:0.25 },
+    menu2:      { name:'Menu 3',       src:'sounds/menu-3.mp3',       vol:0.25 },
+    easy:       { name:'Easy Mode',    src:'sounds/game-easy.mp3',    vol:0.35 },
+    hard:       { name:'Hard Mode',    src:'sounds/game-hard.mp3',    vol:0.35 },
+    extreme:    { name:'Extreme Mode', src:'sounds/game-extreme.mp3', vol:0.35 },
+    gacha:      { name:'Gacha',        src:'sounds/gacha-screen.mp3', vol:0.28 },
+    duel_lobby: { name:'Duel Lobby',   src:'sounds/duel-lobby.mp3',   vol:0.30 },
+    duel_match: { name:'Duel Match',   src:'sounds/duel-match.mp3',   vol:0.35 },
   };
 
   const MENU_TRACKS = ['menu0','menu1','menu2'];
@@ -2032,7 +2032,7 @@ const GachaSFX = (() => {
     legendaire: 'sounds/pull-legendary.mp3',
     mythique:   'sounds/pull-mythic.mp3',
   };
-  const VOLS = { commun:0.55, rare:0.72, epic:0.78, legendaire:0.78, mythique:0.55 };
+  const VOLS = { commun:0.35, rare:0.45, epic:0.50, legendaire:0.50, mythique:0.35 };
   const cache = {};
   let _locked = false;
 
@@ -5379,10 +5379,89 @@ canvas.addEventListener("click", () => {
 
 window.addEventListener("click", function once() {
   ensureAudio();
-  // Kick off menu music on the first interaction (browsers block autoplay before a gesture)
-  if (!running && musicEnabled) Music.playMenu();
+  // First gesture unlocks audio context; music starts only if user opts in via prompt
+  SoundPrompt.show();
   window.removeEventListener("click", once);
 });
+
+// ─────────────────────────────────────────────
+//  MUSIC CONSENT PROMPT  (shown on load + page return)
+// ─────────────────────────────────────────────
+const SoundPrompt = (() => {
+  let _shown = false;
+
+  function _remove() {
+    document.getElementById('_sndPrompt')?.remove();
+    _shown = false;
+  }
+
+  function show() {
+    if (_shown) return;
+    _shown = true;
+    const el = document.createElement('div');
+    el.id = '_sndPrompt';
+    el.style.cssText = [
+      'position:absolute', 'bottom:70px', 'left:50%',
+      'transform:translateX(-50%)', 'z-index:300',
+      'background:#1a2236', 'border:1px solid rgba(255,255,255,0.13)',
+      'border-radius:16px', 'padding:14px 18px', 'min-width:220px',
+      'box-shadow:0 6px 32px rgba(0,0,0,0.6)',
+      'display:flex', 'flex-direction:column', 'gap:10px',
+      'font-family:inherit', 'text-align:center',
+      'animation:fadeIn .25s ease',
+    ].join(';');
+    el.innerHTML = `
+      <div style="font-size:22px;">🎵</div>
+      <div style="font-size:13px;font-weight:900;color:#e8e8f0;line-height:1.3;">Enable music?</div>
+      <div style="font-size:11px;color:rgba(232,232,240,0.45);">Sound is off — turn it on to enjoy the soundtrack.</div>
+      <div style="display:flex;gap:8px;">
+        <button id="_sndYes" style="flex:1;padding:8px;border-radius:10px;border:none;
+          background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;
+          font-weight:900;font-size:13px;cursor:pointer;">Yes</button>
+        <button id="_sndNo" style="flex:1;padding:8px;border-radius:10px;border:none;
+          background:rgba(255,255,255,0.08);color:rgba(232,232,240,0.55);
+          font-size:13px;cursor:pointer;">No thanks</button>
+      </div>`;
+    (document.getElementById('game') || document.body).appendChild(el);
+    el.querySelector('#_sndYes').onclick = () => { _enable(); _remove(); };
+    el.querySelector('#_sndNo').onclick  = () => { _remove(); };
+  }
+
+  function _enable() {
+    musicEnabled = true;
+    sfxEnabled   = true;
+    S.set('rg-sfx', true);
+    updateSoundUI();
+    ensureAudio();
+    if (!running) Music.playMenu(); else Music.resume();
+  }
+
+  function _mute() {
+    if (musicEnabled) {
+      musicEnabled = false;
+      Music.stop();
+      updateSoundUI();
+    }
+  }
+
+  // Mute + re-prompt whenever the player returns to the tab or page
+  let _wasHidden = false;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      _wasHidden = true;
+      _mute();
+    } else if (_wasHidden) {
+      _wasHidden = false;
+      _remove();
+      setTimeout(show, 500);
+    }
+  });
+  window.addEventListener('pageshow', e => {
+    if (e.persisted) { _mute(); _remove(); setTimeout(show, 500); }
+  });
+
+  return { show };
+})();
 
 // ─────────────────────────────────────────────
 //  HUD REFRESH
