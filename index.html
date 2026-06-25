@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#071029" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="manifest" href="manifest.json" />
   <style>
     :root {
@@ -1143,7 +1145,7 @@
     </div>
 
     <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
-    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
+    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 75 spins = guaranteed Legendary</p>
   </div>
 
   <!-- Game Over Modal -->
@@ -1310,8 +1312,12 @@
       <button class="btn secondary" onclick="UI.closeGacha()">Close</button>
     </div>
 
-    <div id="gachaSkipRow" style="display:none;margin-top:4px;text-align:center;">
-      <button onclick="Gacha.skipSpin()" style="background:linear-gradient(90deg,#7c4dff,#ff6b94);border:none;border-radius:10px;color:#fff;font-weight:900;font-size:13px;padding:8px 22px;cursor:pointer;letter-spacing:.5px;">⚡ Skip Animation</button>
+    <div style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <span style="font-size:12px;color:rgba(234,241,251,0.55);">⚡ Auto-Skip</span>
+      <div id="skipToggle" onclick="Gacha.toggleSkip()"
+        style="width:42px;height:24px;border-radius:12px;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;">
+        <div id="skipThumb" style="position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;"></div>
+      </div>
     </div>
 
     <div id="gachaResult" class="muted">Spin to get a new skin!</div>
@@ -1330,6 +1336,30 @@
         <button class="reward-btn" id="btnCollection"  style="background:var(--glass);color:var(--text);">Collection</button>
         <button class="reward-btn" id="btnCloseReward" style="background:rgba(255,255,255,0.07);color:var(--text);">Close</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Runner Pass Upsell Popup -->
+  <div id="passUpsell" style="display:none;position:absolute;inset:0;z-index:70;background:rgba(2,6,23,0.82);align-items:center;justify-content:center;">
+    <div style="background:linear-gradient(135deg,#0f172a,#1a0a2e);border:1px solid rgba(124,77,255,0.4);border-radius:20px;padding:24px 20px;max-width:300px;width:90%;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 0 60px rgba(124,77,255,0.25);">
+      <div style="font-size:28px;">⭐</div>
+      <div style="font-size:18px;font-weight:900;background:linear-gradient(90deg,#ff7a59,#ffb86b,#7c4dff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Runner Pass</div>
+      <div style="font-size:12px;color:rgba(234,241,251,0.6);text-align:center;line-height:1.6;">
+        ⚡ Skip spin animations<br>
+        💰 3× coin income<br>
+        🎁 200 bonus coins/day<br>
+        🚫 No ads<br>
+        🎨 Exclusive monthly skin
+      </div>
+      <div style="font-size:20px;font-weight:900;color:#ffb86b;">$3.99 / mo</div>
+      <button onclick="Shop.buyPass();document.getElementById('passUpsell').style.display='none';"
+        style="width:100%;background:linear-gradient(90deg,#ff7a59,#7c4dff);border:none;border-radius:12px;color:#fff;font-weight:900;font-size:15px;padding:12px;cursor:pointer;">
+        Get Runner Pass
+      </button>
+      <button onclick="document.getElementById('passUpsell').style.display='none';"
+        style="background:none;border:none;color:rgba(234,241,251,0.4);font-size:12px;cursor:pointer;padding:4px;">
+        Maybe later
+      </button>
     </div>
   </div>
 
@@ -4697,6 +4727,31 @@ const Gacha = (() => {
   const DUR = 2000;
   let activeType = "player";
   let pendingRarity = null;
+  let skipEnabled = S.get("rg-skipSpin", false);
+
+  function _applyToggleUI() {
+    const tog = document.getElementById("skipToggle");
+    const thumb = document.getElementById("skipThumb");
+    if (!tog || !thumb) return;
+    if (skipEnabled && hasPass) {
+      tog.style.background = "linear-gradient(90deg,#7c4dff,#ff6b94)";
+      thumb.style.left = "21px";
+    } else {
+      tog.style.background = "rgba(255,255,255,0.12)";
+      thumb.style.left = "3px";
+    }
+  }
+
+  function toggleSkip() {
+    if (!hasPass) {
+      document.getElementById("passUpsell").style.display = "flex";
+      return;
+    }
+    skipEnabled = !skipEnabled;
+    S.set("rg-skipSpin", skipEnabled);
+    _applyToggleUI();
+    showToast(skipEnabled ? "⚡ Auto-Skip ON" : "⚡ Auto-Skip OFF");
+  }
 
   function draw(r = 0) {
     gCtx.clearRect(0, 0, gCanvas.width, gCanvas.height);
@@ -4749,7 +4804,7 @@ const Gacha = (() => {
     S.set("rg-totalSpins", totalSpins);
 
     let rarity;
-    if (pity[activeType] >= 50) {
+    if (pity[activeType] >= 75) {
       rarity = "legendaire";
       pity[activeType] = 0;
       showToast("✨ Pity triggered — Legendary guaranteed!");
@@ -4767,21 +4822,13 @@ const Gacha = (() => {
     document.getElementById("gachaCoins").textContent = `Your coins: ${coins}`;
     saveAll();
     updatePityText();
-    document.getElementById("gachaSkipRow").style.display = "block";
-    requestAnimationFrame(animate);
-  }
 
-  function skipSpin() {
-    if (!spinning) return;
-    if (!hasPass) {
-      UI.closeGacha();
-      UI.openShop();
-      showToast("⭐ Get Runner Pass to skip spin animations!");
+    if (hasPass && skipEnabled) {
+      spinning = false;
+      finish();
       return;
     }
-    spinning = false;
-    document.getElementById("gachaSkipRow").style.display = "none";
-    finish();
+    requestAnimationFrame(animate);
   }
 
   function animate(now) {
@@ -4795,7 +4842,6 @@ const Gacha = (() => {
   }
 
   function finish() {
-    document.getElementById("gachaSkipRow").style.display = "none";
     giveReward(pendingRarity);
     checkAchievements();
   }
@@ -4840,10 +4886,10 @@ const Gacha = (() => {
 
   function updatePityText() {
     document.getElementById("pityInfo").textContent =
-      `Pity — Player: ${pity.player || 0} | BG: ${pity.background || 0} | Obstacle: ${pity.obstacle || 0} (50 = Legendary)`;
+      `Pity — Player: ${pity.player || 0} | BG: ${pity.background || 0} | Obstacle: ${pity.obstacle || 0} (75 = Legendary)`;
   }
 
-  return { spin, skipSpin, selectType, draw, updatePityText };
+  return { spin, toggleSkip, selectType, draw, updatePityText, initUI: _applyToggleUI };
 })();
 
 // ─────────────────────────────────────────────
@@ -5762,6 +5808,7 @@ try {
             DB.save();
           }
           if (GRANT_ALL_SKINS_UIDS.includes(user.uid)) grantAllSkins();
+          Gacha.initUI();
           AuthUI.showProfile();
           updateAccountBtn(true);
           showToast(`👋 Welcome back, ${getDisplayName()}!`);
@@ -6327,6 +6374,7 @@ if (!S.get("rg-initialized")) {
   S.set("rg-initialized", true);
 }
 giveStarterSkins();
+Gacha.initUI();
 updateStreak();
 refreshHUD();
 updateSoundUI();
