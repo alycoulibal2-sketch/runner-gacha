@@ -1310,6 +1310,10 @@
       <button class="btn secondary" onclick="UI.closeGacha()">Close</button>
     </div>
 
+    <div id="gachaSkipRow" style="display:none;margin-top:4px;text-align:center;">
+      <button onclick="Gacha.skipSpin()" style="background:linear-gradient(90deg,#7c4dff,#ff6b94);border:none;border-radius:10px;color:#fff;font-weight:900;font-size:13px;padding:8px 22px;cursor:pointer;letter-spacing:.5px;">⚡ Skip Animation</button>
+    </div>
+
     <div id="gachaResult" class="muted">Spin to get a new skin!</div>
     <small id="pityInfo" class="muted"></small>
   </div>
@@ -1393,7 +1397,7 @@
     <div class="shop-section-title" style="margin-top:6px;">⭐ Season Pass — $3.99/mo</div>
     <div style="background:linear-gradient(90deg,rgba(124,77,255,0.15),rgba(255,122,89,0.1));border:1px solid rgba(124,77,255,0.25);border-radius:14px;padding:12px;width:100%;font-size:12px;cursor:pointer;" onclick="Shop.buyPass()">
       <div style="font-weight:900;font-size:14px;margin-bottom:4px;">🚀 Runner Pass</div>
-      <div style="opacity:.75;">• 3× coin income  • Exclusive monthly skin  • No ads  • 200 coins/day bonus</div>
+      <div style="opacity:.75;">• 3× coin income  • Exclusive monthly skin  • No ads  • 200 coins/day bonus  • ⚡ Skip spin animations</div>
       <div style="margin-top:8px;"><button class="btn shop-btn" style="min-width:auto;padding:7px 16px;font-size:12px;" onclick="event.stopPropagation();Shop.buyPass()">Subscribe</button></div>
     </div>
 
@@ -4763,7 +4767,21 @@ const Gacha = (() => {
     document.getElementById("gachaCoins").textContent = `Your coins: ${coins}`;
     saveAll();
     updatePityText();
+    document.getElementById("gachaSkipRow").style.display = "block";
     requestAnimationFrame(animate);
+  }
+
+  function skipSpin() {
+    if (!spinning) return;
+    if (!hasPass) {
+      UI.closeGacha();
+      UI.openShop();
+      showToast("⭐ Get Runner Pass to skip spin animations!");
+      return;
+    }
+    spinning = false;
+    document.getElementById("gachaSkipRow").style.display = "none";
+    finish();
   }
 
   function animate(now) {
@@ -4777,6 +4795,7 @@ const Gacha = (() => {
   }
 
   function finish() {
+    document.getElementById("gachaSkipRow").style.display = "none";
     giveReward(pendingRarity);
     checkAchievements();
   }
@@ -4824,7 +4843,7 @@ const Gacha = (() => {
       `Pity — Player: ${pity.player || 0} | BG: ${pity.background || 0} | Obstacle: ${pity.obstacle || 0} (50 = Legendary)`;
   }
 
-  return { spin, selectType, draw, updatePityText };
+  return { spin, skipSpin, selectType, draw, updatePityText };
 })();
 
 // ─────────────────────────────────────────────
