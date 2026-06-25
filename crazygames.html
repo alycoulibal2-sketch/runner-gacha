@@ -1087,10 +1087,11 @@
     </div>
     <div class="menu-actions">
       <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center;">🌍 Share the Game</a>
+      <button class="btn secondary" onclick="ControlsGuide.show()" style="font-size:12px;">❓ How to Play</button>
     </div>
 
-    <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
-    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
+    <p class="menu-hint" id="menuControlsHint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
+    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 75 spins = guaranteed Legendary</p>
   </div>
 
   <!-- Game Over Modal -->
@@ -1868,7 +1869,7 @@ const GachaSFX = (() => {
     legendaire: 'sounds/pull-legendary.mp3',
     mythique:   'sounds/pull-mythic.mp3',
   };
-  const VOLS = { commun:0.55, rare:0.72, epic:0.78, legendaire:0.78, mythique:0.55 };
+  const VOLS = { commun:0.28, rare:0.32, epic:0.35, legendaire:0.35, mythique:0.25 };
   const cache = {};
   let _locked = false;
 
@@ -5135,10 +5136,76 @@ canvas.addEventListener("click", () => {
 
 window.addEventListener("click", function once() {
   ensureAudio();
-  // Kick off menu music on the first interaction (browsers block autoplay before a gesture)
-  if (!running && musicEnabled) Music.playMenu();
+  Tutorial.show();
   window.removeEventListener("click", once);
 });
+
+// ─────────────────────────────────────────────
+//  CONTROLS GUIDE  (visual overlay, mobile-adaptive)
+// ─────────────────────────────────────────────
+const ControlsGuide = (() => {
+  const isMobile = /Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+  function show() {
+    if (document.getElementById('_ctrlGuide')) return;
+    const el = document.createElement('div');
+    el.id = '_ctrlGuide';
+    el.style.cssText = 'position:absolute;inset:0;z-index:310;background:rgba(2,6,23,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;animation:fadeIn .2s ease;';
+    const rows = isMobile ? [
+      { icon:'👆', key:'TAP', desc:'Jump' },
+      { icon:'🎯', key:'GOAL', desc:'Avoid obstacles & collect coins' },
+      { icon:'🎰', key:'MENU', desc:'Open Gacha to spend coins on skins' },
+    ] : [
+      { icon:'⬆️', key:'SPACE / ↑', desc:'Jump' },
+      { icon:'⏸', key:'P', desc:'Pause' },
+      { icon:'🎰', key:'G', desc:'Open Gacha' },
+      { icon:'🛍️', key:'S', desc:'Open Shop' },
+    ];
+    const rowsHTML = rows.map(r => `<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);width:100%;"><div style="font-size:26px;width:36px;text-align:center;flex-shrink:0;">${r.icon}</div><div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:7px;padding:3px 10px;font-size:12px;font-weight:900;color:#e8e8f0;min-width:60px;text-align:center;flex-shrink:0;">${r.key}</div><div style="font-size:13px;color:rgba(232,232,240,0.7);">${r.desc}</div></div>`).join('');
+    el.innerHTML = `<div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:22px 24px;max-width:300px;width:90%;"><div style="font-size:18px;font-weight:900;color:#e8e8f0;text-align:center;margin-bottom:14px;">❓ How to Play</div><div style="margin-bottom:8px;">${rowsHTML}</div><div style="background:rgba(56,189,248,0.08);border-radius:10px;padding:10px;margin-top:10px;font-size:12px;color:rgba(232,232,240,0.6);text-align:center;line-height:1.5;">🎯 Avoid obstacles · 💰 Collect coins<br>🎰 Spend coins in Gacha to unlock skins</div><button onclick="ControlsGuide.hide()" style="margin-top:16px;width:100%;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:900;font-size:14px;cursor:pointer;">Got it!</button></div>`;
+    (document.getElementById('game') || document.body).appendChild(el);
+    el.addEventListener('click', e => { if (e.target === el) hide(); });
+  }
+  function hide() { document.getElementById('_ctrlGuide')?.remove(); }
+  return { show, hide };
+})();
+
+// ─────────────────────────────────────────────
+//  TUTORIAL  (first-time players only, skippable)
+// ─────────────────────────────────────────────
+const Tutorial = (() => {
+  const isMobile = /Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+  const STEPS = [
+    { emoji:'🏃', title: isMobile ? 'Tap to jump!' : 'Press SPACE to jump!', sub:'Dodge every obstacle coming your way', key: isMobile ? '👆 TAP' : '⎵ SPACE' },
+    { emoji:'💰', title:'Collect coins!', sub:'Every coin boosts your score', key:'🪙 COINS' },
+    { emoji:'🎰', title:'Spin the Gacha!', sub:'Spend coins to unlock rare skins', key:'G KEY / MENU' },
+    { emoji:'🏆', title:'Choose your challenge!', sub:'Easy · Hard · Extreme', key:'🚀 PLAY' },
+  ];
+  let step = 0, el = null;
+  function _render() {
+    if (!el) return;
+    const s = STEPS[step];
+    const dots = STEPS.map((_, i) => `<div style="width:7px;height:7px;border-radius:50%;background:${i===step?'#6366f1':'rgba(255,255,255,0.2)'}"></div>`).join('');
+    el.querySelector('#_tutBody').innerHTML = `<div style="font-size:56px;margin-bottom:8px;">${s.emoji}</div><div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 14px;font-size:12px;font-weight:900;color:#a5b4fc;letter-spacing:1px;margin-bottom:12px;">${s.key}</div><div style="font-size:17px;font-weight:900;color:#e8e8f0;margin-bottom:6px;">${s.title}</div><div style="font-size:12px;color:rgba(232,232,240,0.5);line-height:1.5;">${s.sub}</div><div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">${dots}</div>`;
+    el.querySelector('#_tutNext').textContent = step < STEPS.length - 1 ? 'Next →' : 'Start Playing!';
+  }
+  function show() {
+    if (S.get('rg-tutorialDone')) { if (!running && musicEnabled) Music.playMenu(); return; }
+    step = 0; el = document.createElement('div');
+    el.id = '_tutorial';
+    el.style.cssText = 'position:absolute;inset:0;z-index:320;background:rgba(2,6,23,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;animation:fadeIn .3s ease;';
+    el.innerHTML = `<div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:28px 26px;max-width:290px;width:90%;text-align:center;"><div id="_tutBody"></div><div style="display:flex;gap:10px;margin-top:20px;"><button id="_tutSkip" style="flex:1;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(232,232,240,0.4);font-size:13px;cursor:pointer;">Skip</button><button id="_tutNext" style="flex:2;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:900;font-size:13px;cursor:pointer;">Next →</button></div></div>`;
+    (document.getElementById('game') || document.body).appendChild(el);
+    _render();
+    el.querySelector('#_tutSkip').onclick = _done;
+    el.querySelector('#_tutNext').onclick = () => { if (step < STEPS.length - 1) { step++; _render(); } else _done(); };
+  }
+  function _done() {
+    S.set('rg-tutorialDone', true);
+    el?.remove(); el = null;
+    if (!running && musicEnabled) Music.playMenu();
+  }
+  return { show };
+})();
 
 // ─────────────────────────────────────────────
 //  HUD REFRESH
@@ -5757,6 +5824,8 @@ window.toggleSound      = toggleSound;
 window.toggleMusic      = toggleMusic;
 window.toggleSfx        = toggleSfx;
 window.UI               = UI;
+window.ControlsGuide    = ControlsGuide;
+window.Tutorial         = Tutorial;
 window.Gacha            = Gacha;
 window.Collection       = Collection;
 window.Ads              = Ads;
@@ -5825,6 +5894,16 @@ updateStreak();
 refreshHUD();
 updateSoundUI();
 document.getElementById("menuMusicBtn").textContent = "🎵 Music: " + Music.menuTrackName();
+
+// Mobile-adaptive controls hint
+(function() {
+  const mobile = /Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
+  const hint = document.getElementById('menuControlsHint');
+  if (hint) hint.textContent = mobile
+    ? 'Tap screen = jump · Gacha button = open skins'
+    : 'Space / ↑ = jump · P = pause · G = gacha · S = shop';
+})();
+
 document.getElementById("streakCount").textContent = streak;
 document.getElementById("streakBonus").textContent =
   (Date.now() - lastDaily >= 86400000) ? " · Daily bonus ready!" : " · Keep the streak!";
