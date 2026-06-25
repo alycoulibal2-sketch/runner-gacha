@@ -1003,8 +1003,10 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
   </style>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3564432250969796"
-          crossorigin="anonymous"></script>
+  <!-- CrazyGames build: hide external login UI (auth handled by localStorage only) -->
+  <style>
+    #accountBtn, #menuAccountBtn, #accountModal, #pwOverlay, #resetPasswordPage { display: none !important; }
+  </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
