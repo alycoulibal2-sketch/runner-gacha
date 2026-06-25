@@ -1003,9 +1003,13 @@
     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
   </style>
-  <!-- CrazyGames build: hide external login UI (auth handled by localStorage only) -->
+  <!-- CrazyGames build: hide features not permitted or not applicable -->
   <style>
-    #accountBtn, #menuAccountBtn, #accountModal, #pwOverlay, #resetPasswordPage { display: none !important; }
+    #accountBtn, #menuAccountBtn, #accountModal, #pwOverlay, #resetPasswordPage,
+    #adOverlay,
+    #leaderboardModal,
+    #socialModal, #duelBanScreen, #duelWaitScreen, #duelRoundResult, #duelFinalResult, #duelHUD,
+    #spectateWidget, #spectateOverlay { display: none !important; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -1065,20 +1069,12 @@
     </div>
     <div class="menu-actions">
       <button class="btn secondary" id="dailyBtn" onclick="claimDaily()">🎁 Daily Reward</button>
-      <button class="btn ad-btn" onclick="UI.watchAd()">▶ Watch Ad (+50 💰)</button>
     </div>
 
     <div class="menu-section-label">Progress</div>
     <div class="menu-actions">
       <button class="btn secondary" onclick="UI.openCollection()">📦 Collection</button>
       <button class="btn secondary" onclick="UI.openAchievements()">🏅 Achievements</button>
-      <button class="btn secondary" onclick="UI.openLeaderboard()">🏆 Top Scores</button>
-    </div>
-
-    <div class="menu-section-label">Social</div>
-    <div class="menu-actions">
-      <button class="btn secondary" onclick="Social.open()">👥 Friends &amp; Duels</button>
-      <button class="btn secondary" onclick="currentUser?Profile.view(currentUser.uid):AuthUI.open()" id="menuAccountBtn">👤 Account</button>
     </div>
 
     <div class="menu-section-label">Settings</div>
@@ -1088,7 +1084,6 @@
       <button class="btn secondary" id="menuSfxToggle"   onclick="toggleSfx()"   style="font-size:12px;">🔔 SFX: On</button>
     </div>
     <div class="menu-actions">
-      <a href="./promo.html" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;justify-content:center;">🌍 Share the Game</a>
       <button class="btn secondary" onclick="ControlsGuide.show()" style="font-size:12px;">❓ How to Play</button>
     </div>
 
