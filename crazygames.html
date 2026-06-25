@@ -5111,6 +5111,10 @@ function togglePause() {
   document.getElementById("pauseBtn").textContent = paused ? "▶️" : "⏸";
   Music.setPaused(paused);
   beep(600, 0.06);
+  if (paused && !S.get("rg-seenPauseGuide")) {
+    S.set("rg-seenPauseGuide", true);
+    ControlsGuide.show();
+  }
 }
 
 document.addEventListener("keydown", e => {
@@ -5175,25 +5179,74 @@ const ControlsGuide = (() => {
 const Tutorial = (() => {
   const isMobile = /Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent) || navigator.maxTouchPoints > 1;
   const STEPS = [
-    { emoji:'🏃', title: isMobile ? 'Tap to jump!' : 'Press SPACE to jump!', sub:'Dodge every obstacle coming your way', key: isMobile ? '👆 TAP' : '⎵ SPACE' },
-    { emoji:'💰', title:'Collect coins!', sub:'Every coin boosts your score', key:'🪙 COINS' },
-    { emoji:'🎰', title:'Spin the Gacha!', sub:'Spend coins to unlock rare skins', key:'G KEY / MENU' },
-    { emoji:'🏆', title:'Choose your challenge!', sub:'Easy · Hard · Extreme', key:'🚀 PLAY' },
+    { demo:'jump',  title: isMobile ? 'Tap to jump!' : 'Press SPACE to jump!', sub:'Dodge every obstacle coming your way', key: isMobile ? '👆 TAP' : '⎵ SPACE' },
+    { demo:'coins', title:'Collect coins!', sub:'Every coin boosts your score & funds the Gacha', key:'🪙 COINS' },
+    { emoji:'🎰',   title:'Spin the Gacha!', sub:'Spend coins to unlock rare skins', key:'G KEY / MENU' },
+    { emoji:'🏆',   title:'Choose your challenge!', sub:'Easy · Hard · Extreme', key:'🚀 PLAY' },
   ];
-  let step = 0, el = null;
+  let step = 0, el = null, rafId = null;
+  const DW = 252, DH = 110, GROUND = 86;
+  let demo = null;
+  function _initDemo(mode) {
+    demo = { mode, t:0, px:46, py:GROUND, vy:0, jumping:false,
+             obs:[{x:DW+20}], coins:[{x:DW+40, taken:false}], score:0 };
+  }
+  function _stepDemo(ctx) {
+    const d = demo; if (!d) return;
+    d.t++;
+    d.vy += 0.7; d.py += d.vy;
+    if (d.py >= GROUND) { d.py = GROUND; d.vy = 0; d.jumping = false; }
+    d.obs.forEach(o => o.x -= 3.2);
+    if (d.obs[0].x < -30) { d.obs[0].x = DW + 30 + Math.random()*40; }
+    if (!d.jumping && d.obs.some(o => o.x - d.px < 52 && o.x - d.px > 10)) { d.vy = -10; d.jumping = true; }
+    if (d.mode === 'coins') {
+      d.coins.forEach(c => { c.x -= 3.2;
+        if (!c.taken && Math.abs(c.x - d.px) < 16 && Math.abs(d.py - (GROUND-22)) < 26) { c.taken = true; d.score++; }
+        if (c.x < -20) { c.x = DW + 20 + Math.random()*50; c.taken = false; }
+      });
+      if (!d.jumping && d.t % 70 === 0) { d.vy = -8.5; d.jumping = true; }
+    }
+    ctx.clearRect(0,0,DW,DH);
+    ctx.fillStyle = '#0a1024'; ctx.fillRect(0,0,DW,DH);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0,GROUND+14); ctx.lineTo(DW,GROUND+14); ctx.stroke();
+    if (d.mode === 'coins') {
+      d.coins.forEach(c => { if (c.taken) return;
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath(); ctx.arc(c.x, GROUND-22, 7, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#b8860b'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign='center';
+        ctx.fillText('$', c.x, GROUND-19);
+      });
+    }
+    ctx.fillStyle = '#f43f5e';
+    d.obs.forEach(o => ctx.fillRect(o.x, GROUND-4, 16, 18));
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(d.px-13, d.py-13, 26, 26);
+    ctx.fillStyle = '#0a1024';
+    ctx.fillRect(d.px-6, d.py-6, 4, 4);
+    ctx.fillRect(d.px+2, d.py-6, 4, 4);
+    ctx.fillRect(d.px-5, d.py+3, 10, 2);
+    rafId = requestAnimationFrame(() => _stepDemo(ctx));
+  }
+  function _stopDemo() { if (rafId) cancelAnimationFrame(rafId); rafId = null; demo = null; }
   function _render() {
     if (!el) return;
+    _stopDemo();
     const s = STEPS[step];
     const dots = STEPS.map((_, i) => `<div style="width:7px;height:7px;border-radius:50%;background:${i===step?'#6366f1':'rgba(255,255,255,0.2)'}"></div>`).join('');
-    el.querySelector('#_tutBody').innerHTML = `<div style="font-size:56px;margin-bottom:8px;">${s.emoji}</div><div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 14px;font-size:12px;font-weight:900;color:#a5b4fc;letter-spacing:1px;margin-bottom:12px;">${s.key}</div><div style="font-size:17px;font-weight:900;color:#e8e8f0;margin-bottom:6px;">${s.title}</div><div style="font-size:12px;color:rgba(232,232,240,0.5);line-height:1.5;">${s.sub}</div><div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">${dots}</div>`;
+    const visual = s.demo
+      ? `<canvas id="_tutCanvas" width="${DW}" height="${DH}" style="width:100%;max-width:252px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);margin-bottom:12px;"></canvas>`
+      : `<div style="font-size:56px;margin-bottom:8px;">${s.emoji}</div>`;
+    el.querySelector('#_tutBody').innerHTML = `${visual}<div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 14px;font-size:12px;font-weight:900;color:#a5b4fc;letter-spacing:1px;margin-bottom:12px;display:inline-block;">${s.key}</div><div style="font-size:17px;font-weight:900;color:#e8e8f0;margin-bottom:6px;">${s.title}</div><div style="font-size:12px;color:rgba(232,232,240,0.5);line-height:1.5;">${s.sub}</div><div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">${dots}</div>`;
     el.querySelector('#_tutNext').textContent = step < STEPS.length - 1 ? 'Next →' : 'Start Playing!';
+    if (s.demo) { _initDemo(s.demo); _stepDemo(el.querySelector('#_tutCanvas').getContext('2d')); }
   }
   function show() {
     if (S.get('rg-tutorialDone')) { if (!running && musicEnabled) Music.playMenu(); return; }
     step = 0; el = document.createElement('div');
     el.id = '_tutorial';
     el.style.cssText = 'position:absolute;inset:0;z-index:320;background:rgba(2,6,23,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;animation:fadeIn .3s ease;';
-    el.innerHTML = `<div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:28px 26px;max-width:290px;width:90%;text-align:center;"><div id="_tutBody"></div><div style="display:flex;gap:10px;margin-top:20px;"><button id="_tutSkip" style="flex:1;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(232,232,240,0.4);font-size:13px;cursor:pointer;">Skip</button><button id="_tutNext" style="flex:2;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:900;font-size:13px;cursor:pointer;">Next →</button></div></div>`;
+    el.innerHTML = `<div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:24px 22px;max-width:300px;width:90%;text-align:center;"><div id="_tutBody"></div><div style="display:flex;gap:10px;margin-top:20px;"><button id="_tutSkip" style="flex:1;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);background:transparent;color:rgba(232,232,240,0.4);font-size:13px;cursor:pointer;">Skip</button><button id="_tutNext" style="flex:2;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:900;font-size:13px;cursor:pointer;">Next →</button></div></div>`;
     (document.getElementById('game') || document.body).appendChild(el);
     _render();
     el.querySelector('#_tutSkip').onclick = _done;
@@ -5201,6 +5254,7 @@ const Tutorial = (() => {
   }
   function _done() {
     S.set('rg-tutorialDone', true);
+    _stopDemo();
     el?.remove(); el = null;
     if (!running && musicEnabled) Music.playMenu();
   }
