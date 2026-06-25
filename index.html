@@ -1145,7 +1145,7 @@
     </div>
 
     <p class="menu-hint">Tap / Space = jump · P = pause · G = gacha · S = shop</p>
-    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 50 spins = guaranteed Legendary</p>
+    <p class="menu-hint" style="margin-top:2px;">1 spin = 30 💰 · Pity: 75 spins = guaranteed Legendary</p>
   </div>
 
   <!-- Game Over Modal -->
@@ -4804,7 +4804,7 @@ const Gacha = (() => {
     S.set("rg-totalSpins", totalSpins);
 
     let rarity;
-    if (pity[activeType] >= 50) {
+    if (pity[activeType] >= 75) {
       rarity = "legendaire";
       pity[activeType] = 0;
       showToast("✨ Pity triggered — Legendary guaranteed!");
@@ -4886,7 +4886,7 @@ const Gacha = (() => {
 
   function updatePityText() {
     document.getElementById("pityInfo").textContent =
-      `Pity — Player: ${pity.player || 0} | BG: ${pity.background || 0} | Obstacle: ${pity.obstacle || 0} (50 = Legendary)`;
+      `Pity — Player: ${pity.player || 0} | BG: ${pity.background || 0} | Obstacle: ${pity.obstacle || 0} (75 = Legendary)`;
   }
 
   return { spin, toggleSkip, selectType, draw, updatePityText, initUI: _applyToggleUI };
