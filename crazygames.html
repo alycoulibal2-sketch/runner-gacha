@@ -1011,9 +1011,7 @@
     #socialModal, #duelBanScreen, #duelWaitScreen, #duelRoundResult, #duelFinalResult, #duelHUD,
     #spectateWidget, #spectateOverlay { display: none !important; }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <!-- CrazyGames build: Firebase/login removed. Single-player, localStorage-only. -->
   <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <div id="game">
@@ -5371,14 +5369,24 @@ function getDisplayName() { return S.get("rg-displayName", "") || S.get("rg-user
 function setDisplayName(n) { S.set("rg-displayName", n); }
 let lastDisplayNameChange = S.get("rg-lastDNChange", 0);
 
+// ── CrazyGames SDK init (loading start → init → loading stop) ───────────────
+(function initCrazyGamesSDK() {
+  if (!window.CrazyGames?.SDK) return;
+  try {
+    CrazyGames.SDK.game.sdkGameLoadingStart();
+  } catch (e) { /* ignore if unsupported */ }
+  CrazyGames.SDK.init()
+    .then(() => { try { CrazyGames.SDK.game.sdkGameLoadingStop(); } catch (e) {} })
+    .catch(() => { try { CrazyGames.SDK.game.sdkGameLoadingStop(); } catch (e) {} });
+})();
+
 
 try {
-  if (!firebase) throw new Error("Firebase SDK not loaded");
+  if (typeof firebase === "undefined" || !firebase) throw new Error("Firebase disabled in CrazyGames build");
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth();
   fbDb   = firebase.firestore();
   fbReady = true;
-  if (window.CrazyGames?.SDK) CrazyGames.SDK.init().then(() => CrazyGames.SDK.game.sdkGameLoadingStop());
 
   fbAuth.onAuthStateChanged(user => {
     currentUser = user;
@@ -5439,13 +5447,8 @@ try {
     }
   });
 } catch (e) {
-  console.error("Firebase init failed:", e);
-  // Show error inside the account modal so the player sees it
-  const _origOpen = AuthUI ? AuthUI.open.bind(AuthUI) : null;
-  document.addEventListener("DOMContentLoaded", () => {
-    const btn = document.getElementById("accountBtn");
-    if (btn) btn.title = "Accounts unavailable — Firebase error";
-  });
+  // CrazyGames build: Firebase intentionally absent. Game runs on localStorage only.
+  fbReady = false; currentUser = null;
 }
 
 // ── RECENT ACCOUNTS (localStorage cache for quick sign-in) ─────────────────
