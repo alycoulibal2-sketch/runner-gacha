@@ -1009,7 +1009,8 @@
     #adOverlay,
     #leaderboardModal,
     #socialModal, #duelBanScreen, #duelWaitScreen, #duelRoundResult, #duelFinalResult, #duelHUD,
-    #spectateWidget, #spectateOverlay { display: none !important; }
+    #spectateWidget, #spectateOverlay,
+    #soundBtn, #notifBell, #notifPanel { display: none !important; }
   </style>
   <!-- CrazyGames build: Firebase/login removed. Single-player, localStorage-only. -->
   <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
@@ -1024,8 +1025,7 @@
     <div class="badge">💰 <span id="coinAmount">0</span></div>
     <div class="badge" id="modeDisplay" style="display:none">🎮 <span id="modeLabel">-</span></div>
     <div class="badge" id="reviveBadge" style="display:none;">💛 Revival Ready</div>
-    <button class="badge-btn" onclick="UI.openCollection()" title="Collection">📦</button>
-    <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause">⏸</button>
+    <button class="badge-btn" id="pauseBtn" onclick="togglePause()" title="Pause / Menu">⏸</button>
     <button class="badge-btn" id="soundBtn" onclick="toggleSound()" title="Sound">🔊</button>
     <button class="badge-btn" id="accountBtn" onclick="currentUser?Profile.view(currentUser.uid):AuthUI.open()" title="Account">👤</button>
     <button class="badge-btn" id="notifBell" onclick="Notif.toggle()" title="Notifications" style="position:relative;">
@@ -1716,7 +1716,8 @@ function beep(freq = 440, dur = 0.06, type = "sine", vol = 0.05) {
 }
 function updateSoundUI() {
   const allOff = !musicEnabled && !sfxEnabled;
-  document.getElementById("soundBtn").textContent = allOff ? "🔇" : (musicEnabled && sfxEnabled) ? "🔊" : "🔉";
+  const sb = document.getElementById("soundBtn");
+  if (sb) sb.textContent = allOff ? "🔇" : (musicEnabled && sfxEnabled) ? "🔊" : "🔉";
   const mt = document.getElementById("menuMusicToggle");
   if (mt) mt.textContent = musicEnabled ? "🎵 Music: On" : "🔕 Music: Off";
   const st = document.getElementById("menuSfxToggle");
@@ -5075,13 +5076,13 @@ const UI = {
     menuOpen = true;
     Music.playGacha();
   },
-  closeGacha() { document.getElementById("gachaModal").style.display = "none"; Music.stopGacha(); },
+  closeGacha() { document.getElementById("gachaModal").style.display = "none"; Music.stopGacha(); if (paused && running) PauseMenu.show(); },
   openCollection() {
     document.getElementById("collectionModal").style.display = "flex";
     Collection.show("all");
     menuOpen = true;
   },
-  closeCollection() { document.getElementById("collectionModal").style.display = "none"; },
+  closeCollection() { document.getElementById("collectionModal").style.display = "none"; if (paused && running) PauseMenu.show(); },
   openAchievements() {
     document.getElementById("achievementsModal").style.display = "flex";
     renderAchievements();
@@ -5102,14 +5103,43 @@ const UI = {
 // ─────────────────────────────────────────────
 function togglePause() {
   if (!running) return;
+  // Ignore pause toggles while a sub-modal opened from the pause menu is showing
+  // (player should close it first — it returns them to the pause overlay).
+  const subOpen = ["gachaModal", "collectionModal", "achievementsModal"].some(id => {
+    const m = document.getElementById(id); return m && m.style.display === "flex";
+  });
+  if (subOpen) return;
   paused = !paused;
-  document.getElementById("pauseBtn").textContent = paused ? "▶️" : "⏸";
+  const pb = document.getElementById("pauseBtn");
+  if (pb) pb.textContent = paused ? "▶️" : "⏸";
   Music.setPaused(paused);
   beep(600, 0.06);
-  if (paused && !S.get("rg-seenPauseGuide")) {
-    S.set("rg-seenPauseGuide", true);
-    ControlsGuide.show();
+  if (paused) {
+    PauseMenu.show();
+  } else {
+    PauseMenu.hide();
+    menuOpen = false; // re-enable tap-to-jump (a sub-modal may have set it true)
   }
+}
+
+// Leave the current run and return to the main menu (from the pause menu).
+function quitToMenu() {
+  running = false;
+  paused = false;
+  const pb = document.getElementById("pauseBtn");
+  if (pb) pb.textContent = "⏸";
+  if (window.CrazyGames?.SDK) { try { CrazyGames.SDK.game.gameplayStop(); } catch (e) {} }
+  try { endLiveSession(); } catch (e) {}
+  PauseMenu.hide();
+  // Close any sub-modals that may have been opened from the pause menu
+  ["gachaModal", "collectionModal", "achievementsModal"].forEach(id => {
+    const m = document.getElementById(id); if (m) m.style.display = "none";
+  });
+  try { Music.stopGacha?.(); } catch (e) {}
+  const md = document.getElementById("modeDisplay"); if (md) md.style.display = "none";
+  document.getElementById("menu").style.display = "flex";
+  menuOpen = true;
+  Music.playMenu();
 }
 
 document.addEventListener("keydown", e => {
@@ -5117,9 +5147,9 @@ document.addEventListener("keydown", e => {
   if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
   if (e.code === "Space") { e.preventDefault(); jump(); }
   if (e.key.toLowerCase() === "p") togglePause();
-  if (e.key.toLowerCase() === "g") UI.openGacha();
-  if (e.key.toLowerCase() === "c") UI.openCollection();
-  if (e.key.toLowerCase() === "e") useMythicAbility();
+  if (e.key.toLowerCase() === "g") { if (paused) PauseMenu.gacha(); else UI.openGacha(); }
+  if (e.key.toLowerCase() === "c") { if (paused) PauseMenu.collection(); else UI.openCollection(); }
+  if (e.key.toLowerCase() === "e") { if (!paused) useMythicAbility(); }
 });
 
 canvas.addEventListener("touchstart", ev => {
@@ -5166,6 +5196,53 @@ const ControlsGuide = (() => {
   }
   function hide() { document.getElementById('_ctrlGuide')?.remove(); }
   return { show, hide };
+})();
+
+// ─────────────────────────────────────────────
+//  PAUSE MENU  (hub for Resume / Gacha / Collection / Sound / Help / Quit)
+// ─────────────────────────────────────────────
+const PauseMenu = (() => {
+  function _soundLabel() {
+    const allOff = !musicEnabled && !sfxEnabled;
+    return allOff ? '🔇 Sound Off' : (musicEnabled && sfxEnabled) ? '🔊 Sound On' : '🔉 Sound Low';
+  }
+  const TILE = 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:14px 8px;border-radius:14px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:#e8e8f0;font-weight:800;font-size:12px;cursor:pointer;min-height:64px;transition:background .12s;';
+  const ICON = 'font-size:24px;line-height:1;';
+  function show() {
+    hide();
+    const el = document.createElement('div');
+    el.id = '_pauseMenu';
+    el.style.cssText = 'position:absolute;inset:0;z-index:300;background:rgba(2,6,23,0.94);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:inherit;';
+    el.innerHTML = `
+      <div style="background:#0f172a;border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:22px 20px;max-width:340px;width:90%;box-shadow:0 24px 70px rgba(0,0,0,0.55);animation:popIn .22s ease;">
+        <div style="font-size:24px;font-weight:900;color:#e8e8f0;text-align:center;letter-spacing:.5px;">⏸ Paused</div>
+        <div style="text-align:center;font-size:13px;color:rgba(232,232,240,0.6);margin:4px 0 18px;">⚡ <b style="color:#fbbf24;">${score}</b> &nbsp;·&nbsp; 💰 <b style="color:#fbbf24;">${coins}</b></div>
+        <button onclick="PauseMenu.resume()" style="width:100%;padding:15px;border-radius:16px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-weight:900;font-size:16px;cursor:pointer;box-shadow:0 6px 18px rgba(34,197,94,0.35);">▶️ Resume</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+          <button onclick="PauseMenu.gacha()" style="${TILE}"><span style="${ICON}">🎰</span><span>Spin Gacha</span></button>
+          <button onclick="PauseMenu.collection()" style="${TILE}"><span style="${ICON}">📦</span><span>Collection</span></button>
+          <button id="_pmSound" onclick="PauseMenu.sound()" style="${TILE}"><span style="${ICON}">🔊</span><span id="_pmSoundLbl">${_soundLabel()}</span></button>
+          <button onclick="PauseMenu.help()" style="${TILE}"><span style="${ICON}">❓</span><span>How to Play</span></button>
+        </div>
+        <button onclick="PauseMenu.quit()" style="width:100%;margin-top:14px;padding:13px;border-radius:14px;border:1px solid rgba(248,113,113,0.4);background:rgba(248,113,113,0.1);color:#fca5a5;font-weight:900;font-size:14px;cursor:pointer;">🏠 Quit to Menu</button>
+      </div>`;
+    (document.getElementById('game') || document.body).appendChild(el);
+    el.addEventListener('click', e => { if (e.target === el) resume(); });
+  }
+  function hide() { document.getElementById('_pauseMenu')?.remove(); }
+  function resume()     { if (paused) togglePause(); }
+  // Hide the overlay before opening a sub-modal (modals sit at a lower z-index);
+  // UI.closeGacha/closeCollection re-show this overlay while still paused.
+  function gacha()      { hide(); UI.openGacha(); }
+  function collection() { hide(); UI.openCollection(); }
+  function help()       { ControlsGuide.show(); }
+  function sound() {
+    toggleSound();
+    const lbl = document.getElementById('_pmSoundLbl');
+    if (lbl) lbl.textContent = _soundLabel();
+  }
+  function quit() { quitToMenu(); }
+  return { show, hide, resume, gacha, collection, help, sound, quit };
 })();
 
 // ─────────────────────────────────────────────
@@ -5874,6 +5951,8 @@ window.AuthUI           = AuthUI;
 window.selectDifficulty = selectDifficulty;
 window.claimDaily       = claimDaily;
 window.togglePause      = togglePause;
+window.quitToMenu       = quitToMenu;
+window.PauseMenu        = PauseMenu;
 window.toggleSound      = toggleSound;
 window.toggleMusic      = toggleMusic;
 window.toggleSfx        = toggleSfx;
